@@ -176,23 +176,12 @@ ClassGenCCAutoRoomEnabled=1
 ClassGenNCAutoScope=None
 DItemRevisionGUID=
 
-[Document11]
-DocumentPath=FMC_Delay_1ns_4Cha.OutJob
-AnnotationEnabled=1
-AnnotateStartValue=1
-AnnotationIndexControlEnabled=0
-AnnotateSuffix=
-AnnotateScope=All
-AnnotateOrder=-1
-DoLibraryUpdate=1
-DoDatabaseUpdate=1
-ClassGenCCAutoEnabled=1
-ClassGenCCAutoRoomEnabled=1
-ClassGenNCAutoScope=None
-DItemRevisionGUID=
-
 [GeneratedDocument1]
 DocumentPath=Project Outputs for FMC_Delay_1ns_4Cha\Design Rule Check - FMC_Delay_1ns_4Cha.html
+DItemRevisionGUID=
+
+[GeneratedDocument2]
+DocumentPath=FMC_Delay_1ns_4Cha.PcbDoc.htm
 DItemRevisionGUID=
 
 [Generic_SmartPDF]
