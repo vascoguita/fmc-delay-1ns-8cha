@@ -1,0 +1,33 @@
+Output: Gerber Files
+Type  : Gerber
+From  : PCB Document [FMC_Delay_1ns_4Cha.PcbDoc]
+   Generated File[FMC_Delay_1ns_4Cha.GTL]
+   Generated File[FMC_Delay_1ns_4Cha.GP1]
+   Generated File[FMC_Delay_1ns_4Cha.GP2]
+   Generated File[FMC_Delay_1ns_4Cha.G1]
+   Generated File[FMC_Delay_1ns_4Cha.GP3]
+   Generated File[FMC_Delay_1ns_4Cha.GBL]
+   Generated File[FMC_Delay_1ns_4Cha.GTO]
+   Generated File[FMC_Delay_1ns_4Cha.GBO]
+   Generated File[FMC_Delay_1ns_4Cha.GTP]
+   Generated File[FMC_Delay_1ns_4Cha.GBP]
+   Generated File[FMC_Delay_1ns_4Cha.GTS]
+   Generated File[FMC_Delay_1ns_4Cha.GBS]
+   Generated File[FMC_Delay_1ns_4Cha.GM1]
+   Generated File[FMC_Delay_1ns_4Cha.RUL]
+   Generated File[FMC_Delay_1ns_4Cha.EXTREP]
+   Generated File[FMC_Delay_1ns_4Cha.REP]
+
+Output: NC Drill Files
+Type  : NC Drill
+From  : PCB Document [FMC_Delay_1ns_4Cha.PcbDoc]
+   Generated File[FMC_Delay_1ns_4Cha.TXT]
+   Generated File[FMC_Delay_1ns_4Cha.DRL]
+   Generated File[FMC_Delay_1ns_4Cha.LDP]
+   Generated File[FMC_Delay_1ns_4Cha.DRR]
+
+
+Files Generated   : 20
+Documents Printed : 0
+
+Finished Output Generation At 5:35:49 PM On 1/20/2011
