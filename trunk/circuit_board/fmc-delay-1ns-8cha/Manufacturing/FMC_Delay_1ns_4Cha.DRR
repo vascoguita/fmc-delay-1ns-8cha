@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------
-NCDrill File Report For: FMC_Delay_1ns_4Cha.PcbDoc   1/20/2011  5:35:49 PM
+NCDrill File Report For: FMC_Delay_1ns_4Cha.PcbDoc   1/21/2011  4:37:06 PM
 ---------------------------------------------------------------------------
 
 Layer Pair : Top Layer to Bottom Layer
@@ -8,13 +8,13 @@ EIA File   : FMC_Delay_1ns_4Cha.DRL
 
 Tool         Hole Size           Hole Type     Hole Count Plated       Tool Travel
 ---------------------------------------------------------------------------
-T1        12mil (0.3048mm)         Round          813              350.58 Inch (8904.66 mm)
+T1        10mil (0.254mm)          Round          813              351.79 Inch (8935.35 mm)
 T2        39.37mil (1mm)           Round          4                280.91 Inch (7135.17 mm)
 T3        47.24mil (1.1999mm)      Round          5                282.10 Inch (7165.24 mm)
 T4        66.93mil (1.70002mm)     Round          20               284.80 Inch (7234.04 mm)
 T5        106.3mil (2.70002mm)     Round          4                289.42 Inch (7351.32 mm)
 T6        51.18mil (1.29997mm)     Round          2         NPTH   284.23 Inch (7219.39 mm)
 ---------------------------------------------------------------------------
-Totals                                            848              1772.04 Inch (45009.82 mm)
+Totals                                            848              1773.25 Inch (45040.50 mm)
 
 Total Processing Time (hh:mm:ss) : 00:00:00
