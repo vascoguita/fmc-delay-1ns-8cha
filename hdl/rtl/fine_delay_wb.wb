@@ -1,0 +1,386 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+	 name = "Fine Delay WB";
+	 hdl_entity = "fine_delay_wb";
+	 prefix = "fd";
+	 
+
+	 reg {
+			name = "Reset Register";
+			prefix = "RSTR";
+
+			field {
+				 name = "Reset trigger";
+				 description = "Writing 0xDEADBEEF into this register will trigger a full reset of the \               				  fine delay core";
+				 type = PASS_THROUGH;
+				 size = 32;
+			};
+	 };
+
+	 reg {
+			name = "Global Control Register";
+			prefix = "GCR";
+			
+			field {
+				 clock = "clk_ref_i";
+
+				 name = "Bypass delay block";
+				 prefix = "BYPASS";
+				 description = "0: normal operation (fine-delay)\
+				           1: TDC and delay lines controlled from the host";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 
+				 name = "Enabe trigger input";
+				 prefix = "INPUT_EN";
+				 description = "";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+
+				 name = "Clear statistics counters";
+				 prefix = "CLR_STAT";
+				 description = "write 1: clears all statistics counters\nwrite 0: no effect";
+				 type = MONOSTABLE;
+			};
+	 };
+
+	 reg {
+			name = "TDC Address/Data Register";
+			prefix = "TAR";
+		
+			field {
+				 clock = "clk_ref_i";
+				 name = "DATA";
+				 prefix = "DATA";
+				 type = SLV;
+				 size = 28;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+			};
+			
+			field {
+				 clock = "clk_ref_i";
+				 name = "ADDR";
+				 prefix = "ADDR";
+				 type = SLV;
+				 size = 4;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+	 };
+
+
+ reg {
+			name = "TDC control/status reg";
+			prefix = "TDCSR";
+
+		  field {
+				 name = "Start TDC write";
+				 prefix = "WRITE";
+				 clock = "clk_ref_i";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 name = "Start TDC read";
+				 prefix = "READ";
+				 clock = "clk_ref_i";
+				 type = MONOSTABLE;
+			};
+		
+		 
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Error flag";
+				 prefix = "ERR";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Interrupt flag";
+				 prefix = "INT";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Load flag";
+				 prefix = "LOAD";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Empty flag";
+				 prefix = "EMPTY";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start disable";
+				 prefix = "START_DIS";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start enable";
+				 prefix = "START_EN";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start disable";
+				 prefix = "STOP_DIS";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start enable";
+				 prefix = "STOP_EN";
+				 type = MONOSTABLE;
+			};
+
+	 };
+
+	 reg {
+			name = "Delay Control Register";
+			prefix = "DCR";
+
+		field {
+			 clock = "clk_ref_i";
+			 name = "Delay line select";
+			 description = "Each bit selects the delays to which the value shall be written";
+			 prefix = "DLY_SEL";
+			 size = 4;
+			 type = PASS_THROUGH;
+			};
+
+
+		field {
+			 clock = "clk_ref_i";
+			 name = "Delay value";
+			 prefix = "DLY_VAL";
+			 type = SLV;
+			 size = 10;
+			 access_bus = READ_WRITE;
+			 access_dev = READ_ONLY;
+			};
+	 };
+
+	 reg {
+			name = "GPIO set register";
+			prefix = "GPSR";
+
+			field {
+				 name = "SPI PLL chip select";
+				 prefix = "cs_pll";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+
+			field {
+				 name = "SPI GPIO chip select";
+				 prefix = "cs_gpio";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+			
+			field {
+				 name = "SPI SCLK";
+				 prefix = "sclk";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+
+			field {
+				 name = "SPI MOSI";
+				 prefix = "mosi";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+	 };
+
+	 reg {
+			name = "GPIO clear register";
+			prefix = "GPCR";
+
+			field {
+				 name = "SPI PLL chip select";
+				 prefix = "cs_pll";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+
+			field {
+				 name = "SPI GPIO chip select";
+				 prefix = "cs_gpio";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+			
+			field {
+				 name = "SPI SCLK";
+				 prefix = "sclk";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+
+			field {
+				 name = "SPI MOSI";
+				 prefix = "mosi";
+				 type = PASS_THROUGH;
+				 size = 1;
+			};
+	 };
+
+	 reg {
+			name = "GPIO Readback Register";
+			prefix = "GPRR";
+
+			field {
+				 name = "SPI MISO";
+				 prefix = "miso";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+	 };
+
+	 reg {
+			name = "Raw Input Events Counter Register ";
+			prefix = "IECRAW";
+
+			field {
+				 name = "Number of raw events";
+				 description = "Number of all input pulses detected by the timestamper";
+				 type = SLV;
+				 size = 32;
+				 clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev= WRITE_ONLY;
+			};
+
+	 };
+
+	 reg {
+			name = "Tagged Input Events Counter Register ";
+			prefix = "IECTAG";
+
+			field {
+				 name = "Number of tagged events";
+				 description = "Number of all input pulses which passed the width checks and have produced valid timestamps.";
+				 type = SLV;
+				 size = 32;
+				 clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev= WRITE_ONLY;
+			};
+	 };
+
+	 reg {
+			name = "Input Event Processing Delay Register";
+			prefix = "IEPD";
+
+			field {
+				 name = "Processing delay";
+				 description = "Worst-case delay between the input event and the generation of its timestamp. Expressed as a number of 125 MHz clock cycles.";
+				 type = SLV;
+				 size = 8;
+				 clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev= WRITE_ONLY;
+			};
+	 };
+
+
+	 reg {
+			name = "Pulse Generator Control Register";
+			prefix = "PGCR";
+
+			field {
+				 name = "Pulse period";
+				 prefix = "PERIOD";
+				 type = SLV;
+				 size = 31;
+				 access_bus = READ_WRITE;
+				 access_dev= READ_ONLY;
+			};
+
+			field {
+				 name = "Enable";
+				 prefix = "ENABLE";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev= READ_ONLY;
+			};
+	 };
+	 
+	 fifo_reg {
+			direction = CORE_TO_BUS;
+			prefix = "tsfifo";
+			name = "Timestamp FIFO";
+			
+			clock = "clk_ref_i";
+
+			flags_bus = {FIFO_FULL, FIFO_EMPTY};
+			flags_dev = {FIFO_FULL};
+			
+			size = 512;
+			
+			field {
+						name = "UTC part";
+						prefix = "utc";
+						type = SLV;
+						size = 32;
+
+			};
+
+			field {
+				 name = "Coarse part";
+				 prefix = "coarse";
+				 type = SLV;
+				 size = 28;
+			};
+
+
+			field {
+				 name = "Fractional part (from TDC)";
+				 prefix = "frac";
+				 type = SLV;
+				 size = 23;
+			};
+
+			field {
+				 name = "Raw frac part (from TDC)";
+				 prefix = "frac_raw";
+				 type = SLV;
+				 size = 23;
+			};
+	 };
+};
