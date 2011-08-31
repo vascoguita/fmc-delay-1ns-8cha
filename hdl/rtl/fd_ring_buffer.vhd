@@ -88,6 +88,8 @@ architecture behavioral of fd_ring_buffer is
   
 begin  -- behavioral
 
+  regs_b <= c_fd_registers_init_value;
+  
   p_count_seq_id : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
@@ -123,12 +125,12 @@ begin  -- behavioral
       rd_i       => fifo_read,
       rd_empty_o => fifo_empty);
 
-  buf_wr_data <= ts_fifo_out;
+  buf_wr_data <= fifo_out;
 
   U_Buffer_RAM : generic_dpram
     generic map (
       g_data_width => c_PACKED_TS_SIZE,
-      g_size       => 2**c_FIFO_SIZE,
+      g_size       => 2**g_size_log2,
       g_dual_clock => false)
     port map (
       rst_n_i => rst_n_sys_i,
@@ -148,8 +150,8 @@ begin  -- behavioral
 
   fifo_read <= not fifo_empty;
 
-  buf_full = '1'  when (buf_wr_ptr + 1) = buf_rd_ptr else '0';
-  buf_empty = '1' when (buf_wr_ptr = buf_rd_ptr)     else '0';
+  buf_full    <= '1' when (buf_wr_ptr + 1 = buf_rd_ptr) else '0';
+  buf_empty   <= '1' when (buf_wr_ptr = buf_rd_ptr)     else '0';
   buf_write   <= regs_b.tsbcr_enable_o and fifo_read_d0;
   buf_ram_out <= f_unpack_timestamp(buf_rd_data);
 
@@ -162,7 +164,7 @@ begin  -- behavioral
   p_buffer_control : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_sys_i = '0' or regs_b.tsbcr_purge_i = '1' then
+      if rst_n_sys_i = '0' or regs_b.tsbcr_purge_o = '1' then
         buf_rd_ptr   <= (others => '0');
         buf_wr_ptr   <= (others => '0');
         buf_write    <= '0';
