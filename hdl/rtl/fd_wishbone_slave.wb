@@ -1,8 +1,8 @@
 -- -*- Mode: LUA; tab-width: 2 -*-
 
 peripheral {
-	 name = "Fine Delay WB";
-	 hdl_entity = "fine_delay_wb";
+	 name = "Fine Delay Wishbone slave";
+	 hdl_entity = "fd_wishbone_slave";
 	 prefix = "fd";
 	 
 
@@ -61,6 +61,17 @@ peripheral {
          prefix = "CSYNC_WR";
          type = MONOSTABLE;
          clock = "clk_ref_i";
+      };
+
+      field {
+         name = "White Rabbit Timecode Ready";
+         description = "read 1: time code provided to the external input from White Rabbit Core is valid. Can proceed with counter sync.\
+         read 0: WR time code input is invalid. Can't do sounter sync for the moment.";
+         prefix = "WR_READY";
+         type = BIT;
+         clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
       };
 	 };
 
