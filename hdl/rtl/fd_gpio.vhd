@@ -30,8 +30,9 @@ end fd_gpio;
 
 architecture rtl of fd_gpio is
 
-  
 begin  -- rtl
+
+  regs_b <= c_fd_registers_init_value;
 
   p_gpio_loads : process(clk_sys_i)
   begin
@@ -43,34 +44,34 @@ begin  -- rtl
         spi_sclk_o      <= '0';
         spi_mosi_o      <= '0';
 
-        regs.gprr_miso_i <= '0';
+        regs_b.gprr_miso_i <= '0';
       else
 
-        if(regs.gpsr_cs_pll_wr_o = '1' and regs.gpsr_cs_pll_o = '1') then
+        if(regs_b.gpsr_cs_pll_wr_o = '1' and regs_b.gpsr_cs_pll_o = '1') then
           spi_cs_pll_n_o <= '1';
-        elsif (regs.gpcr_cs_pll_wr_o = '1' and regs.gpcr_cs_pll_o = '1') then
+        elsif (regs_b.gpcr_cs_pll_wr_o = '1' and regs_b.gpcr_cs_pll_o = '1') then
           spi_cs_pll_n_o <= '0';
         end if;
 
-        if(regs.gpsr_cs_gpio_wr_o = '1' and regs.gpsr_cs_gpio_o = '1') then
+        if(regs_b.gpsr_cs_gpio_wr_o = '1' and regs_b.gpsr_cs_gpio_o = '1') then
           spi_cs_gpio_n_o <= '1';
-        elsif (regs.gpcr_cs_gpio_wr_o = '1' and regs.gpcr_cs_gpio_o = '1') then
+        elsif (regs_b.gpcr_cs_gpio_wr_o = '1' and regs_b.gpcr_cs_gpio_o = '1') then
           spi_cs_gpio_n_o <= '0';
         end if;
 
-        if(regs.gpsr_mosi_wr_o = '1' and regs.gpsr_mosi_o = '1') then
+        if(regs_b.gpsr_mosi_wr_o = '1' and regs_b.gpsr_mosi_o = '1') then
           spi_mosi_o <= '1';
-        elsif (regs.gpcr_mosi_wr_o = '1' and regs.gpcr_mosi_o = '1') then
+        elsif (regs_b.gpcr_mosi_wr_o = '1' and regs_b.gpcr_mosi_o = '1') then
           spi_mosi_o <= '0';
         end if;
 
-        if(regs.gpsr_sclk_wr_o = '1' and regs.gpsr_sclk_o = '1') then
+        if(regs_b.gpsr_sclk_wr_o = '1' and regs_b.gpsr_sclk_o = '1') then
           spi_sclk_o <= '1';
-        elsif (regs.gpcr_sclk_wr_o = '1' and regs.gpcr_sclk_o = '1') then
+        elsif (regs_b.gpcr_sclk_wr_o = '1' and regs_b.gpcr_sclk_o = '1') then
           spi_sclk_o <= '0';
         end if;
 
-        regs.gprr_miso_i <= spi_miso_i;
+        regs_b.gprr_miso_i <= spi_miso_i;
       end if;
     end if;
   end process;
