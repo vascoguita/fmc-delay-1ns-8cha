@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2011-08-30
+-- Last update: 2011-08-31
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -157,8 +157,35 @@ architecture behavioral of fd_acam_timestamper is
       q_frac_o   : out std_logic_vector(g_frac_bits-1 downto 0));
   end component;
 
+  component fd_timestamper_stat_unit
+    port (
+      clk_ref_i       : in    std_logic;
+      rst_n_i         : in    std_logic;
+      trig_pulse_i    : in    std_logic;
+      raw_tag_valid_i : in    std_logic;
+      regs_b          : inout t_fd_registers);
+  end component;
+
+  component fd_acam_timestamp_postprocessor
+    generic (
+      g_frac_bits : integer);
+    port (
+      clk_ref_i              : in  std_logic;
+      rst_n_i                : in  std_logic;
+      raw_valid_i            : in  std_logic;
+      raw_utc_i              : in  std_logic_vector(31 downto 0);
+      raw_coarse_i           : in  std_logic_vector(23 downto 0);
+      raw_frac_i             : in  std_logic_vector(22 downto 0);
+      raw_start_offset_i     : in  std_logic_vector(3 downto 0);
+      acam_subcycle_offset_i : in  std_logic_vector(4 downto 0);
+      tag_valid_o            : out std_logic;
+      tag_utc_o              : out std_logic_vector(31 downto 0);
+      tag_coarse_o           : out std_logic_vector(27 downto 0);
+      tag_frac_o             : out std_logic_vector(g_frac_bits-1 downto 0);
+      regs_b                 :     t_fd_registers);
+  end component;
+
   constant c_ACAM_TIMEOUT : integer := 60;
-  constant c_SCALER_SHIFT : integer := 12;
 
   -- states of the main ACAM FSM reading/writing data from/to the TDC
   type t_acam_fsm_state is (IDLE, R_ADDR, R_PULSE, R_READ, W_DATA_ADDR, W_PULSE, W_WAIT,
@@ -172,28 +199,11 @@ architecture behavioral of fd_acam_timestamper is
                             RMODE_CHECK_WIDTH,
                             RMODE_MEASURE_WIDTH);
 
-  -- states of the diagnostic FSM measuring timestamper processing delays
-  type t_pdelay_meas_state is (PD_WAIT_TRIGGER, PD_WAIT_TAG, PD_UPDATE_STATS);
-
-  -- states of the start signal generator FSM
-  type t_start_gen_state is (SG_RESYNC, SG_COUNT);
-
   signal afsm_state : t_acam_fsm_state;
   signal acam_wdata : std_logic_vector(27 downto 0);
 
   signal acam_reset_int : std_logic;
   signal tag_enable     : std_logic;
-
-  -- stat counters signals
-  signal event_count_raw    : unsigned(31 downto 0);
-  signal event_count_tagged : unsigned(31 downto 0);
-
-  signal pd_state     : t_pdelay_meas_state;
-  signal cur_pdelay   : unsigned(7 downto 0);
-  signal worst_pdelay : unsigned(7 downto 0);
-
-  signal start_gen_state : t_start_gen_state;
-
   signal advance_coarse : std_logic;
 
   -- delay/sync chains
@@ -204,27 +214,17 @@ architecture behavioral of fd_acam_timestamper is
   signal trig_pulse : std_logic;
 
   -- counters (internal time base)
-  signal start_count  : unsigned(3 downto 0);
-  signal coarse_count : unsigned(23 downto 0);
-  signal utc_count    : unsigned(31 downto 0);
-
+  signal start_count     : unsigned(3 downto 0);
+  signal coarse_count    : unsigned(23 downto 0);
+  signal utc_count       : unsigned(31 downto 0);
   signal subcycle_offset : signed(4 downto 0);
 
   -- raw time tag (unprocessed)
   signal raw_tag_valid        : std_logic;
   signal raw_tag_coarse       : unsigned(23 downto 0);
-  signal raw_tag_frac         : unsigned(22 downto 0);
+  signal raw_tag_frac         : signed(22 downto 0);
   signal raw_tag_start_offset : unsigned(3 downto 0);
   signal raw_tag_utc          : unsigned(31 downto 0);
-
-  -- post-processed tag
-  signal post_tag_coarse      : unsigned(27 downto 0);
-  signal post_tag_frac        : unsigned(g_frac_bits-1 downto 0);
-  signal post_tag_utc         : unsigned(31 downto 0);
-  signal post_frac_multiplied : signed(c_SCALER_SHIFT + g_frac_bits + 8 downto 0);
-  signal post_frac_start_adj  : unsigned(22 downto 0);
-
-  signal pp_pipe : std_logic_vector(2 downto 0);
 
   signal width_check_sreg : std_logic_vector(g_min_pulse_width-2 downto 0);
   signal width_check_mask : std_logic_vector(g_min_pulse_width-2 downto 0);
@@ -235,7 +235,6 @@ architecture behavioral of fd_acam_timestamper is
 
   signal host_start_dis : std_logic;
   signal host_stop_dis  : std_logic;
-
 
   signal start_ok_sreg : std_logic_vector(2 downto 0);
   signal start_ok      : std_logic;
@@ -401,8 +400,6 @@ begin  -- behave
     end if;
   end process;
 
-
-
   p_gen_acam_start_dis : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
@@ -459,7 +456,7 @@ begin  -- behave
           --if(advance_coarse = '1') then
           --  utc_count <= unsigned(csync_utc_i) + 1;
           --else
-            utc_count <= unsigned(csync_utc_i);
+          utc_count <= unsigned(csync_utc_i);
           --end if;
           
         elsif(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 16) - 1) then
@@ -542,7 +539,7 @@ begin  -- behave
                 tag_enable <= '1';
               end if;
 
-              if(trig_pulse = '1' and tag_enable = '1') then
+              if(trig_pulse = '1' and tag_enable = '1' and start_ok = '1') then
                 
                 afsm_state <= RMODE_MEASURE_WIDTH;
 
@@ -555,6 +552,8 @@ begin  -- behave
                 width_check_sreg(width_check_sreg'left downto 1) <= (others => '0');
                 width_check_mask                                 <= (others => '0');
               end if;
+            else
+              tag_enable <= '0';
             end if;
 
             acam_d_oe_o <= '0';
@@ -611,7 +610,7 @@ begin  -- behave
           when RMODE_READ =>
 
 -- store the time tag
-            raw_tag_frac <= unsigned(acam_d_i(raw_tag_frac'left downto 0));
+            raw_tag_frac <= signed(acam_d_i(raw_tag_frac'left downto 0));
 
             acam_rd_n_o <= '1';
 
@@ -692,113 +691,35 @@ begin  -- behave
     end if;
   end process;
 
-  p_count_events : process(clk_ref_i)
-  begin
-    if rising_edge(clk_ref_i) then
-      if (rst_n_i = '0' or regs_b.gcr_input_en_o = '0' or regs_b.iepd_rst_stat_o = '1') then
-        event_count_raw    <= (others => '0');
-        event_count_tagged <= (others => '0');
-      else
-        if(trig_pulse = '1') then
-          event_count_raw <= event_count_raw + 1;
-        end if;
-
-        if(raw_tag_valid = '1') then
-          event_count_tagged <= event_count_tagged + 1;
-        end if;
-      end if;
-    end if;
-  end process;
-
-  regs_b.iecraw_i <= std_logic_vector(event_count_raw);
-  regs_b.iectag_i <= std_logic_vector(event_count_tagged);
-
-  p_measure_processing_delay : process(clk_ref_i)
-  begin
-    if rising_edge(clk_ref_i) then
-      if rst_n_i = '0' or regs_b.gcr_input_en_o = '0' or regs_b.iepd_rst_stat_o = '1' then
-        cur_pdelay   <= (others => '0');
-        worst_pdelay <= (others => '0');
-        pd_state     <= PD_WAIT_TRIGGER;
-      else
-        case pd_state is
-          when PD_WAIT_TRIGGER =>
-            if(trig_pulse = '1') then
-              cur_pdelay <= (others => '0');
-              pd_state   <= PD_WAIT_TAG;
-            end if;
-
-          when PD_WAIT_TAG =>
-            if(raw_tag_valid = '1') then
-              pd_state <= PD_UPDATE_STATS;
-            else
-              cur_pdelay <= cur_pdelay + 1;
-            end if;
-
-          when PD_UPDATE_STATS =>
-            if(cur_pdelay > worst_pdelay) then
-              worst_pdelay <= cur_pdelay;
-            end if;
-            pd_state <= PD_WAIT_TRIGGER;
-            
-          when others => null;
-        end case;
-
-        
-      end if;
-    end if;
-  end process;
-
-  regs_b.iepd_pdelay_i <= std_logic_vector(worst_pdelay);
-
   acam_alutrigger_o <= acam_reset_int;
 
+  U_Stat_Unit : fd_timestamper_stat_unit
+    port map (
+      clk_ref_i       => clk_ref_i,
+      rst_n_i         => rst_n_i,
+      trig_pulse_i    => trig_pulse,
+      raw_tag_valid_i => raw_tag_valid,
+      regs_b          => regs_b);
+
+  U_Timestamp_Postprocessor : fd_acam_timestamp_postprocessor
+    generic map (
+      g_frac_bits => g_frac_bits)
+    port map (
+      clk_ref_i              => clk_ref_i,
+      rst_n_i                => rst_n_i,
+      raw_valid_i            => raw_tag_valid,
+      raw_utc_i              => std_logic_vector(raw_tag_utc),
+      raw_coarse_i           => std_logic_vector(raw_tag_coarse),
+      raw_frac_i             => std_logic_vector(raw_tag_frac),
+      raw_start_offset_i     => std_logic_vector(raw_tag_start_offset),
+      acam_subcycle_offset_i => std_logic_vector(subcycle_offset),
+      tag_valid_o            => tag_valid_o,
+      tag_utc_o              => tag_utc_o,
+      tag_coarse_o           => tag_coarse_o,
+      tag_frac_o             => tag_frac_o,
+      regs_b                 => regs_b);
 
 
-  p_postprocess_tags : process(clk_ref_i)
-  begin
-    if rising_edge(clk_ref_i) then
-      if rst_n_i = '0' then
-        tag_valid_o  <= '0';
-        tag_coarse_o <= (others => '0');
-        tag_utc_o    <= (others => '0');
-        tag_frac_o   <= (others => '0');
-      else
 
---stage 1
-        pp_pipe(0) <= raw_tag_valid;
-
-        if (raw_tag_start_offset <= unsigned(regs_b.atmcr_c_thr_o)) and (raw_tag_frac > unsigned(regs_b.atmcr_f_thr_o)) then
-          post_tag_coarse(post_tag_coarse'left downto 4) <= raw_tag_coarse - 1;
-        else
-          post_tag_coarse(post_tag_coarse'left downto 4) <= raw_tag_coarse;
-        end if;
-        post_frac_start_adj <= raw_tag_frac - unsigned(regs_b.asor_offset_o);
-
-        post_tag_coarse(3 downto 0) <= (others => '0');
-        post_tag_utc                <= raw_tag_utc;
-
-
---stage 2
-
-        pp_pipe(1)           <= pp_pipe(0);
-        post_frac_multiplied <= resize(signed(post_frac_start_adj) * signed(regs_b.adsfr_o), post_frac_multiplied'length);
-
-
---stage 3
-        pp_pipe(2)   <= pp_pipe(1);
-        tag_utc_o    <= std_logic_vector(post_tag_utc);
-        tag_coarse_o <= std_logic_vector(raw_tag_coarse & raw_tag_start_offset);
-        --tag_coarse_o   <= std_logic_vector(signed(post_tag_coarse) + signed(post_frac_multiplied(post_frac_multiplied'left downto c_SCALER_SHIFT + g_frac_bits)));
-        tag_frac_o   <= std_logic_vector(post_frac_multiplied(c_SCALER_SHIFT + g_frac_bits-1 downto c_SCALER_SHIFT));
---        tag_raw_frac_o <= std_logic_vector(raw_tag_frac);
-
-        tag_valid_o <= pp_pipe(2);
-
-      end if;
-    end if;
-  end process;
-
-  
 
 end behavioral;
