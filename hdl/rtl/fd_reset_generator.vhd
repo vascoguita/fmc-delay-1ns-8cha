@@ -28,13 +28,16 @@ architecture behavioral of fd_reset_generator is
 
 begin  -- behavioral
 
+
+  regs_b <= c_fd_registers_init_value;
+  
   p_soft_reset : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
       if(rst_n_i = '0') then
         rstn_host_sysclk <= '0';
       else
-        if(regs.rstr_wr_o = '1' and regs.rstr_o = c_RSTR_TRIGGER_VALUE) then
+        if(regs_b.rstr_wr_o = '1' and regs_b.rstr_o = c_RSTR_TRIGGER_VALUE) then
           rstn_host_sysclk <= '0';
         else
           rstn_host_sysclk <= '1';
@@ -42,6 +45,8 @@ begin  -- behavioral
       end if;
     end if;
   end process;
+
+
 
   p_sync_reset_refclk : process(clk_ref_i)
   begin
