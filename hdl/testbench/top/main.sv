@@ -4,12 +4,13 @@
 `include "tunable_clock_gen.sv"
 `include "random_pulse_gen.sv"
 `include "jittery_delay.sv"
-`include "if_wishbone.sv"
 `include "fine_delay_regs.v"
 `include "ideal_timestamper.sv"
 
-`timescale 10fs/10fs
+`include "simdrv_defs.svh"
+`include "wb/if_wb_master.svh"
 
+`timescale 10fs/10fs
 
 module clock_reset_gen
   (
@@ -71,7 +72,113 @@ module clock_reset_gen
    
 endmodule  // clock_reset_gen
 
+class CSimDrv_FineDelay;
+   protected CBusAccessor m_acc;
 
+   const real c_acam_bin               = 27.012; // [ps]
+   const real c_ref_period             = 8000; // [ps]
+   const int c_frac_bits               = 12;
+   const int c_scaler_shift            = 12;
+   const int c_acam_start_offset       = 10000;
+   const int c_acam_merge_c_threshold  = 1;
+   const int c_acam_merge_f_threshold  = 2000;
+   
+   function new(CBusAccessor acc);
+      m_acc  = acc;
+   endfunction // new
+   
+   task acam_write(int addr, int value);
+      m_acc.write(`ADDR_FD_TAR, (addr<<28) | value);
+      m_acc.write(`ADDR_FD_TDCSR, `FD_TDCSR_WRITE);
+   endtask // acam_write
+
+   task acam_read(int addr, output int value);
+      uint64_t rval;
+      
+      m_acc.write(`ADDR_FD_TAR, (addr<<28)); 
+      m_acc.write(`ADDR_FD_TDCSR, `FD_TDCSR_READ);
+      #(500ns);
+      m_acc.read(`ADDR_FD_TAR, rval);
+      value  = rval;
+   endtask // acam_read
+
+
+   task csync_int();
+      m_acc.write(`ADDR_FD_GCR,  `FD_GCR_CSYNC_INT);
+   endtask // csync_int
+
+   task csync_wr();
+      m_acc.write(`ADDR_FD_GCR,  `FD_GCR_CSYNC_WR);
+   endtask // csync_wr
+   
+   
+   task init();
+      m_acc.write(`ADDR_FD_TDCSR, `FD_TDCSR_START_DIS | `FD_TDCSR_STOP_DIS);
+      m_acc.write(`ADDR_FD_GCR, `FD_GCR_BYPASS);
+
+      acam_write(5, c_acam_start_offset); // set StartOffset
+       
+  
+
+      // Clear the ring buffer
+      m_acc.write(`ADDR_FD_TSBCR, `FD_TSBCR_ENABLE | `FD_TSBCR_PURGE | `FD_TSBCR_RST_SEQ);
+
+      m_acc.write(`ADDR_FD_ADSFR, int' (real'(1<< (c_frac_bits + c_scaler_shift)) * c_acam_bin / c_ref_period));
+      m_acc.write(`ADDR_FD_ASOR, c_acam_start_offset * 3);
+      m_acc.write(`ADDR_FD_ATMCR, c_acam_merge_c_threshold | (c_acam_merge_f_threshold << 4));
+      
+      // Enable trigger input
+      m_acc.write(`ADDR_FD_GCR,  0);
+
+      #(200ns);
+      csync_wr();
+      #(100ns);
+      
+      // Enable trigger input
+      m_acc.write(`ADDR_FD_GCR,  `FD_GCR_INPUT_EN);
+      
+      
+   endtask // init
+endclass // CSimDrv_FineDelay
+
+
+module wr_time_counter 
+  (
+   input clk_ref_i,
+   input rst_n_i,
+   output [31:0] wr_utc_o,
+   output [27:0] wr_coarse_o,
+   output reg wr_time_valid_o
+   );
+
+   parameter g_coarse_range  = 256;
+   
+   reg [31:0] utc;
+   reg [27:0] coarse;
+
+   always@(posedge clk_ref_i)
+     if (!rst_n_i)
+       begin
+          coarse          <= 0;
+          utc             <= 0;
+          wr_time_valid_o <= 0;
+       end else begin
+          if(coarse == g_coarse_range - 1)
+            begin
+               coarse     <= 0;
+               utc        <=utc + 1;
+            end else 
+              coarse      <= coarse+ 1;
+
+          wr_time_valid_o <= 1;
+       end
+
+   assign wr_utc_o               = utc;
+   assign wr_coarse_o            = coarse;
+   
+endmodule // wr_time_counter
+
+  
 module main;
 
    wire clk_sys, clk_ref, clk_tdc, rst_n;
@@ -92,6 +199,10 @@ module main;
    wire trig_a_n_delayed;
    wire tdc_start_delayed;
 
+   wire [31:0] wr_utc;
+   wire [27:0] wr_coarse;
+   wire wr_time_valid;
+   
    reg [3:0] tdc_start_div = 0;
    reg tdc_start    = 0;
 
@@ -100,13 +211,16 @@ module main;
       tdc_start_div <= tdc_start_div + 1;
       tdc_start    <= tdc_start_div[3];
    end
-   
-   
-   IWishbone WB 
-     (
-      .clk_i(clk_sys),
-      .rst_n_i(rst_n)
-      );
+
+   IWishboneMaster
+     #(
+       .g_addr_width(6),
+       .g_data_width(32)
+       ) wb_master 
+       (
+        .clk_i(clk_sys),
+        .rst_n_i(rst_n)
+        );
    
    clock_reset_gen
      CLK_GEN
@@ -117,11 +231,21 @@ module main;
       .rst_n_o(rst_n)
       );
 
+   wr_time_counter
+     time_counter 
+       (
+        .clk_ref_i(clk_ref),
+        .rst_n_i(rst_n),
+        .wr_utc_o(wr_utc),
+        .wr_coarse_o(wr_coarse),
+        .wr_time_valid_o(wr_time_valid)
+        );
+
    random_pulse_gen
      #(
        .g_pulse_width(30ns),
-       .g_min_spacing(251.111ns),
-       .g_max_spacing(251.112ns)
+       .g_min_spacing(350.111ns),
+       .g_max_spacing(2000.112ns)
        )
      TRIG_GEN
        (
@@ -129,15 +253,24 @@ module main;
 	.pulse_o(trig_a)
 	);
 
+//   assign trig_a  = 0;
+
+   reg wr_time_valid_d0;
+
+   always@(posedge clk_ref)
+     wr_time_valid_d0 <= wr_time_valid;
+   
    ideal_timestamper
      IDEAL_TSU
        (
 	.rst_n_i(rst_n),
 	.clk_ref_i(clk_ref),
-	.enable_i(!acam_stop_dis),
-	.trig_a_i(trig_a)
+	.enable_i(~acam_stop_dis[1]),
+	.trig_a_i(trig_a),
+        .csync_p1_i(wr_time_valid & !wr_time_valid_d0),
+        .csync_utc_i(wr_utc),
+        .csync_coarse_i(wr_coarse)
 	);
-   
 
    acam_model
      #(
@@ -239,74 +372,67 @@ module main;
 	  .delay_val_o (),
 	  .delay_pulse_o (),
 
+          .wr_utc_i(wr_utc),
+          .wr_coarse_i(wr_coarse),
+          .wr_time_valid_i(wr_time_valid),
 
-	  .wb_adr_i (WB.master.adr[4:0]),
-	  .wb_dat_i (WB.master.dat_o),
-	  .wb_dat_o (WB.master.dat_i),
-	  .wb_cyc_i (WB.master.cyc),
-	  .wb_stb_i (WB.master.stb),
-	  .wb_we_i  (WB.master.we),
-	  .wb_ack_o (WB.master.ack)
+	  .wb_adr_i (wb_master.master.adr[5:0]),
+	  .wb_dat_i (wb_master.master.dat_o),
+	  .wb_dat_o (wb_master.master.dat_i),
+	  .wb_cyc_i (wb_master.master.cyc),
+	  .wb_stb_i (wb_master.master.stb),
+	  .wb_we_i  (wb_master.master.we),
+	  .wb_ack_o (wb_master.master.ack)
 	  );
 
+
+   const uint64_t c_coarse_range  = 256;
+   
+
+   Timestamp ts_queue[$];
+
+   always@(posedge clk_ref)
+     if(DUT.tag_valid)
+       begin
+          Timestamp t;
+          t  = new(signed'(DUT.tag_utc), signed'(DUT.tag_coarse), DUT.tag_frac);
+          ts_queue.push_back(t);
+       end
+   
    initial begin
-      real ts_prev;
+      CWishboneAccessor wb;
+      CSimDrv_FineDelay fd_drv;
       
-      reg[31:0] rval;
-      int f;
+
+      wait(rst_n != 0);
+      @(posedge clk_sys);
       
-      @(posedge rst_n);
-      repeat(3) @(posedge clk_sys);
 
+      wb      = wb_master.get_accessor();
+      fd_drv  = new(wb);
+      fd_drv.init();
+
+  //    fd_drv.csync_wr();
+   //   $stop;
       
-      
-      WB.write32(`ADDR_FD_TDCSR, `FD_TDCSR_START_DIS | `FD_TDCSR_STOP_DIS);
-      WB.write32(`ADDR_FD_GCR, `FD_GCR_BYPASS);
-      WB.write32(`ADDR_FD_TAR, (5<<28) | 10000); // Startoffset= 10000
-      WB.write32(`ADDR_FD_TDCSR, `FD_TDCSR_WRITE);
-      WB.write32(`ADDR_FD_PGCR, 10 | (1<<31));
-
-      WB.write32(`ADDR_FD_GCR, 0);
-      #(1000ns);
-      WB.write32(`ADDR_FD_GCR,  `FD_GCR_INPUT_EN);
-
-
-
-      f	 =$fopen("/home/slayer/1.dlm","w");
-
-     
-      while(1)
-	begin
-	   WB.read32(`ADDR_FD_TSFIFO_CSR,  rval);      
-	   if(!(rval & `FD_TSFIFO_CSR_EMPTY)) begin
-	      real ts;
-	      
-	      int r0, r1, r2;
-	      int m;
-	      
-	      const real acam_bin  = 80.96 / 3.0;
-	      int fine;
-	      int ts_r, ts_f;
-	      int ahead;
-	      
-	      WB.read32(`ADDR_FD_TSFIFO_R0,  r0);      
-	      WB.read32(`ADDR_FD_TSFIFO_R1,  r1);    
-	      WB.read32(`ADDR_FD_TSFIFO_R2,  r2);
-	      
-
-	      $display("utc %d coarse %d fine %d", r0, r1, r2);
-
-	      ts_prev  = ts;
-	      ts       = real'(r2)/4096.0 * 8000.0 + real'(r1) * 8000.0;
-	      
-	      $display("dts %.1f", ts-ts_prev);
-	      
-	   end   
-	end
       
       
    end // initial begin
-   
+
+   Timestamp prev  = null;
+
+   always@(posedge clk_ref)
+     if ((ts_queue.size() > 0) && IDEAL_TSU.poll())
+       begin
+          Timestamp t_acam;
+          Timestamp t_ideal;
+          
+          t_acam   = ts_queue.pop_front();
+          t_ideal  = IDEAL_TSU.get();
+          
+          $display("TS: %.4f", t_acam.flatten() - t_ideal.flatten());
+
+       end
    
 endmodule // main
 
