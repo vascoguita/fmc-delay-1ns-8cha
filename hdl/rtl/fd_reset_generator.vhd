@@ -13,7 +13,7 @@ entity fd_reset_generator is
 
     rst_n_sys_o : out std_logic;
     rst_n_ref_o : out std_logic;
-    regs_b      : inout t_fd_registers);
+    regs_i      : in t_fd_out_registers);
 
 end fd_reset_generator;
 
@@ -28,8 +28,6 @@ architecture behavioral of fd_reset_generator is
 
 begin  -- behavioral
 
-
-  regs_b <= c_fd_registers_init_value;
   
   p_soft_reset : process(clk_sys_i)
   begin
@@ -37,7 +35,7 @@ begin  -- behavioral
       if(rst_n_i = '0') then
         rstn_host_sysclk <= '0';
       else
-        if(regs_b.rstr_wr_o = '1' and regs_b.rstr_o = c_RSTR_TRIGGER_VALUE) then
+        if(regs_i.rstr_wr_o = '1' and regs_i.rstr_o = c_RSTR_TRIGGER_VALUE) then
           rstn_host_sysclk <= '0';
         else
           rstn_host_sysclk <= '1';

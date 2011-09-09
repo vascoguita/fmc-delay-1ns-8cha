@@ -25,9 +25,11 @@ entity fd_ring_buffer is
     tag_coarse_i : in std_logic_vector(27 downto 0);
     tag_frac_i   : in std_logic_vector(g_frac_bits-1 downto 0);
 
-    advance_rbuf_i : in    std_logic;
-    buf_irq_o      : out   std_logic;
-    regs_b         : inout t_fd_registers
+    advance_rbuf_i : in  std_logic;
+    buf_irq_o      : out std_logic;
+
+    regs_i : in  t_fd_out_registers;
+    regs_o : out t_fd_in_registers
     );
 
 
@@ -88,12 +90,11 @@ architecture behavioral of fd_ring_buffer is
   
 begin  -- behavioral
 
-  regs_b <= c_fd_registers_init_value;
-  
+
   p_count_seq_id : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      if rst_n_ref_i = '0' or regs_b.tsbcr_rst_seq_o = '1' then
+      if rst_n_ref_i = '0' or regs_i.tsbcr_rst_seq_o = '1' then
         cur_seq_id <= (others => '0');
       elsif(tag_valid_i = '1') then
         cur_seq_id <= cur_seq_id + 1;
@@ -152,28 +153,27 @@ begin  -- behavioral
 
   buf_full    <= '1' when (buf_wr_ptr + 1 = buf_rd_ptr) else '0';
   buf_empty   <= '1' when (buf_wr_ptr = buf_rd_ptr)     else '0';
-  buf_write   <= regs_b.tsbcr_enable_o and fifo_read_d0;
+  buf_write   <= regs_i.tsbcr_enable_o and fifo_read_d0;
   buf_ram_out <= f_unpack_timestamp(buf_rd_data);
 
   buf_irq_o <= not buf_empty;
 
   -- drive WB registers
-  regs_b.tsbcr_empty_i <= buf_empty;
-  regs_b.tsbcr_full_i  <= buf_full;
+  regs_o.tsbcr_empty_i <= buf_empty;
+  regs_o.tsbcr_full_i  <= buf_full;
 
   p_buffer_control : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_sys_i = '0' or regs_b.tsbcr_purge_o = '1' then
+      if rst_n_sys_i = '0' or regs_i.tsbcr_purge_o = '1' then
         buf_rd_ptr   <= (others => '0');
         buf_wr_ptr   <= (others => '0');
-        buf_write    <= '0';
         fifo_read_d0 <= '0';
       else
 
         fifo_read_d0 <= fifo_read;
 
-        update_regs <= advance_rbuf_i and not (buf_write and buf_full);
+        --update_regs <= advance_rbuf_i and not (buf_write and buf_full);
 
         if(buf_write = '1') then
           buf_wr_ptr <= buf_wr_ptr + 1;
@@ -183,16 +183,17 @@ begin  -- behavioral
           buf_rd_ptr <= buf_rd_ptr + 1;
         end if;
 
-        if(update_regs = '1') then
-          regs_b.tsbr_u_i         <= buf_ram_out.utc;
-          regs_b.tsbr_c_i         <= buf_ram_out.coarse;
-          regs_b.tsbr_fid_fine_i  <= buf_ram_out.frac;
-          regs_b.tsbr_fid_seqid_i <= buf_ram_out.seq_id;
-        end if;
+        ----if(update_regs = '1') then
+
+        ----end if;
         
       end if;
     end if;
   end process;
-  
+
+  regs_o.tsbr_u_i         <= buf_ram_out.utc;
+  regs_o.tsbr_c_i         <= buf_ram_out.coarse;
+  regs_o.tsbr_fid_fine_i  <= buf_ram_out.frac;
+  regs_o.tsbr_fid_seqid_i <= buf_ram_out.seq_id;
 
 end behavioral;

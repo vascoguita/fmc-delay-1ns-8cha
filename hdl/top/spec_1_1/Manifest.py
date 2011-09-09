@@ -1,7 +1,7 @@
 files = [
-"spec_top_finedelay.vhd",
-"spec_top_finedelay.ucf",
-"wb_gpio_port_notristates.vhd"
+"spec_top.vhd",
+"spec_top.ucf",
+#"wb_gpio_port_notristates.vhd"
 ];
 
 fetchto = "../../ip_cores"

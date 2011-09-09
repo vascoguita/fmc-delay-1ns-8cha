@@ -19,7 +19,7 @@ module mc100ep195
    
 
    always@(len)
-     if(len)
+     if(!len)
        cur_dly <= delay;
 
    always@(i)

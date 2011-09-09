@@ -17,7 +17,7 @@ module random_pulse_gen
        begin
 	  real delta;
 	  seed 	   = $urandom(seed);
-	  delta    = $dist_uniform(seed, g_min_spacing + g_pulse_width, g_max_spacing + g_pulse_width);
+	  delta    = $dist_uniform(seed, g_min_spacing - g_pulse_width, g_max_spacing - g_pulse_width);
 	  pulse_o  = 1;
 	  #(g_pulse_width);
 	  pulse_o  = 0;

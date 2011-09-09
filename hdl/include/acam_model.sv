@@ -187,7 +187,7 @@ module acam_model
 	  hit  = t_stop1 - t_start + rmode_start_offset * 3;
 
 	
-	if(g_verbose)$display("acam::hit1 %d", hit);
+	if(g_verbose)$display("acam::hit1 %d t_stop1 %d t_start %d", hit, t_stop1, t_start);
 	
 	if(q_hit.num() == 0) begin
 	  #(c_empty_flag_delay);

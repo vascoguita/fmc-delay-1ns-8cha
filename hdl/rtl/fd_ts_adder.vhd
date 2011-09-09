@@ -6,13 +6,15 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2011-08-29
+-- Last update: 2011-09-05
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
 -- Description: Pipelined timestamp adder with re-normalization of the result.
--- Adds a to b, producing normalized timestamp q. Input timestamps must obey
--- the following constraints:
+-- Adds a to b, producing normalized timestamp q. A timestmap is normalized when
+-- the 0 <= frac < 2**g_frac_bits, 0 <= coarse <= g_coarse_range-1 and utc >= 0.
+-- For correct operation of renormalizer, input timestamps must meet the
+-- following constraints:
 -- 1. 0 <= (a/b)_frac_i <= 2**g_frac_bits-1
 -- 2. -g_coarse_range+1 <= (a_coarse_i + b_coarse_i) <= 3*g_coarse_range-1
 -------------------------------------------------------------------------------
@@ -48,7 +50,7 @@ use ieee.numeric_std.all;
 entity fd_ts_adder is
   generic
     (
-      -- sizes of the respective bitfields
+      -- sizes of the respective bitfields of the input/output timestamps
       g_frac_bits   : integer := 12;
       g_coarse_bits : integer := 28;
       g_utc_bits    : integer := 32;
@@ -63,6 +65,8 @@ entity fd_ts_adder is
 
     valid_i : in std_logic;  -- when HI, a_* and b_* contain valid timestamps
 
+
+    -- Input timestamps
     a_utc_i    : in std_logic_vector(g_utc_bits-1 downto 0);
     a_coarse_i : in std_logic_vector(g_coarse_bits-1 downto 0);
     a_frac_i   : in std_logic_vector(g_frac_bits-1 downto 0);
@@ -71,6 +75,7 @@ entity fd_ts_adder is
     b_coarse_i : in std_logic_vector(g_coarse_bits-1 downto 0);
     b_frac_i   : in std_logic_vector(g_frac_bits-1 downto 0);
 
+    -- Normalized sum output (valid when valid_o == 1)
     valid_o    : out std_logic;
     q_utc_o    : out std_logic_vector(g_utc_bits-1 downto 0);
     q_coarse_o : out std_logic_vector(g_coarse_bits-1 downto 0);
@@ -99,7 +104,7 @@ architecture rtl of fd_ts_adder is
   
 begin  -- rtl
 
-  -- Pipeline stage 0: just add the two timestamps
+  -- Pipeline stage 0: just add the two timestamps field by field
   p_stage0 : process(clk_i)
   begin
     if rising_edge(clk_i) then
@@ -212,6 +217,7 @@ begin  -- rtl
     end if;
   end process;
 
+  -- clip the extra bits and output the result
   valid_o    <= pipe(c_NUM_PIPELINE_STAGES-1);
   q_utc_o    <= std_logic_vector(sums(c_NUM_PIPELINE_STAGES-1).utc(g_utc_bits-1 downto 0));
   q_coarse_o <= std_logic_vector(sums(c_NUM_PIPELINE_STAGES-1).coarse(g_coarse_bits-1 downto 0));

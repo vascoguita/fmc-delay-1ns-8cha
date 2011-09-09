@@ -6,26 +6,25 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2011-08-31
+-- Last update: 2011-09-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: A complete sub-nanosecond pulse timestamper based on ACAM's
--- TDC-GPX chip. 
+-- Description: A complete sub-nanosecond pulse timestamper using ACAM's
+-- TDC-GPX chip for fine delay measurement and a simple counter to capture the
+-- coarse part. See comments inside the RTL code for the details.
 -------------------------------------------------------------------------------
 -- Copyright (c) 2011 CERN / BE-CO-HT
 -------------------------------------------------------------------------------
 -- Revisions  :
--- Date        Version  Author  Description
--- 2011-08-24  1.0      slayer  Created
+-- Date        Version  Author          Description
+-- 2011-08-24  1.0      twlostow        Created
 -------------------------------------------------------------------------------
 
 
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
-use ieee.math_real.all;                 -- for real types, used in
-                                        -- precalculation of scalefactors
 
 use work.fd_wbgen2_pkg.all;             -- for Wishbone regs
 
@@ -34,9 +33,11 @@ library work;
 entity fd_acam_timestamper is
   generic(
     -- minimum input pulse width in clk_ref_i cycles
-    g_min_pulse_width : natural := 3;   -- clk_ref_i frequency in Hz
+    g_min_pulse_width : natural := 3;
+    -- clk_ref_i frequency in Hz
     g_clk_ref_freq    : integer := 125000000;
-    g_frac_bits       : integer := 13
+    -- size of the fractional (< 8 ns) part of the timestamp
+    g_frac_bits       : integer := 12
     );
   port (
 
@@ -48,8 +49,7 @@ entity fd_acam_timestamper is
     clk_ref_i : in std_logic;
 
 -- reset, active LOW
-    rst_n_i : in std_logic;
-
+    rst_n_i    : in std_logic;
 -- Inverted ACAM trigger input
     trig_a_n_i : in std_logic;
 
@@ -124,47 +124,23 @@ entity fd_acam_timestamper is
 -- csync_utc_i.
     csync_p1_i : in std_logic;
 
+-- Indication of the TDC start period
+    tdc_start_p1_o : out std_logic;
+
 ---------------------------------------------------------------------------
 -- Wishbone registers
 ---------------------------------------------------------------------------
 
-    regs_b : inout t_fd_registers
+    regs_i : in  t_fd_out_registers;
+    regs_o : out t_fd_in_registers;
+
+    dbg_o : out std_logic_vector(3 downto 0)
+
     );
 
 end fd_acam_timestamper;
 
 architecture behavioral of fd_acam_timestamper is
-
-  component fd_ts_adder
-    generic (
-      g_frac_bits    : integer;
-      g_coarse_bits  : integer;
-      g_utc_bits     : integer;
-      g_coarse_range : integer);
-    port (
-      clk_i      : in  std_logic;
-      rst_n_i    : in  std_logic;
-      valid_i    : in  std_logic;
-      a_utc_i    : in  std_logic_vector(g_utc_bits-1 downto 0);
-      a_coarse_i : in  std_logic_vector(g_coarse_bits-1 downto 0);
-      a_frac_i   : in  std_logic_vector(g_frac_bits-1 downto 0);
-      b_utc_i    : in  std_logic_vector(g_utc_bits-1 downto 0);
-      b_coarse_i : in  std_logic_vector(g_coarse_bits-1 downto 0);
-      b_frac_i   : in  std_logic_vector(g_frac_bits-1 downto 0);
-      valid_o    : out std_logic;
-      q_utc_o    : out std_logic_vector(g_utc_bits-1 downto 0);
-      q_coarse_o : out std_logic_vector(g_coarse_bits-1 downto 0);
-      q_frac_o   : out std_logic_vector(g_frac_bits-1 downto 0));
-  end component;
-
-  component fd_timestamper_stat_unit
-    port (
-      clk_ref_i       : in    std_logic;
-      rst_n_i         : in    std_logic;
-      trig_pulse_i    : in    std_logic;
-      raw_tag_valid_i : in    std_logic;
-      regs_b          : inout t_fd_registers);
-  end component;
 
   component fd_acam_timestamp_postprocessor
     generic (
@@ -182,7 +158,17 @@ architecture behavioral of fd_acam_timestamper is
       tag_utc_o              : out std_logic_vector(31 downto 0);
       tag_coarse_o           : out std_logic_vector(27 downto 0);
       tag_frac_o             : out std_logic_vector(g_frac_bits-1 downto 0);
-      regs_b                 :     t_fd_registers);
+      regs_i                 : in  t_fd_out_registers);
+  end component;
+
+  component fd_timestamper_stat_unit
+    port (
+      clk_ref_i       : in  std_logic;
+      rst_n_i         : in  std_logic;
+      trig_pulse_i    : in  std_logic;
+      raw_tag_valid_i : in  std_logic;
+      regs_i          : in  t_fd_out_registers;
+      regs_o          : out t_fd_in_registers);
   end component;
 
   constant c_ACAM_TIMEOUT : integer := 60;
@@ -207,9 +193,10 @@ architecture behavioral of fd_acam_timestamper is
   signal advance_coarse : std_logic;
 
   -- delay/sync chains
-  signal tdc_start_d : std_logic_vector(2 downto 0);
-  signal trig_d      : std_logic_vector(2 downto 0);
-  signal acam_ef_d   : std_logic_vector(1 downto 0);
+  signal tdc_start_d  : std_logic_vector(2 downto 0);
+  signal trig_d       : std_logic_vector(2 downto 0);
+  signal acam_ef_d    : std_logic_vector(1 downto 0);
+  signal tag_enable_d : std_logic_vector(2 downto 0);
 
   signal trig_pulse : std_logic;
 
@@ -218,6 +205,8 @@ architecture behavioral of fd_acam_timestamper is
   signal coarse_count    : unsigned(23 downto 0);
   signal utc_count       : unsigned(31 downto 0);
   signal subcycle_offset : signed(4 downto 0);
+
+  signal gcr_input_en_d0 : std_logic;
 
   -- raw time tag (unprocessed)
   signal raw_tag_valid        : std_logic;
@@ -241,10 +230,13 @@ architecture behavioral of fd_acam_timestamper is
 
   signal dbg_utc    : unsigned(31 downto 0);
   signal dbg_coarse : unsigned(27 downto 0);
+
+  signal regs_out_int  : t_fd_in_registers;
+  signal regs_out_stat : t_fd_in_registers;
+
+  signal tag_valid_int : std_logic;
   
 begin  -- behave
-
-  regs_b <= c_fd_registers_init_value;
 
 -- Process: p_sync_trigger
 -- Inputs: trig_a_n_i, tag_enable
@@ -258,10 +250,21 @@ begin  -- behave
   p_sync_trigger : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      trig_d(0)  <= trig_a_n_i or (not tag_enable);
-      trig_d(1)  <= not trig_d(0) and tag_enable;
-      trig_d(2)  <= trig_d(1) and tag_enable;
-      trig_pulse <= (trig_d(1) and not trig_d(2)) and tag_enable;
+      if(rst_n_i = '0') then
+        trig_d       <= (others => '0');
+        trig_pulse   <= '0';
+        tag_enable_d <= (others => '0');
+      else
+        trig_d(0)  <= trig_a_n_i or (not tag_enable);
+        trig_d(1)  <= not trig_d(0) and tag_enable_d(0);
+        trig_d(2)  <= trig_d(1) and tag_enable_d(1);
+        trig_pulse <= (trig_d(1) and not trig_d(2)) and tag_enable_d(2);
+
+        tag_enable_d(0) <= tag_enable;
+        tag_enable_d(1) <= tag_enable_d(0);
+        tag_enable_d(2) <= tag_enable_d(1);
+      end if;
+      
     end if;
   end process;
 
@@ -283,17 +286,17 @@ begin  -- behave
       else
 
         -- the host wrote '1' to stop_dis bit in TDCSR - disable stop input
-        if(regs_b.tdcsr_stop_dis_o = '1') then
+        if(regs_i.tdcsr_stop_dis_o = '1') then
           host_stop_dis <= '1';
         -- the host wrote '1' to stop_en bit - enable stop input
-        elsif(regs_b.tdcsr_stop_en_o = '1') then
+        elsif(regs_i.tdcsr_stop_en_o = '1') then
           host_stop_dis <= '0';
         end if;
 
         -- the same for start disable signal
-        if(regs_b.tdcsr_start_dis_o = '1') then
+        if(regs_i.tdcsr_start_dis_o = '1') then
           host_start_dis <= '1';
-        elsif(regs_b.tdcsr_start_en_o = '1') then
+        elsif(regs_i.tdcsr_start_en_o = '1') then
           host_start_dis <= '0';
         end if;
       end if;
@@ -316,7 +319,7 @@ begin  -- behave
         acam_stop_dis_o <= '1';
       else
 
-        if(regs_b.gcr_bypass_o = '1') then  -- the TDC is controlled by the host
+        if(regs_i.gcr_bypass_o = '1') then  -- the TDC is controlled by the host
           acam_stop_dis_o <= host_stop_dis;
         else
 
@@ -324,7 +327,7 @@ begin  -- behave
 -- - the trigger input is enabled by the host
 -- - timestamping has not been disabled by the delay unit
 -- - we have generated at least one valid TDC start pulse
-          if(regs_b.gcr_input_en_o = '0' or tag_enable = '0' or start_ok = '0') then
+          if(regs_i.gcr_input_en_o = '0' or tag_enable = '0' or start_ok = '0') then
             acam_stop_dis_o <= '1';
           else
             acam_stop_dis_o <= '0';
@@ -376,7 +379,7 @@ begin  -- behave
   begin
     if rising_edge(clk_ref_i) then
       
-      if rst_n_i = '0' or regs_b.gcr_bypass_o = '1' then
+      if rst_n_i = '0' or regs_i.gcr_bypass_o = '1' then
         start_count     <= (others => '0');
         subcycle_offset <= (others => '0');
         advance_coarse  <= '0';
@@ -400,6 +403,19 @@ begin  -- behave
     end if;
   end process;
 
+  p_gen_tdc_start_output : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        tdc_start_p1_o <= '0';
+      elsif(start_count = x"e") then
+        tdc_start_p1_o <= '1';
+      else
+        tdc_start_p1_o <= '0';
+      end if;
+    end if;
+  end process;
+
   p_gen_acam_start_dis : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
@@ -407,7 +423,7 @@ begin  -- behave
         start_ok_sreg    <= (others => '0');
         acam_start_dis_o <= '1';
       else
-        if(regs_b.gcr_bypass_o = '1' or regs_b.gcr_input_en_o = '0') then
+        if(regs_i.gcr_bypass_o = '1' or regs_i.gcr_input_en_o = '0') then
           acam_start_dis_o <= host_start_dis;
           start_ok_sreg    <= (others => '0');
         else
@@ -425,7 +441,7 @@ begin  -- behave
   p_coarse_counter : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      if rst_n_i = '0' or regs_b.gcr_bypass_o = '1' then
+      if rst_n_i = '0' or regs_i.gcr_bypass_o = '1' then
         coarse_count <= (others => '0');
       else
 
@@ -472,8 +488,8 @@ begin  -- behave
       if(rst_n_i = '0') then
         acam_wdata <= (others => '0');
       else
-        if(regs_b.tar_data_load_o = '1') then
-          acam_wdata <= regs_b.tar_data_o;
+        if(regs_i.tar_data_load_o = '1') then
+          acam_wdata <= regs_i.tar_data_o;
         end if;
       end if;
     end if;
@@ -490,7 +506,7 @@ begin  -- behave
       if(rst_n_i = '0') then
         afsm_state <= IDLE;
 
-        regs_b.tar_data_i <= (others => '0');
+        regs_out_int.tar_data_i <= (others => '0');
 
         acam_d_oe_o    <= '0';
         acam_d_o       <= (others => '0');
@@ -509,25 +525,30 @@ begin  -- behave
         raw_tag_frac         <= (others => '0');
 
         tag_enable <= '0';
+
+        gcr_input_en_d0 <= '0';
         
       else
+
+        gcr_input_en_d0 <= regs_i.gcr_input_en_o;
+
         case afsm_state is
           when IDLE =>
             raw_tag_valid <= '0';
             -- TDC controlled by the host
-            if(regs_b.gcr_bypass_o = '1') then
+            if(regs_i.gcr_bypass_o = '1') then
               acam_reset_int <= '0';
               tag_enable     <= '0';
 
 
-              if(regs_b.tdcsr_write_o = '1') then
+              if(regs_i.tdcsr_write_o = '1') then
                 afsm_state <= W_DATA_ADDR;
-              elsif(regs_b.tdcsr_read_o = '1') then
+              elsif(regs_i.tdcsr_read_o = '1') then
                 afsm_state <= R_ADDR;
               end if;
 
             -- TDC working in R-Mode and handled by the FD logic
-            elsif(regs_b.gcr_input_en_o = '1') then
+            elsif(regs_i.gcr_input_en_o = '1') then
               acam_reset_int <= '0';
 
               acam_a_o    <= x"8";      -- permamently select FIFO1 register
@@ -535,7 +556,7 @@ begin  -- behave
               acam_rd_n_o <= '1';
               acam_wr_n_o <= '1';
 
-              if(tag_rearm_p1_i = '1') then
+              if(tag_rearm_p1_i = '1' or gcr_input_en_d0 = '1') then
                 tag_enable <= '1';
               end if;
 
@@ -571,12 +592,12 @@ begin  -- behave
 -- something arrived into the ACAM FIFO. Note that here we're using a
 -- synchronized version of the signal, as it can go up anytime (the processing
 -- delay of the ACAM is not constant). This worsens the overall timestamping
--- latency, but ensures the whole FSM will work correctly.
+-- latency, but ensures that the whole FSM will work correctly.
 
             if(acam_ef_d(1) = '0')then  -- FIFO not empty
 
 -- check the pulse width. If its too low, purge all timestamps from the FIFO
--- (the pulse might have been as well a series of short pulses, which FPGA
+-- (the "pulse" might have been as well a series of short pulses, which FPGA
 -- didn't notice but the TDC did)
 
               if(width_check_mask /= c_ones(width_check_mask'left downto 0)) then
@@ -590,7 +611,7 @@ begin  -- behave
               end if;
 
 -- if the FIFO stays empty for too long after the input event, something must have
--- gone horriby wrong (a glitch?). There we have a timeout counter to make sure
+-- gone horribly wrong (a glitch?). There we have a timeout counter to make sure
 -- the FSM won't get stuck.
             else
               timeout_counter <= timeout_counter + 1;
@@ -653,7 +674,7 @@ begin  -- behave
 
           when W_DATA_ADDR =>
             acam_d_o    <= acam_wdata;
-            acam_a_o    <= regs_b.tar_addr_o;
+            acam_a_o    <= regs_i.tar_addr_o;
             acam_d_oe_o <= '1';
             afsm_state  <= W_PULSE;
 
@@ -668,9 +689,10 @@ begin  -- behave
             afsm_state  <= IDLE;
 
           when R_ADDR =>
-            acam_a_o    <= regs_b.tar_addr_o;
+            acam_a_o    <= regs_i.tar_addr_o;
             acam_d_oe_o <= '0';
             afsm_state  <= R_PULSE;
+
           when R_PULSE =>
             acam_cs_n_o <= '0';
             acam_rd_n_o <= '0';
@@ -680,16 +702,20 @@ begin  -- behave
             afsm_state <= R_READ;
 
           when R_READ =>
-            acam_cs_n_o       <= '1';
-            acam_rd_n_o       <= '1';
-            regs_b.tar_data_i <= acam_d_i;
-            afsm_state        <= IDLE;
+            acam_cs_n_o             <= '1';
+            acam_rd_n_o             <= '1';
+            regs_out_int.tar_data_i <= acam_d_i;
+            afsm_state              <= IDLE;
 
           when others => null;
         end case;
       end if;
     end if;
   end process;
+
+  dbg_o(0) <= raw_tag_valid;
+  dbg_o(1) <= trig_d(2);
+  dbg_o(2) <= tag_valid_int;
 
   acam_alutrigger_o <= acam_reset_int;
 
@@ -699,7 +725,8 @@ begin  -- behave
       rst_n_i         => rst_n_i,
       trig_pulse_i    => trig_pulse,
       raw_tag_valid_i => raw_tag_valid,
-      regs_b          => regs_b);
+      regs_i          => regs_i,
+      regs_o          => regs_out_stat);
 
   U_Timestamp_Postprocessor : fd_acam_timestamp_postprocessor
     generic map (
@@ -713,13 +740,20 @@ begin  -- behave
       raw_frac_i             => std_logic_vector(raw_tag_frac),
       raw_start_offset_i     => std_logic_vector(raw_tag_start_offset),
       acam_subcycle_offset_i => std_logic_vector(subcycle_offset),
-      tag_valid_o            => tag_valid_o,
+      tag_valid_o            => tag_valid_int,
       tag_utc_o              => tag_utc_o,
       tag_coarse_o           => tag_coarse_o,
       tag_frac_o             => tag_frac_o,
-      regs_b                 => regs_b);
+      regs_i                 => regs_i);
+
+  regs_o <= regs_out_stat or regs_out_int;  -- combine the two stucts
 
 
+  regs_out_int.rawfifo_wr_req_i             <= raw_tag_valid and not regs_i.rawfifo_wr_full_o;
+  regs_out_int.rawfifo_frac_i(22 downto 0)  <= std_logic_vector(raw_tag_frac);
+  regs_out_int.rawfifo_frac_i(27 downto 23) <= (others => '0');
+  regs_out_int.rawfifo_coarse_i             <= std_logic_vector(raw_tag_coarse) & std_logic_vector(raw_tag_start_offset);
 
 
+  tag_valid_o <= tag_valid_int;
 end behavioral;

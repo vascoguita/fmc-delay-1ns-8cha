@@ -13,7 +13,8 @@ entity fd_timestamper_stat_unit is
     trig_pulse_i    : in std_logic;
     raw_tag_valid_i : in std_logic;
 
-    regs_b : inout t_fd_registers);
+    regs_i : in  t_fd_out_registers;
+    regs_o : out t_fd_in_registers);
 
 end fd_timestamper_stat_unit;
 
@@ -31,14 +32,15 @@ architecture behavioral of fd_timestamper_stat_unit is
 
 begin  -- behavioral
 
+
   p_count_events : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      if (rst_n_i = '0' or regs_b.gcr_input_en_o = '0' or regs_b.iepd_rst_stat_o = '1') then
+      if (rst_n_i = '0' or regs_i.gcr_input_en_o = '0' or regs_i.iepd_rst_stat_o = '1') then
         event_count_raw    <= (others => '0');
         event_count_tagged <= (others => '0');
       else
-        if(trig_pulse_i= '1') then
+        if(trig_pulse_i = '1') then
           event_count_raw <= event_count_raw + 1;
         end if;
 
@@ -49,13 +51,13 @@ begin  -- behavioral
     end if;
   end process;
 
-  regs_b.iecraw_i <= std_logic_vector(event_count_raw);
-  regs_b.iectag_i <= std_logic_vector(event_count_tagged);
+  regs_o.iecraw_i <= std_logic_vector(event_count_raw);
+  regs_o.iectag_i <= std_logic_vector(event_count_tagged);
 
   p_measure_processing_delay : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      if rst_n_i = '0' or regs_b.gcr_input_en_o = '0' or regs_b.iepd_rst_stat_o = '1' then
+      if rst_n_i = '0' or regs_i.gcr_input_en_o = '0' or regs_i.iepd_rst_stat_o = '1' then
         cur_pdelay   <= (others => '0');
         worst_pdelay <= (others => '0');
         pd_state     <= PD_WAIT_TRIGGER;
@@ -88,6 +90,6 @@ begin  -- behavioral
     end if;
   end process;
 
-  regs_b.iepd_pdelay_i <= std_logic_vector(worst_pdelay);
+  regs_o.iepd_pdelay_i <= std_logic_vector(worst_pdelay);
 
 end behavioral;
