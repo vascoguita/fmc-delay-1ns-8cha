@@ -1,0 +1,781 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+peripheral {
+	 name = "Fine Delay Wishbone slave";
+	 hdl_entity = "fd_wishbone_slave";
+	 prefix = "fd";
+	 
+
+	 reg {
+			name = "Reset Register";
+			prefix = "RSTR";
+
+			field {
+				 name = "Reset trigger";
+				 description = "Writing 0xDEADBEEF into this register will trigger a full reset of the \               				  fine delay core";
+				 type = PASS_THROUGH;
+				 size = 32;
+			};
+	 };
+
+   reg {
+      name = "ID Register";
+      prefix = "IDR";
+
+      field {
+         name = "ID Magic Value";
+         description = "Always 0xf19ede1a";
+         size = 32;
+         type = CONSTANT;
+         value = 0xf19ede1a;
+
+      };
+
+   };
+
+	 reg {
+			name = "Global Control Register";
+			prefix = "GCR";
+			
+			field {
+				 clock = "clk_ref_i";
+
+				 name = "Bypass delay block";
+				 prefix = "BYPASS";
+				 description = "0: normal operation (fine-delay)\
+				           1: TDC and delay lines controlled from the host";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 
+				 name = "Enable trigger input";
+				 prefix = "INPUT_EN";
+				 description = "";
+				 type = BIT;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+
+      field {
+         name = "Internal Counter Sync";
+         description = "write 1: re-synchronizes the TDC and the Delay Generator counters. Must be done each time the card/core is reset if the card is not receiving the time information from White Rabbit.\
+         write 0: no effect. ";
+         prefix = "CSYNC_INT";
+         type = MONOSTABLE;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "White Rabbit Counter Sync";
+         description = "write 1: re-synchronizes the TDC and the Delay Generator counters with the time value provided by the White Rabbit Core. Resynchronization must be performed each time the card is reset. \
+         write 0: no effect. ";
+         prefix = "CSYNC_WR";
+         type = MONOSTABLE;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "White Rabbit Timecode Ready";
+         description = "read 1: time code provided to the external input from White Rabbit Core is valid. Can proceed with counter sync.\
+         read 0: WR time code input is invalid. Can't do sounter sync for the moment.";
+         prefix = "WR_READY";
+         type = BIT;
+         clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+      };
+	 };
+
+	 reg {
+			name = "TDC Address/Data Register";
+			prefix = "TAR";
+		
+			field {
+				 clock = "clk_ref_i";
+				 name = "DATA";
+				 prefix = "DATA";
+				 type = SLV;
+				 size = 28;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+				 load = LOAD_EXT;
+			};
+			
+			field {
+				 clock = "clk_ref_i";
+				 name = "ADDR";
+				 prefix = "ADDR";
+				 type = SLV;
+				 size = 4;
+				 access_bus = READ_WRITE;
+				 access_dev = READ_ONLY;
+			};
+	 };
+
+
+ reg {
+			name = "TDC control/status reg";
+			prefix = "TDCSR";
+
+		  field {
+				 name = "Start TDC write";
+				 prefix = "WRITE";
+				 clock = "clk_ref_i";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 name = "Start TDC read";
+				 prefix = "READ";
+				 clock = "clk_ref_i";
+				 type = MONOSTABLE;
+			};
+		
+		 
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Error flag";
+				 prefix = "ERR";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Interrupt flag";
+				 prefix = "INT";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Load flag";
+				 prefix = "LOAD";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Empty flag";
+				 prefix = "EMPTY";
+				 type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start disable";
+				 prefix = "START_DIS";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start enable";
+				 prefix = "START_EN";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start disable";
+				 prefix = "STOP_DIS";
+				 type = MONOSTABLE;
+			};
+
+			field {
+				 clock = "clk_ref_i";
+				 name = "Start enable";
+				 prefix = "STOP_EN";
+				 type = MONOSTABLE;
+			};
+
+	 };
+
+
+   reg {
+      prefix = "ADSFR";
+      name = "Acam to Delay line fractional part Scale Factor Register";
+      description = "Coefficient used to re-scale the fine part of the timestamp produced by Acam. Contains the number of Delay line bins per one Acam bin. Can be used to compensate the INL error of the delay lines induced by temperature changes. It's value can be calculated with the following formula: <b>ADFSR = (2 ** 14) * Acam_bin [ps] / Delay_bin [ps]</b>";
+
+      field {
+         name = "ADFSR Value";
+         size = 18;
+         type = SLV;
+         clock = "clk_ref_i";
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+        };
+     };
+
+     reg {
+        prefix = "ATMCR";
+        name = "Acam Timestamp Merging Control Register";
+        description = "Register controlling the merging of the fine timestamps prouced by Acam with the coarse timestamps gatheret by the FPGA. These values are hardware-specific. The register should be loaded with the paramete 'ATMCR' from the mezzanine's configuration EEPROM";
+
+        field {
+           name = "Wraparound Coarse Threshold";
+           prefix = "C_THR";
+           size = 4;
+           type = SLV;
+           clock = "clk_ref_i";
+           access_bus = READ_WRITE;
+           access_dev = READ_ONLY;
+        };
+        
+        field {
+           name = "Wraparound Fine Threshold";
+           prefix = "F_THR";
+           size = 23;
+           type = SLV;
+           clock = "clk_ref_i";
+           access_bus = READ_WRITE;
+           access_dev = READ_ONLY;
+        };
+     };
+
+     reg {
+        prefix = "ASOR";
+        name = "Acam Start Offset Register";
+        description = "";
+
+        field {
+           name = "Start Offset";
+           prefix = "OFFSET";
+           size = 23;
+           type = SLV;
+           clock = "clk_ref_i";
+           access_bus = READ_WRITE;
+           access_dev = READ_ONLY;
+        };
+     };
+
+	 reg {
+			name = "Raw Input Events Counter Register ";
+			prefix = "IECRAW";
+
+			field {
+				 name = "Number of raw events";
+				 description = "Number of all input pulses detected by the timestamper";
+				 type = SLV;
+				 size = 32;
+				 clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev= WRITE_ONLY;
+			};
+
+	 };
+
+	 reg {
+			name = "Tagged Input Events Counter Register ";
+			prefix = "IECTAG";
+
+			field {
+				 name = "Number of tagged events";
+				 description = "Number of all input pulses which passed the width checks and have produced valid timestamps.";
+				 type = SLV;
+				 size = 32;
+				 clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev= WRITE_ONLY;
+			};
+	 };
+
+	 reg {
+			name = "Input Event Processing Delay Register";
+			prefix = "IEPD";
+
+      field {
+         name = "Reset stats";
+         prefix = "RST_STAT";
+         description = "Write 1: resets the delay/pulse count counters (IECRAW, IECTAG and IEPD_WDELAY)\
+         write 0: no effect";
+         type = MONOSTABLE;
+				 clock = "clk_ref_i";
+      };
+
+			field {
+				 name = "Processing delay";
+				 description = "Worst-case delay between the input event and the generation of its timestamp. Expressed as a number of 125 MHz clock cycles.";
+         prefix = "PDELAY";
+				 type = SLV;
+				 size = 8;
+				 clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+			};
+	 };
+
+   -- reg {
+   --    name = "SPI Control Register";
+   --    prefix = "SCR";
+   --    description = "Single control register for the SPI Controller, allowing for single-cycle (non-waiting) updates of the DAC, GPIO & PLL.";
+
+   --    field {
+   --       name = "Data";
+   --       prefix = "DATA";
+   --       size = 24;
+   --       description = "Data to be read/written from/to the SPI bus";
+   --       type = SLV;
+   --       load = LOAD_EXT;
+   --       access_dev = READ_WRITE;
+   --       access_bus = READ_WRITE;
+   --    };
+      
+   --    field {
+   --       name = "Select DAC";
+   --       prefix = "SEL_DAC";
+   --       type = BIT;
+   --       description = "write 1: selects the DAC as the target peripheral of the transfer";
+   --       access_bus = READ_WRITE;
+   --       access_dev = READ_ONLY;
+   --    };
+   --    field {
+   --       name = "Select PLL";
+   --       prefix = "SEL_PLL";
+   --       type = BIT;
+   --       description = "write 1: selects the AD9516 PLL as the target peripheral of the transfer";
+   --       access_bus = READ_WRITE;
+   --       access_dev = READ_ONLY;
+   --    };
+   --    field {
+   --       name = "Select GPIO";
+   --       prefix = "SEL_GPIO";
+   --       type = BIT;
+   --       description = "write 1: selects the MCP23S17 GPIO as the target peripheral of the transfer";
+   --       access_bus = READ_WRITE;
+   --       access_dev = READ_ONLY;
+   --    };
+
+   --    field {
+   --       name = "Ready flag";
+   --       prefix = "READY";
+   --       type = BIT;
+   --       description = "read 0: SPI controller is busy performing a transfer\
+   --       read 1: SPI controller has finished its previous transfer. Read-back data is available in the DATA field";
+   --       access_bus = READ_ONLY;
+   --       access_dev = WRITE_ONLY;
+   --    };
+
+   --    field {
+   --       name = "Clock Polarity";
+   --       description = "0: SPI clock is not inverted\
+   --                      1: SPI clock is inverted";
+   --       prefix = "CPOL";
+   --       type = BIT;
+   --       access_bus = READ_WRITE;
+   --       access_dev = READ_ONLY;
+   --    };
+
+   --    field {
+   --       name = "Transfer Start";
+   --       prefix = "START";
+   --       type = MONOSTABLE;
+   --       description = "write 1: Starts transfer to the selected peripheral\
+   --       write 0: no effect";
+   --    };
+   -- };
+
+
+   reg {
+      name = "Reference Clock Rate Register";
+      prefix = "RCRR";
+      description = "Provides the momentary value of the internal clock rate counter. Can be used in conjunction with the DAC to roughly syntonize the card's reference clock with a clock coming from an external master installed in the same host (e.g. a CTRV/CTRP) in a software-only way.";
+
+
+      field {
+         name = "Rate";
+         type = SLV;
+         size = 32;
+         clock = "clk_ref_i";
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      }
+   };
+
+
+ reg {
+      name = "Reference Clock Frequency Register";
+      prefix = "RCFR";
+      description = "Current frequency of the reference clock. Used for testing/calibration purposes.";
+
+      field {
+         name = "Frequency";
+         type = SLV;
+         size = 32;
+         clock = "clk_ref_i";
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      }
+   };
+
+    reg {
+       name = "Timestamp Buffer Control Register";
+       prefix = "TSBCR";
+    
+
+
+        field {
+           name = "Buffer enable";
+           prefix = "ENABLE";
+           type = BIT;
+           access_bus = READ_WRITE;
+           access_dev = READ_ONLY;
+        };
+
+       field {
+          name = "Buffer purge";
+          prefix = "PURGE";
+          type = MONOSTABLE;
+       };
+
+       field {
+          name = "Reset TS Sequence Number";
+          prefix = "RST_SEQ";
+          clock = "clk_ref_i";
+          type = MONOSTABLE;
+       };
+   
+       field {
+          name = "Buffer full";
+          prefix = "FULL";
+          type = BIT;
+          access_bus = READ_ONLY;
+	   		 access_dev = WRITE_ONLY;
+       };
+
+       field {
+          name = "Buffer empty";
+          prefix = "EMPTY";
+          type = BIT;
+          access_bus = READ_ONLY;
+	   		 access_dev = WRITE_ONLY;
+       };
+   };
+
+    irq {
+       name = "TS Buffer not empty";
+       trigger = LEVEL_0;
+       prefix = "ts_buf_notempty";
+    };
+
+   reg {
+      name = "Timestamp Buffer Readout UTC Register";
+      prefix = "TSBR_U";
+
+      field {
+         name = "UTC Value [seconds]";
+         size = 32;
+         type = SLV;
+         access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY; 
+      };
+   };
+
+   reg {
+      name = "Timestamp Buffer Readout Cycles Register";
+      prefix = "TSBR_C";
+
+      field {
+         name = "Cycles Value [in 8 ns ticks]";
+         size = 28;
+         type = SLV;
+         access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY; 
+      };
+   };
+
+    reg {
+       name = "Timestamp Buffer Readout Fine / Seq ID Register";
+       prefix = "TSBR_FID";
+
+       field {
+          name = "Fine Value [in phase units]";
+          prefix = "FINE";
+          size = 12;
+          type = SLV;
+          access_bus = READ_ONLY;
+ 				 access_dev = WRITE_ONLY; 
+       };
+
+       field {
+          name = "Timestamp Sequence ID";
+          prefix = "SEQID";
+          align = 16;
+          size = 16;
+          type = SLV;
+          access_bus = READ_ONLY;
+          access_dev = WRITE_ONLY; 
+          ack_read = "advance_rbuf_o";
+
+       };
+    };
+
+    fifo_reg {
+       direction = CORE_TO_BUS;
+       size = 256;
+       prefix = "RAWFIFO";
+       name = "RAW FIFO";
+       flags_bus = {FIFO_EMPTY};
+       flags_dev = {FIFO_FULL};
+       clock = "clk_ref_i";
+
+
+       field {
+          name = "RawFrac";
+          prefix = "FRAC";
+          size = 28;
+          type = SLV;
+       };
+
+       field {
+          name = "RawCoarse";
+          prefix = "COARSE";
+          size = 28;
+          type = SLV;
+       };
+    };
+};
+
+channel_template = {
+   reg {
+      name = "Delay Control Register (channel %d)";
+      prefix = "DCR%d";
+      align = 8;
+
+      field {
+         name = "Enable channel";
+         prefix = "ENABLE";
+         description = "0: channel is disabled\
+                        1: channel is enabled";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "Delay mode select";
+         prefix = "MODE";
+         description = "0: Channel will work as a delay generator, producing delayed copies of pulses comming to the trigger input\
+1: Channel will work as a programmable pulse generator - producing a pulse which begins at UTC time [U_START, C_START, F_START] and ends at [U_END, C_END, F_END].\
+   <b>Warning:</b> MODE_DLY bit can be safely set only when the TDC and the delay logic are disabled (i.e. when GCR.BYPASS = 1)";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "Pulse generator arm";
+         prefix = "PG_ARM";
+         description = "write 1: arms the pulse generator. \
+         write 0: no effect.\
+         read 1: pulse generator is armed. \
+         read 0: pulse generator is not armed. \
+         Note that the time written to [U/C/F]START must be bigger by at least 200 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much bigger, as it's affected by the non-determinism of the operating system."; 
+         type = BIT;
+         access_bus = READ_WRITE;
+				 access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         clock = "clk_ref_i";
+      };
+         
+      field {
+         name = "Pulse generator triggered";
+         prefix = "PG_TRIG";
+         description = "read 1: pulse generator has been triggered and produced a pulse\
+         read 0: pulse generator is busy or hasn't triggered yet"; 
+         type = BIT;
+clock = "clk_ref_i";
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+     };
+
+     field {
+        name = "Start Delay Update";
+        prefix = "UPDATE";
+        description = "write 1: Starts delay update procedure. The start and end times from [U/C/F][START/END] will be transferred in an atomic way to the internal delay/pulse generator registers\
+        write 0: no effect.";
+        type = MONOSTABLE;
+        clock = "clk_ref_i";
+     };
+        
+     field {
+        name = "Delay Update Done";
+        prefix = "UPD_DONE";
+        description = "read 1: The delays from [U/C/F][START/END] have been loaded into internal registers\
+        read 0: update operation in progress";
+clock = "clk_ref_i";
+        type = BIT;
+				 access_bus = READ_ONLY;
+				 access_dev = WRITE_ONLY;
+     };
+
+   field {
+        name = "Force Calibration Pulse";
+        prefix = "FORCE_CP";
+      description = "write 1: preloads the delay line with the contents of FRR register and produces a single-cycle (8ns) pulse at the beginning of the ACAM Start period. Used for self-calibration purposes\
+      write 0: no effect";
+
+      clock = "clk_ref_i";
+      type = MONOSTABLE;
+     };
+
+
+
+     field {
+        name = "Output Polarity";
+        prefix = "POL";
+        description = "1: output is active HIGH\
+                       0: output is active LOW";
+        clock = "clk_ref_i";
+        type = BIT;
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+
+     };
+  };
+
+
+  reg {
+     name = "Fine Range Register (channel %d)";
+     prefix = "FRR%d";
+     description = "Delay line tap setting at which the line generates an 8 ns (one cycle) longer delay than when set to 0.";
+
+     field {
+        name = "Fine Range";
+        size = 10;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+
+  };
+
+  reg {
+     name = "Pulse start time / offset (UTC part, channel %d)";
+     prefix = "U_START%d";
+     description = "UTC part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).";
+
+     field {
+        name = "UTC seconds";
+        size = 32;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+  };
+
+  reg {
+     name = "Pulse start time / offset (8 ns cycles, channel %d)";
+     prefix = "C_START%d";
+     description = "Sub-second part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
+
+     field {
+        name = "Refclk cycles";
+        size = 28;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+  };
+
+  reg {
+     name = "Pulse start time / offset (sub-cycle fine part, channel %d)";
+     prefix = "F_START%d";
+     description = "Sub-clock cycle part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
+
+     field {
+        name = "Fractional part";
+        size = 12;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+  };
+   
+
+  reg {
+     name = "Pulse end time / offset (UTC part, channel %d)";
+     prefix = "U_END%d";
+     description = "UTC part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode).";
+
+     field {
+        name = "UTC seconds";
+        size = 32;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+  };
+
+  reg {
+     name = "Pulse end time / offset (8 ns cycles, channel %d)";
+     prefix = "C_END%d";
+     description = "Sub-second part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
+
+     field {
+        name = "Refclk cycles";
+        size = 28;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+  };
+
+  reg {
+     name = "Pulse end time / offset (sub-cycle fine part, channel %d)";
+     prefix = "F_END%d";
+     description = "Sub-clock cycle part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
+
+     field {
+        name = "Fractional part";
+        size = 12;
+        type = SLV;
+        clock = "clk_ref_i";
+        access_bus = READ_WRITE;
+        access_dev = READ_ONLY;
+     };
+  };
+  
+ 
+};
+
+
+
+function generate_channels(n)
+   local i;
+
+   for i=1,n do
+      local T=deepcopy(channel_template);
+
+
+      foreach_reg({TYPE_REG}, function(r)
+																 r.name = string.format(r.name, i);
+																 r.prefix = string.format(r.prefix, i);
+																 print(r.name)
+															end, T);
+
+      table_join(periph, T);
+   end
+end
+
+generate_channels(4);
