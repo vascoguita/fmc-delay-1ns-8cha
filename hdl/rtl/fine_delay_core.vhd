@@ -245,8 +245,7 @@ architecture rtl of fine_delay_core is
       csync_utc_i    : in std_logic_vector(31 downto 0);
       csync_coarse_i : in std_logic_vector(27 downto 0);
 
-      tdc_start_p1_i : in std_logic;
-
+      gen_cal_i         : in  std_logic;
       rearm_p1_o        : out std_logic;
       tag_valid_i       : in  std_logic;
       tag_utc_i         : in  std_logic_vector(31 downto 0);
@@ -264,7 +263,7 @@ architecture rtl of fine_delay_core is
       dcr_pg_trig_o     : out std_logic;
       dcr_update_i      : in  std_logic;
       dcr_upd_done_o    : out std_logic;
-      dcr_force_cp_i    : in  std_logic;
+      dcr_force_dly_i   : in  std_logic;
       dcr_pol_i         : in  std_logic;
       frr_i             : in  std_logic_vector(9 downto 0);
       u_start_i         : in  std_logic_vector(31 downto 0);
@@ -369,8 +368,10 @@ architecture rtl of fine_delay_core is
   signal owr_en_int : std_logic_vector(0 downto 0);
   signal owr_int    : std_logic_vector(0 downto 0);
   signal dbg        : std_logic_vector(3 downto 0);
-  
-  
+
+  signal gen_cal_pulse     : std_logic_vector(3 downto 0);
+  signal cal_pulse_mask    : std_logic_vector(3 downto 0);
+  signal cal_pulse_trigger : std_logic;
   
 begin  -- rtl
 
@@ -558,6 +559,19 @@ begin  -- rtl
       regs_i         => regs_fromwb,
       regs_o         => regs_towb_rbuf);
 
+  U_Extend_Cal_Pulse : gc_extend_pulse
+    generic map (
+      g_width => 3)
+    port map (
+      clk_i      => clk_ref_i,
+      rst_n_i    => rst_n_ref,
+      pulse_i    => regs_fromwb.calr_cal_pulse_o,
+      extended_o => cal_pulse_trigger);
+
+  cal_pulse_mask <= (others => cal_pulse_trigger);
+  gen_cal_pulse  <= cal_pulse_mask and regs_fromwb.calr_psel_o;
+
+
   U_Delay_Channel_1 : fd_delay_channel_driver
     generic map (
       g_frac_bits    => c_TIMESTAMP_FRAC_BITS,
@@ -569,8 +583,8 @@ begin  -- rtl
       csync_utc_i    => master_csync_utc,
       csync_coarse_i => master_csync_coarse,
 
-      rearm_p1_o     => chx_rearm(0),
-      tdc_start_p1_i => tdc_start_p1,
+      rearm_p1_o => chx_rearm(0),
+      gen_cal_i  => gen_cal_pulse(0),
 
       tag_valid_i       => tag_valid,
       tag_utc_i         => tag_utc,
@@ -588,7 +602,7 @@ begin  -- rtl
       dcr_pg_trig_o     => regs_towb_local.dcr1_pg_trig_i,
       dcr_update_i      => regs_fromwb.dcr1_update_o,
       dcr_upd_done_o    => regs_towb_local.dcr1_upd_done_i,
-      dcr_force_cp_i    => regs_fromwb.dcr1_force_cp_o,
+      dcr_force_dly_i   => regs_fromwb.dcr1_force_dly_o,
       dcr_pol_i         => regs_fromwb.dcr1_pol_o,
       frr_i             => regs_fromwb.frr1_o,
       u_start_i         => regs_fromwb.u_start1_o,
@@ -613,8 +627,8 @@ begin  -- rtl
       csync_utc_i    => master_csync_utc,
       csync_coarse_i => master_csync_coarse,
 
-      rearm_p1_o     => chx_rearm(1),
-      tdc_start_p1_i => tdc_start_p1,
+      rearm_p1_o => chx_rearm(1),
+      gen_cal_i  => gen_cal_pulse(1),
 
       tag_valid_i       => tag_valid,
       tag_utc_i         => tag_utc,
@@ -632,7 +646,7 @@ begin  -- rtl
       dcr_pg_trig_o     => regs_towb_local.dcr2_pg_trig_i,
       dcr_update_i      => regs_fromwb.dcr2_update_o,
       dcr_upd_done_o    => regs_towb_local.dcr2_upd_done_i,
-      dcr_force_cp_i    => regs_fromwb.dcr2_force_cp_o,
+      dcr_force_dly_i   => regs_fromwb.dcr2_force_dly_o,
       dcr_pol_i         => regs_fromwb.dcr2_pol_o,
       frr_i             => regs_fromwb.frr2_o,
       u_start_i         => regs_fromwb.u_start2_o,
@@ -653,8 +667,8 @@ begin  -- rtl
       csync_utc_i    => master_csync_utc,
       csync_coarse_i => master_csync_coarse,
 
-      rearm_p1_o     => chx_rearm(2),
-      tdc_start_p1_i => tdc_start_p1,
+      rearm_p1_o => chx_rearm(2),
+      gen_cal_i  => gen_cal_pulse(2),
 
       tag_valid_i       => tag_valid,
       tag_utc_i         => tag_utc,
@@ -672,7 +686,7 @@ begin  -- rtl
       dcr_pg_trig_o     => regs_towb_local.dcr3_pg_trig_i,
       dcr_update_i      => regs_fromwb.dcr3_update_o,
       dcr_upd_done_o    => regs_towb_local.dcr3_upd_done_i,
-      dcr_force_cp_i    => regs_fromwb.dcr3_force_cp_o,
+      dcr_force_dly_i   => regs_fromwb.dcr3_force_dly_o,
       dcr_pol_i         => regs_fromwb.dcr3_pol_o,
       frr_i             => regs_fromwb.frr3_o,
       u_start_i         => regs_fromwb.u_start3_o,
@@ -694,8 +708,8 @@ begin  -- rtl
       csync_utc_i    => master_csync_utc,
       csync_coarse_i => master_csync_coarse,
 
-      rearm_p1_o     => chx_rearm(3),
-      tdc_start_p1_i => tdc_start_p1,
+      rearm_p1_o => chx_rearm(3),
+      gen_cal_i  => gen_cal_pulse(3),
 
       tag_valid_i       => tag_valid,
       tag_utc_i         => tag_utc,
@@ -713,7 +727,7 @@ begin  -- rtl
       dcr_pg_trig_o     => regs_towb_local.dcr4_pg_trig_i,
       dcr_update_i      => regs_fromwb.dcr4_update_o,
       dcr_upd_done_o    => regs_towb_local.dcr4_upd_done_i,
-      dcr_force_cp_i    => regs_fromwb.dcr4_force_cp_o,
+      dcr_force_dly_i   => regs_fromwb.dcr4_force_dly_o,
       dcr_pol_i         => regs_fromwb.dcr4_pol_o,
       frr_i             => regs_fromwb.frr4_o,
       u_start_i         => regs_fromwb.u_start4_o,
@@ -766,7 +780,17 @@ begin  -- rtl
       pulse_i    => tag_valid,
       extended_o => led_trig_o);
 
-  trig_cal_o                    <= '0';
+  p_gen_cal_trigger : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_ref = '0' then
+        trig_cal_o <= '0';
+      else
+        trig_cal_o <= regs_fromwb.calr_cal_pulse_o;
+      end if;
+    end if;
+  end process;
+
   regs_towb_local.tdcsr_load_i  <= '0';
   regs_towb_local.tdcsr_empty_i <= acam_emptyf_i;
 
