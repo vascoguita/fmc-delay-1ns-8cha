@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2011-09-07
+-- Last update: 2011-10-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -78,7 +78,7 @@ entity fd_acam_timestamp_postprocessor is
     ---------------------------------------------------------------------------
     -- Post-processed timestamp. WARNING! DE-NORMALIZED!
     ---------------------------------------------------------------------------
-    
+
     tag_valid_o  : out std_logic;
     tag_utc_o    : out std_logic_vector(31 downto 0);
     tag_coarse_o : out std_logic_vector(27 downto 0);
@@ -105,8 +105,20 @@ architecture behavioral of fd_acam_timestamp_postprocessor is
   signal post_frac_multiplied_d0 : signed(c_SCALER_SHIFT + g_frac_bits + 8 downto 0);
   signal post_frac_start_adj     : signed(22 downto 0);
 
+  signal adsfr_d0 : signed(17 downto 0);
+  
 begin  -- behavioral
 
+  p_buffer_adsfr : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        adsfr_d0 <= (others => '0');
+      else
+        adsfr_d0 <= signed(regs_i.adsfr_o);
+      end if;
+    end if;
+  end process;
 
 
   p_postprocess_tags : process(clk_ref_i)
@@ -146,10 +158,13 @@ begin  -- behavioral
 -- pipeline stage 3:
 -- rescale the fractional part to our internal time base 
 
-        pp_pipe(2)              <= pp_pipe(1);
-        post_frac_multiplied    <= resize(signed(post_frac_start_adj) * signed(regs_i.adsfr_o), post_frac_multiplied'length);
+        pp_pipe(2)           <= pp_pipe(1);
+        --post_frac_multiplied <= resize(signed(post_frac_start_adj) * signed(regs_i.adsfr_o), post_frac_multiplied'length);
 --        post_frac_multiplied_d0 <= post_frac_multiplied;
 
+        post_frac_multiplied <= resize(signed(post_frac_start_adj) * adsfr_d0, post_frac_multiplied'length);
+
+        
 -- pipeline stage 4:
 -- - split the rescaled fractional part into the (mod 4096) tag_frac_o and add
 -- the rest to the coarse part, along with the start-to-timescale offset
