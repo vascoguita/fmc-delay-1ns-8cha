@@ -18,8 +18,8 @@ entity fd_delay_channel_driver is
     csync_utc_i    : in std_logic_vector(31 downto 0);
     csync_coarse_i : in std_logic_vector(27 downto 0);
 
-    tdc_start_p1_i: in std_logic;
-    
+    gen_cal_i  : in std_logic;
+
     rearm_p1_o : out std_logic;
 
     tag_valid_i  : in std_logic;
@@ -40,7 +40,7 @@ entity fd_delay_channel_driver is
     dcr_pg_trig_o     : out std_logic;
     dcr_update_i      : in  std_logic;
     dcr_upd_done_o    : out std_logic;
-    dcr_force_cp_i    : in  std_logic;
+    dcr_force_dly_i    : in  std_logic;
     dcr_pol_i         : in  std_logic;
     frr_i             : in  std_logic_vector(9 downto 0);
     u_start_i         : in  std_logic_vector(31 downto 0);
@@ -113,9 +113,9 @@ architecture behavioral of fd_delay_channel_driver is
   constant c_MODE_DELAY     : std_logic := '0';
   constant c_MODE_PULSE_GEN : std_logic := '1';
 
-  type t_fine_output_state is (IDLE, WAIT_ARB_START, WAIT_START_PULSE, WAIT_ARB_END, WAIT_PULSE_END, WAIT_ARB_START_CP, WAIT_PULSE_CP);
+  type t_fine_output_state is (IDLE, WAIT_ARB_START, WAIT_START_PULSE, WAIT_ARB_END, WAIT_PULSE_END, WAIT_ARB_START_CP);
 
-  signal state     : t_fine_output_state;
+  signal state : t_fine_output_state;
 
   
 
@@ -254,11 +254,19 @@ begin
       else
         if(dcr_enable_i = '0') then
 
-          if(state = WAIT_PULSE_CP) then
-            delay_pulse_o <= tdc_start_p1_i;
-          else
-            delay_pulse_o <= not dcr_pol_i;
-          end if;
+          --if(state = WAIT_PULSE_CP) then
+          --  if(tdc_start_p1_i = '1') then
+          --    delay_pulse_o <= dcr_pol_i;
+          --  end if;
+          --elsif(state = EXTEND_PULSE_CP) then
+          --  if(tdc_start_p1_i = '1') then
+          --    delay_pulse_o <= not dcr_pol_i;
+          --  end if;
+          --else
+          --  delay_pulse_o <= not dcr_pol_i;
+          --end if;
+
+          delay_pulse_o <= not dcr_pol_i xor gen_cal_i;
           
           pulse_pending <= '0';
         else
@@ -281,7 +289,7 @@ begin
   p_fine_fsm : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      if rst_n_i = '0'  then
+      if rst_n_i = '0' then
         state         <= IDLE;
         delay_load_o  <= '0';
         delay_value_o <= (others => '0');
@@ -291,6 +299,7 @@ begin
 
         hit_start_d0 <= hit_start;
 
+        
         case state is
           when IDLE =>
             rearm_p1_o <= '0';
@@ -299,10 +308,10 @@ begin
               delay_value_o <= std_logic_vector(st_delay_setpoint);
               delay_load_o  <= '1';
               state         <= WAIT_ARB_START;
-            elsif(dcr_force_cp_i = '1') then
+            elsif(dcr_force_dly_i = '1') then
               delay_value_o <= frr_i;
-              delay_load_o <= '1';
-              state <= WAIT_ARB_START_CP;
+              delay_load_o  <= '1';
+              state         <= WAIT_ARB_START_CP;
             end if;
 
           when WAIT_ARB_START =>
@@ -313,30 +322,41 @@ begin
 
           when WAIT_ARB_START_CP =>
             if(delay_load_done_i = '1') then
-              state        <= WAIT_PULSE_CP;
+              state        <= IDLE;
               delay_load_o <= '0';
             end if;
 
-          when WAIT_PULSE_CP =>
-            if(tdc_start_p1_i = '1') then
-              state <= IDLE;
-            end if;
+          --when WAIT_PULSE_CP =>
+          --  if(tdc_start_p1_i = '1') then
+          --    state <= EXTEND_PULSE_CP;
+          --  end if;
+
+          --when EXTEND_PULSE_CP =>
+          --  if(tdc_start_p1_i = '1') then
+          --    state <= IDLE;
+          --  end if;
 
           when WAIT_START_PULSE =>
-            if (hit_start_d0 = '1') then
+            if(dcr_enable_i = '0') then
+              state <= IDLE;
+              delay_load_o <= '0';
+            elsif (hit_start_d0 = '1') then
               state         <= WAIT_ARB_END;
               delay_value_o <= std_logic_vector(end_delay_setpoint);
               delay_load_o  <= '1';
             end if;
 
           when WAIT_ARB_END =>
-            if(delay_load_done_i = '1') then
+            if(dcr_enable_i = '0') then
+              state        <= IDLE;
+              delay_load_o <= '0';
+            elsif(delay_load_done_i = '1') then
               state        <= WAIT_PULSE_END;
               delay_load_o <= '0';
             end if;
 
           when WAIT_PULSE_END =>
-            if(hit_end = '1') then
+            if(hit_end = '1' or dcr_enable_i = '0') then
               rearm_p1_o <= '1';
               state      <= IDLE;
             end if;
