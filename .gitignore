@@ -4,7 +4,9 @@
 *.*~
 hdl/ip_cores/*
 modelsim.ini
-vsim.wlf
+*.wlf
+*.vstf
 work
 *.bak
 hdl/syn/spec_1_1/*
+transcript
