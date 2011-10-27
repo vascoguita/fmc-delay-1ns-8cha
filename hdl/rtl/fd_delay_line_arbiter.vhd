@@ -24,7 +24,7 @@ entity fd_delay_line_arbiter is
 end fd_delay_line_arbiter;
 
 architecture behavioral of fd_delay_line_arbiter is
-  signal arb_sreg : std_logic_vector(4*2 - 1 downto 0);
+  signal arb_sreg : std_logic_vector(4*3 - 1 downto 0);
 
   type t_dly_array is array (integer range <>) of std_logic_vector(9 downto 0);
 
@@ -47,22 +47,31 @@ begin  -- behavioral
       if rst_n_i = '0' then
         delay_len_reg <= (others => '1');
         delay_val_reg <= (others => '0');
-       -- done_reg      <= (others => '0');
-
-        arb_sreg <= std_logic_vector(to_unsigned(1, arb_sreg'length));
+        -- done_reg      <= (others => '0');
+        done_o        <= (others => '0');
+        arb_sreg      <= std_logic_vector(to_unsigned(1, arb_sreg'length));
       else
         arb_sreg <= arb_sreg(arb_sreg'left-1 downto 0) & arb_sreg(arb_sreg'left);
 
         for i in 0 to 3 loop
-          if(arb_sreg(2*i) = '1' and load_i(i) = '1') then
+          if(arb_sreg(3*i) = '1' and load_i(i) = '1') then
             delay_val_reg    <= delay_vec(i);
             delay_len_reg(i) <= '0';
+            done_o(i)        <= '1';
           end if;
 
 
-          if(arb_sreg(2*i+1) = '1' and load_i(i) = '1') then
+          if(arb_sreg(3*i+1) = '1') then
+            delay_val_reg <= delay_vec(i);
+--            delay_len_reg(i) <= '0';
+            done_o(i)     <= '0';
+          end if;
+
+
+          if(arb_sreg(3*i+2) = '1') then
             delay_val_reg    <= delay_vec(i);
             delay_len_reg(i) <= '1';
+            done_o(i)        <= '0';
           end if;
 
         end loop;  -- i in 0 to 3
@@ -74,9 +83,5 @@ begin  -- behavioral
     end if;
   end process;
 
-
-  gen_done: for i in 0 to 3 generate
-    done_o(i) <= arb_sreg(2*i+1) and load_i(i);
-  end generate gen_done;
   
 end behavioral;
