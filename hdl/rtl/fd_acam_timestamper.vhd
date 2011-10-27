@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2011-09-09
+-- Last update: 2011-10-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -27,8 +27,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.fd_wbgen2_pkg.all;             -- for Wishbone regs
-
-library work;
+use work.gencores_pkg.all;
 
 entity fd_acam_timestamper is
   generic(
@@ -174,14 +173,14 @@ architecture behavioral of fd_acam_timestamper is
   constant c_ACAM_TIMEOUT : integer := 60;
 
   -- states of the main ACAM FSM reading/writing data from/to the TDC
-  type t_acam_fsm_state is (IDLE, R_ADDR, R_PULSE, R_READ, W_DATA_ADDR, W_PULSE, W_WAIT,
+  type t_acam_fsm_state is (IDLE, R_ADDR, R_PULSE, R_READ, R_EXTEND_R_PULSE1, R_END_CYCLE, R_ADDR2, W_DATA_ADDR, W_PULSE, W_WAIT,
                             RMODE_PURGE_FIFO,
                             RMODE_PURGE_WAIT,
                             RMODE_PURGE_CHECK_EMPTY,
                             RMODE_READ,
                             RMODE_READ_PULSE,
                             RMODE_READ_PULSE2,
-                            R_EXTEND_R_PULSE,
+                            R_EXTEND_R_PULSE2,
                             RMODE_CHECK_WIDTH,
                             RMODE_MEASURE_WIDTH);
 
@@ -406,13 +405,7 @@ begin  -- behave
   p_gen_tdc_start_output : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      if rst_n_i = '0' then
-        tdc_start_p1_o <= '0';
-      elsif(start_count = x"e") then
-        tdc_start_p1_o <= '1';
-      else
-        tdc_start_p1_o <= '0';
-      end if;
+      tdc_start_p1_o <= tdc_start_d(1) and not tdc_start_d(2);
     end if;
   end process;
 
@@ -537,7 +530,7 @@ begin  -- behave
             raw_tag_valid <= '0';
             -- TDC controlled by the host
             if(regs_i.gcr_bypass_o = '1') then
-              acam_reset_int <= '0';
+              acam_reset_int <= regs_i.tdcsr_alutrig_o;
               tag_enable     <= '0';
 
 
@@ -691,22 +684,31 @@ begin  -- behave
           when R_ADDR =>
             acam_a_o    <= regs_i.tar_addr_o;
             acam_d_oe_o <= '0';
-            afsm_state  <= R_PULSE;
+            afsm_state  <= R_ADDR2;
+
+          when R_ADDR2 =>
+            afsm_state <= R_PULSE;
 
           when R_PULSE =>
             acam_cs_n_o <= '0';
             acam_rd_n_o <= '0';
-            afsm_state  <= R_EXTEND_R_PULSE;
+            afsm_state  <= R_EXTEND_R_PULSE1;
 
-          when R_EXTEND_R_PULSE =>
+          when R_EXTEND_R_PULSE1 =>
+            afsm_state <= R_EXTEND_R_PULSE2;
+
+          when R_EXTEND_R_PULSE2 =>
             afsm_state <= R_READ;
 
           when R_READ =>
-            acam_cs_n_o             <= '1';
-            acam_rd_n_o             <= '1';
             regs_out_int.tar_data_i <= acam_d_i;
-            afsm_state              <= IDLE;
+            afsm_state              <= R_END_CYCLE;
 
+          when R_END_CYCLE =>
+            acam_cs_n_o <= '1';
+            acam_rd_n_o <= '1';
+            afsm_state <= IDLE;
+            
           when others => null;
         end case;
       end if;
@@ -717,7 +719,14 @@ begin  -- behave
   dbg_o(1) <= trig_d(2);
   dbg_o(2) <= tag_valid_int;
 
-  acam_alutrigger_o <= acam_reset_int;
+  U_LED_Driver : gc_extend_pulse
+    generic map (
+      g_width => 3)
+    port map (
+      clk_i      => clk_ref_i,
+      rst_n_i    => rst_n_i,
+      pulse_i    => acam_reset_int,
+      extended_o => acam_alutrigger_o);
 
   U_Stat_Unit : fd_timestamper_stat_unit
     port map (
