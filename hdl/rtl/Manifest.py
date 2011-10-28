@@ -11,6 +11,8 @@ files = ["fd_acam_timestamper.vhd",
          "fd_delay_line_arbiter.vhd",
          "fd_rearm_generator.vhd",
          "fd_wishbone_slave.vhd",
+         "fd_spi_master.vhd",
+         "fd_spi_dac_arbiter.vhd",
          "fine_delay_pkg.vhd",
          "fine_delay_core.vhd"];
 

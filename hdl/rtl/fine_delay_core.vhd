@@ -95,12 +95,16 @@ entity fine_delay_core is
     delay_pulse_o : out std_logic_vector(3 downto 0);
 
     ---------------------------------------------------------------------------
-    -- WhiteRabbit time sync
+    -- WhiteRabbit time/frequency sync
     ---------------------------------------------------------------------------
 
-    wr_time_valid_i : in std_logic;
-    wr_coarse_i     : in std_logic_vector(27 downto 0);
-    wr_utc_i        : in std_logic_vector(31 downto 0);
+    tm_time_valid_i      : in  std_logic;
+    tm_cycles_i          : in  std_logic_vector(27 downto 0);
+    tm_utc_i             : in  std_logic_vector(39 downto 0);
+    tm_clk_aux_lock_en_o : out std_logic;
+    tm_clk_aux_locked_i  : in  std_logic;
+    tm_dac_value_i       : in  std_logic_vector(31 downto 0);
+    tm_dac_wr_i          : in  std_logic;
 
     ---------------------------------------------------------------------------
     -- Temeperature sensor (1-wire)
@@ -318,6 +322,24 @@ architecture rtl of fine_delay_core is
       rearm_p1_o   : out std_logic);
   end component;
 
+  component fd_spi_dac_arbiter
+    generic (
+      g_div_ratio_log2 : integer);
+    port (
+      clk_sys_i       : in  std_logic;
+      rst_n_i         : in  std_logic;
+      tm_dac_value_i  : in  std_logic_vector(31 downto 0);
+      tm_dac_wr_i     : in  std_logic;
+      spi_cs_dac_n_o  : out std_logic;
+      spi_cs_pll_n_o  : out std_logic;
+      spi_cs_gpio_n_o : out std_logic;
+      spi_sclk_o      : out std_logic;
+      spi_mosi_o      : out std_logic;
+      spi_miso_i      : in  std_logic;
+      regs_i          : in  t_fd_out_registers;
+      regs_o          : out t_fd_in_registers);
+  end component;
+  
   signal tag_frac   : std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
   signal tag_coarse : std_logic_vector(27 downto 0);
   signal tag_utc    : std_logic_vector(31 downto 0);
@@ -358,6 +380,7 @@ architecture rtl of fine_delay_core is
 
   signal regs_fromwb     : t_fd_out_registers;
   signal regs_towb_csync : t_fd_in_registers;
+  signal regs_towb_spi  : t_fd_in_registers;
   signal regs_towb_tsu   : t_fd_in_registers;
   signal regs_towb_rbuf  : t_fd_in_registers;
   signal regs_towb_local : t_fd_in_registers := c_fd_in_registers_init_value;
@@ -413,32 +436,56 @@ begin  -- rtl
     port map (
       clk_ref_i       => clk_ref_i,
       rst_n_i         => rst_n_ref,
-      wr_time_valid_i => wr_time_valid_i,
-      wr_utc_i        => wr_utc_i,
-      wr_coarse_i     => wr_coarse_i,
+      wr_time_valid_i => tm_time_valid_i,
+      wr_utc_i        => tm_utc_i(31 downto 0),
+      wr_coarse_i     => tm_cycles_i,
       csync_p1_o      => master_csync_p1,
       csync_utc_o     => master_csync_utc,
       csync_coarse_o  => master_csync_coarse,
       regs_i          => regs_fromwb,
       regs_o          => regs_towb_csync);
 
-  U_SPI_Master : xwb_spi
+  regs_towb_local.gcr_wr_locked_i <= tm_clk_aux_locked_i;
+  tm_clk_aux_lock_en_o <= regs_fromwb.gcr_wr_lock_en_o;
+  
+  --U_SPI_Master : xwb_spi
+  --  generic map (
+  --    g_interface_mode => CLASSIC)
+  --  port map (
+  --    clk_sys_i  => clk_sys_i,
+  --    rst_n_i    => rst_n_i,
+  --    slave_i    => fan_out(1),
+  --    slave_o    => fan_in(1),
+  --    pad_cs_o   => spi_cs_vec,
+  --    pad_sclk_o => spi_sclk_o,
+  --    pad_mosi_o => spi_mosi_o,
+  --    pad_miso_i => spi_miso_i);
+
+  --spi_cs_dac_n_o  <= spi_cs_vec(0);
+  --spi_cs_pll_n_o  <= spi_cs_vec(1);
+  --spi_cs_gpio_n_o <= spi_cs_vec(2);
+
+  fan_in(1).ack <= '1';
+  fan_in(1).err <= '0';
+  fan_in(1).rty <= '0';
+  
+  U_SPI_Arbiter: fd_spi_dac_arbiter
     generic map (
-      g_interface_mode => CLASSIC)
+      g_div_ratio_log2 => 10)
     port map (
-      clk_sys_i  => clk_sys_i,
-      rst_n_i    => rst_n_i,
-      slave_i    => fan_out(1),
-      slave_o    => fan_in(1),
-      pad_cs_o   => spi_cs_vec,
-      pad_sclk_o => spi_sclk_o,
-      pad_mosi_o => spi_mosi_o,
-      pad_miso_i => spi_miso_i);
-
-  spi_cs_dac_n_o  <= spi_cs_vec(0);
-  spi_cs_pll_n_o  <= spi_cs_vec(1);
-  spi_cs_gpio_n_o <= spi_cs_vec(2);
-
+      clk_sys_i       => clk_sys_i,
+      rst_n_i         => rst_n_sys,
+      tm_dac_value_i  => tm_dac_value_i,
+      tm_dac_wr_i     => tm_dac_wr_i,
+      spi_cs_dac_n_o  => spi_cs_dac_n_o,
+      spi_cs_pll_n_o  => spi_cs_pll_n_o,
+      spi_cs_gpio_n_o => spi_cs_gpio_n_o,
+      spi_sclk_o      => spi_sclk_o,
+      spi_mosi_o      => spi_mosi_o,
+      spi_miso_i      => spi_miso_i,
+      regs_i          => regs_fromwb,
+      regs_o          => regs_towb_spi);
+  
 
   U_Onewire : xwb_onewire_master
     generic map (
@@ -458,7 +505,7 @@ begin  -- rtl
   owr_int(0) <= owr_i;
 
 
-  regs_towb <= regs_towb_csync or regs_towb_tsu or regs_towb_rbuf or regs_towb_local;
+  regs_towb <= regs_towb_csync or regs_towb_tsu or regs_towb_rbuf or regs_towb_local or regs_towb_spi;
 
   U_Wishbone_Slave : fd_wishbone_slave
     port map (

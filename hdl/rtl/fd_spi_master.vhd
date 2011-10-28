@@ -2,14 +2,22 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.fd_wbgen2_pkg.all;
-use work.gencores_pkg.all;
-
 entity fd_spi_master is
-  
+  generic(
+    g_div_ratio_log2 : integer := 2);
   port (
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
+
+    start_i    : in  std_logic;
+    cpol_i     : in  std_logic;
+    data_i     : in  std_logic_vector(23 downto 0);
+    sel_dac_i  : in  std_logic;
+    sel_pll_i  : in  std_logic;
+    sel_gpio_i : in  std_logic;
+    ready_o    : out std_logic;
+    data_o     : out std_logic_vector(23 downto 0);
+
 
     -- chip select for VCTCXO DAC
     spi_cs_dac_n_o : out std_logic;
@@ -23,10 +31,7 @@ entity fd_spi_master is
     -- these are obvious
     spi_sclk_o : out std_logic;
     spi_mosi_o : out std_logic;
-    spi_miso_i : in  std_logic;
-
-    regs_i : in  t_fd_out_registers;
-    regs_o : out t_fd_in_registers 
+    spi_miso_i : in  std_logic
     );
 
 end fd_spi_master;
@@ -49,30 +54,20 @@ architecture behavioral of fd_spi_master is
   signal cs_sel_gpio : std_logic;
   signal cs_sel_pll  : std_logic;
 
-  signal data_in_reg  : std_logic_vector(23 downto 0);
+--  signal data_in_reg  : std_logic_vector(23 downto 0);
   signal data_out_reg : std_logic_vector(23 downto 0);
   
   
 begin  -- rtl
 
   
-  divider_muxed <= divider(1);           -- sclk = clk_i/64
+  divider_muxed <= divider(g_div_ratio_log2);  -- sclk = clk_i/64
 
-  iValidValue <= regs_i.scr_start_o;
-
-  process(clk_sys_i, rst_n_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if (rst_n_i = '0') then
-        data_in_reg <= (others => '0');
-      elsif(regs_i.scr_data_load_o = '1') then
-        data_in_reg <= regs_i.scr_data_o;
-      end if;
-    end if;
-  end process;
+  iValidValue <= start_i;
 
   process(clk_sys_i, rst_n_i)
   begin
+
     if rising_edge(clk_sys_i) then
       if rst_n_i = '0' then
         sendingData <= '0';
@@ -129,13 +124,13 @@ begin  -- rtl
       else
         if iValidValue = '1' and sendingData = '0' then
 
-          cs_sel_dac  <= regs_i.scr_sel_dac_o;
-          cs_sel_gpio <= regs_i.scr_sel_gpio_o;
-          cs_sel_pll  <= regs_i.scr_sel_pll_o;
+          cs_sel_dac  <= sel_dac_i;
+          cs_sel_gpio <= sel_gpio_i;
+          cs_sel_pll  <= sel_pll_i;
 
-          dataSh         <= data_in_reg;
+          dataSh <= data_i;                            --data_in_reg;
         elsif sendingData = '1' and divider_muxed = '1' and iDacClk = '0' then
-          dataSh(0)                    <= spi_miso_i; --dataSh(dataSh'left);
+          dataSh(0)                    <= spi_miso_i;  --dataSh(dataSh'left);
           dataSh(dataSh'left downto 1) <= dataSh(dataSh'left - 1 downto 0);
 
 
@@ -159,8 +154,8 @@ begin  -- rtl
 
   endSendingData <= bitCounter(bitCounter'left);
 
-  regs_o.scr_ready_i <= not SendingData;
-  regs_o.scr_data_i <= dataSh;
+  ready_o <= not SendingData;
+  data_o  <= dataSh;
 
   spi_mosi_o <= dataSh(dataSh'left);
 
@@ -168,9 +163,9 @@ begin  -- rtl
   spi_cs_dac_n_o  <= not(sendingData) or (not cs_sel_dac);
   spi_cs_gpio_n_o <= not(sendingData) or (not cs_sel_gpio);
 
-  p_drive_sclk : process(iDacClk, regs_i)
+  p_drive_sclk : process(iDacClk, cpol_i)
   begin
-    if(regs_i.scr_cpol_o = '0') then
+    if(cpol_i = '0') then
       spi_sclk_o <= (iDacClk);
     else
       spi_sclk_o <= not (iDacClk);

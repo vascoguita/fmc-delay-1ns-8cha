@@ -85,10 +85,30 @@ peripheral {
          read 0: WR time code input is invalid. Can't do sounter sync for the moment.";
          prefix = "WR_READY";
          type = BIT;
-         clock = "clk_ref_i";
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+
+      field {
+         name = "White Rabbit Locking Enable";
+         description = "write 1: enable locking of the local oscillator to the WR clock.";
+         prefix = "WR_LOCK_EN";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+      field {
+         name = "White Rabbit Oscillator Locked";
+         description = "read 1: LO is locked to WR\n 0: LO not locked of free running.";
+         prefix = "WR_LOCKED";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+
+
    };
 
    reg {
@@ -349,75 +369,74 @@ peripheral {
       };
    };
 
-   -- reg {
-   --    name = "SPI Control Register";
-   --    prefix = "SCR";
-   --    description = "Single control register for the SPI Controller, allowing for single-cycle (non-waiting) updates of the DAC, GPIO & PLL.";
-
-   --    field {
-   --       name = "Data";
-   --       prefix = "DATA";
-   --       size = 24;
-   --       description = "Data to be read/written from/to the SPI bus";
-   --       type = SLV;
-   --       load = LOAD_EXT;
-   --       access_dev = READ_WRITE;
-   --       access_bus = READ_WRITE;
-   --    };
+    reg {
+       name = "SPI Control Register";
+       prefix = "SCR";
+       description = "Single control register for the SPI Controller, allowing for single-cycle (non-waiting) updates of the DAC, GPIO & PLL.";
+       field {
+          name = "Data";
+          prefix = "DATA";
+          size = 24;
+          description = "Data to be read/written from/to the SPI bus";
+          type = SLV;
+          load = LOAD_EXT;
+          access_dev = READ_WRITE;
+          access_bus = READ_WRITE;
+       };
    
-   --    field {
-   --       name = "Select DAC";
-   --       prefix = "SEL_DAC";
-   --       type = BIT;
-   --       description = "write 1: selects the DAC as the target peripheral of the transfer";
-   --       access_bus = READ_WRITE;
-   --       access_dev = READ_ONLY;
-   --    };
-   --    field {
-   --       name = "Select PLL";
-   --       prefix = "SEL_PLL";
-   --       type = BIT;
-   --       description = "write 1: selects the AD9516 PLL as the target peripheral of the transfer";
-   --       access_bus = READ_WRITE;
-   --       access_dev = READ_ONLY;
-   --    };
-   --    field {
-   --       name = "Select GPIO";
-   --       prefix = "SEL_GPIO";
-   --       type = BIT;
-   --       description = "write 1: selects the MCP23S17 GPIO as the target peripheral of the transfer";
-   --       access_bus = READ_WRITE;
-   --       access_dev = READ_ONLY;
-   --    };
+       field {
+          name = "Select DAC";
+          prefix = "SEL_DAC";
+          type = BIT;
+          description = "write 1: selects the DAC as the target peripheral of the transfer";
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
+       field {
+          name = "Select PLL";
+          prefix = "SEL_PLL";
+          type = BIT;
+          description = "write 1: selects the AD9516 PLL as the target peripheral of the transfer";
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
+       field {
+          name = "Select GPIO";
+          prefix = "SEL_GPIO";
+          type = BIT;
+          description = "write 1: selects the MCP23S17 GPIO as the target peripheral of the transfer";
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
 
-   --    field {
-   --       name = "Ready flag";
-   --       prefix = "READY";
-   --       type = BIT;
-   --       description = "read 0: SPI controller is busy performing a transfer\
-   --       read 1: SPI controller has finished its previous transfer. Read-back data is available in the DATA field";
-   --       access_bus = READ_ONLY;
-   --       access_dev = WRITE_ONLY;
-   --    };
+       field {
+          name = "Ready flag";
+          prefix = "READY";
+          type = BIT;
+          description = "read 0: SPI controller is busy performing a transfer\
+          read 1: SPI controller has finished its previous transfer. Read-back data is available in the DATA field";
+          access_bus = READ_ONLY;
+          access_dev = WRITE_ONLY;
+       };
 
-   --    field {
-   --       name = "Clock Polarity";
-   --       description = "0: SPI clock is not inverted\
-   --                      1: SPI clock is inverted";
-   --       prefix = "CPOL";
-   --       type = BIT;
-   --       access_bus = READ_WRITE;
-   --       access_dev = READ_ONLY;
-   --    };
+       field {
+          name = "Clock Polarity";
+          description = "0: SPI clock is not inverted\
+                         1: SPI clock is inverted";
+          prefix = "CPOL";
+          type = BIT;
+          access_bus = READ_WRITE;
+          access_dev = READ_ONLY;
+       };
 
-   --    field {
-   --       name = "Transfer Start";
-   --       prefix = "START";
-   --       type = MONOSTABLE;
-   --       description = "write 1: Starts transfer to the selected peripheral\
-   --       write 0: no effect";
-   --    };
-   -- };
+       field {
+          name = "Transfer Start";
+          prefix = "START";
+          type = MONOSTABLE;
+          description = "write 1: Starts transfer to the selected peripheral\
+          write 0: no effect";
+       };
+    };
 
 
    reg {
