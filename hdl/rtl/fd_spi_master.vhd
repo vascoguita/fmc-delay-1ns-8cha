@@ -40,137 +40,110 @@ architecture behavioral of fd_spi_master is
 
   signal busy : std_logic;
 
-  signal divider        : unsigned(11 downto 0);
-  signal dataSh         : std_logic_vector(23 downto 0);
-  signal bitCounter     : std_logic_vector(25 downto 0);
-  signal endSendingData : std_logic;
-  signal sendingData    : std_logic;
-  signal iDacClk        : std_logic;
-  signal iValidValue    : std_logic;
-
+  signal divider       : unsigned(11 downto 0);
   signal divider_muxed : std_logic;
 
-  signal cs_sel_dac  : std_logic;
-  signal cs_sel_gpio : std_logic;
-  signal cs_sel_pll  : std_logic;
+  signal sreg    : std_logic_vector(23 downto 0);
+  signal rx_sreg : std_logic_vector(23 downto 0);
 
---  signal data_in_reg  : std_logic_vector(23 downto 0);
-  signal data_out_reg : std_logic_vector(23 downto 0);
-  
+  type t_state is (IDLE, TX_CS, TX_SCK1, TX_SCK2, TX_CS2, TX_GAP);
+  signal state : t_state;
+  signal sclk  : std_logic;
+
+  signal counter : unsigned(4 downto 0);
   
 begin  -- rtl
-
-  
-  divider_muxed <= divider(g_div_ratio_log2);  -- sclk = clk_i/64
-
-  iValidValue <= start_i;
-
-  process(clk_sys_i, rst_n_i)
-  begin
-
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
-        sendingData <= '0';
-      else
-        if iValidValue = '1' and sendingData = '0' then
-          sendingData <= '1';
-        elsif endSendingData = '1' then
-          sendingData <= '0';
-        end if;
-      end if;
-    end if;
-  end process;
 
   process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if iValidValue = '1' then
+      if rst_n_i = '0' then
         divider <= (others => '0');
-      elsif sendingData = '1' then
-        if(divider_muxed = '1') then
+      else
+        if(start_i = '1' or divider_muxed = '1') then
           divider <= (others => '0');
         else
           divider <= divider + 1;
         end if;
-      elsif endSendingData = '1' then
-        divider <= (others => '0');
       end if;
     end if;
   end process;
 
+  divider_muxed <= divider(g_div_ratio_log2);  -- sclk = clk_i/64
 
-  process(clk_sys_i, rst_n_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
-        iDacClk <= '1';                 -- 0
-      else
-        if iValidValue = '1' then
-          iDacClk <= '1';               -- 0
-        elsif divider_muxed = '1' then
-          iDacClk <= not(iDacClk);
-        elsif endSendingData = '1' then
-          iDacClk <= '1';               -- 0
-        end if;
-      end if;
-    end if;
-  end process;
-
-  process(clk_sys_i, rst_n_i)
-  begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
-        dataSh <= (others => '0');
-      else
-        if iValidValue = '1' and sendingData = '0' then
-
-          cs_sel_dac  <= sel_dac_i;
-          cs_sel_gpio <= sel_gpio_i;
-          cs_sel_pll  <= sel_pll_i;
-
-          dataSh <= data_i;                            --data_in_reg;
-        elsif sendingData = '1' and divider_muxed = '1' and iDacClk = '0' then
-          dataSh(0)                    <= spi_miso_i;  --dataSh(dataSh'left);
-          dataSh(dataSh'left downto 1) <= dataSh(dataSh'left - 1 downto 0);
-
-
-        end if;
-      end if;
-    end if;
-  end process;
 
   process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if iValidValue = '1' and sendingData = '0' then
-        bitCounter(0)                        <= '1';
-        bitCounter(bitCounter'left downto 1) <= (others => '0');
-      elsif sendingData = '1' and to_integer(divider) = 0 and iDacClk = '1' then
-        bitCounter(0)                        <= '0';
-        bitCounter(bitCounter'left downto 1) <= bitCounter(bitCounter'left - 1 downto 0);
+      if rst_n_i = '0' then
+        state           <= IDLE;
+        sclk            <= '0';
+        spi_cs_gpio_n_o <= '1';
+        spi_cs_pll_n_o  <= '1';
+        spi_cs_dac_n_o  <= '1';
+        sreg            <= (others => '0');
+        rx_sreg         <= (others => '0');
+        spi_mosi_o      <= '0';
+        counter         <= (others => '0');
+      else
+        case state is
+          when IDLE =>
+            sclk    <= '1';
+            counter <= (others => '0');
+            if(start_i = '1') then
+              sreg            <= data_i;
+              state           <= TX_CS;
+              spi_cs_dac_n_o  <= not sel_dac_i;
+              spi_cs_pll_n_o  <= not sel_pll_i;
+              spi_cs_gpio_n_o <= not sel_gpio_i;
+              spi_mosi_o <= data_i(sreg'high);
+            end if;
+
+          when TX_CS =>
+            if divider_muxed = '1' then
+              state <= TX_SCK1;
+            end if;
+
+          when TX_SCK1 =>
+            if(divider_muxed = '1') then
+              sclk       <= not sclk;
+              spi_mosi_o <= sreg(sreg'high);
+              sreg       <= sreg(sreg'high-1 downto 0) & '0';
+              counter    <= counter + 1;
+              state      <= TX_SCK2;
+            end if;
+
+          when TX_SCK2 =>
+            if(divider_muxed = '1') then
+              sclk    <= not sclk;
+              rx_sreg <= rx_sreg(rx_sreg'high-1 downto 0) & spi_miso_i;
+              if(counter = 24) then
+                state <= TX_CS2;
+              else
+                state <= TX_SCK1;
+              end if;
+            end if;
+
+          when TX_CS2 =>
+            if(divider_muxed = '1') then
+              state           <= TX_GAP;
+              spi_cs_gpio_n_o <= '1';
+              spi_cs_pll_n_o  <= '1';
+              spi_cs_dac_n_o  <= '1';
+              data_o          <= rx_sreg;
+            end if;
+
+          when TX_GAP =>
+            if (divider_muxed = '1') then
+              state <= IDLE;
+            end if;
+        end case;
       end if;
     end if;
   end process;
 
-  endSendingData <= bitCounter(bitCounter'left);
-
-  ready_o <= not SendingData;
-  data_o  <= dataSh;
-
-  spi_mosi_o <= dataSh(dataSh'left);
-
-  spi_cs_pll_n_o  <= not(sendingData) or (not cs_sel_pll);
-  spi_cs_dac_n_o  <= not(sendingData) or (not cs_sel_dac);
-  spi_cs_gpio_n_o <= not(sendingData) or (not cs_sel_gpio);
-
-  p_drive_sclk : process(iDacClk, cpol_i)
-  begin
-    if(cpol_i = '0') then
-      spi_sclk_o <= (iDacClk);
-    else
-      spi_sclk_o <= not (iDacClk);
-    end if;
-  end process;
-
+  ready_o    <= '1' when state = IDLE else '0';
+  spi_sclk_o <= sclk xor cpol_i;
+  
 end behavioral;
 

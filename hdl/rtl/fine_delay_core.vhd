@@ -103,7 +103,7 @@ entity fine_delay_core is
     tm_utc_i             : in  std_logic_vector(39 downto 0);
     tm_clk_aux_lock_en_o : out std_logic;
     tm_clk_aux_locked_i  : in  std_logic;
-    tm_dac_value_i       : in  std_logic_vector(31 downto 0);
+    tm_dac_value_i       : in  std_logic_vector(23 downto 0);
     tm_dac_wr_i          : in  std_logic;
 
     ---------------------------------------------------------------------------
@@ -112,6 +112,14 @@ entity fine_delay_core is
 
     owr_en_o : out std_logic;
     owr_i    : in  std_logic;
+
+    i2c_scl_o     : out std_logic;
+    i2c_scl_oen_o : out std_logic;
+    i2c_scl_i     : in  std_logic;
+    i2c_sda_o     : out std_logic;
+    i2c_sda_oen_o : out std_logic;
+    i2c_sda_i     : in  std_logic;
+
 
     ---------------------------------------------------------------------------
     -- Wishbone (classic)
@@ -339,7 +347,7 @@ architecture rtl of fine_delay_core is
       regs_i          : in  t_fd_out_registers;
       regs_o          : out t_fd_in_registers);
   end component;
-  
+
   signal tag_frac   : std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
   signal tag_coarse : std_logic_vector(27 downto 0);
   signal tag_utc    : std_logic_vector(31 downto 0);
@@ -380,7 +388,7 @@ architecture rtl of fine_delay_core is
 
   signal regs_fromwb     : t_fd_out_registers;
   signal regs_towb_csync : t_fd_in_registers;
-  signal regs_towb_spi  : t_fd_in_registers;
+  signal regs_towb_spi   : t_fd_in_registers;
   signal regs_towb_tsu   : t_fd_in_registers;
   signal regs_towb_rbuf  : t_fd_in_registers;
   signal regs_towb_local : t_fd_in_registers := c_fd_in_registers_init_value;
@@ -395,6 +403,9 @@ architecture rtl of fine_delay_core is
   signal gen_cal_pulse     : std_logic_vector(3 downto 0);
   signal cal_pulse_mask    : std_logic_vector(3 downto 0);
   signal cal_pulse_trigger : std_logic;
+
+signal tm_dac_val_int : std_logic_vector(31 downto 0);
+  
   
 begin  -- rtl
 
@@ -408,6 +419,7 @@ begin  -- rtl
   wb_ack_o <= wb_out.ack;
   wb_dat_o <= wb_out.dat;
 
+  tm_dac_val_int <= x"00" & tm_dac_value_i;
 
   U_WB_Fanout : xwb_bus_fanout
     generic map (
@@ -446,36 +458,31 @@ begin  -- rtl
       regs_o          => regs_towb_csync);
 
   regs_towb_local.gcr_wr_locked_i <= tm_clk_aux_locked_i;
-  tm_clk_aux_lock_en_o <= regs_fromwb.gcr_wr_lock_en_o;
-  
-  --U_SPI_Master : xwb_spi
-  --  generic map (
-  --    g_interface_mode => CLASSIC)
-  --  port map (
-  --    clk_sys_i  => clk_sys_i,
-  --    rst_n_i    => rst_n_i,
-  --    slave_i    => fan_out(1),
-  --    slave_o    => fan_in(1),
-  --    pad_cs_o   => spi_cs_vec,
-  --    pad_sclk_o => spi_sclk_o,
-  --    pad_mosi_o => spi_mosi_o,
-  --    pad_miso_i => spi_miso_i);
+  tm_clk_aux_lock_en_o            <= regs_fromwb.gcr_wr_lock_en_o;
 
-  --spi_cs_dac_n_o  <= spi_cs_vec(0);
-  --spi_cs_pll_n_o  <= spi_cs_vec(1);
-  --spi_cs_gpio_n_o <= spi_cs_vec(2);
-
-  fan_in(1).ack <= '1';
-  fan_in(1).err <= '0';
-  fan_in(1).rty <= '0';
-  
-  U_SPI_Arbiter: fd_spi_dac_arbiter
+  U_I2C_Master : xwb_i2c_master
     generic map (
-      g_div_ratio_log2 => 10)
+      g_interface_mode => CLASSIC)
+    port map (
+      clk_sys_i    => clk_sys_i,
+      rst_n_i      => rst_n_i,
+      slave_i      => fan_out(1),
+      slave_o      => fan_in(1),
+      scl_pad_o    => i2c_scl_o,
+      scl_padoen_o => i2c_scl_oen_o,
+      scl_pad_i    => i2c_scl_i,
+      sda_pad_o    => i2c_sda_o,
+      sda_padoen_o => i2c_sda_oen_o,
+      sda_pad_i    => i2c_sda_i);
+
+
+  U_SPI_Arbiter : fd_spi_dac_arbiter
+    generic map (
+      g_div_ratio_log2 => 4)
     port map (
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_sys,
-      tm_dac_value_i  => tm_dac_value_i,
+      tm_dac_value_i  => tm_dac_val_int,
       tm_dac_wr_i     => tm_dac_wr_i,
       spi_cs_dac_n_o  => spi_cs_dac_n_o,
       spi_cs_pll_n_o  => spi_cs_pll_n_o,
@@ -485,7 +492,7 @@ begin  -- rtl
       spi_miso_i      => spi_miso_i,
       regs_i          => regs_fromwb,
       regs_o          => regs_towb_spi);
-  
+
 
   U_Onewire : xwb_onewire_master
     generic map (

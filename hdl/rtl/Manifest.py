@@ -20,7 +20,6 @@ fetchto = "../ip_cores"
 
 modules = {
     "git" :  [
-        "git@ohwr.org:hdl-core-lib/wr-cores.git",
-        "git@ohwr.org:hdl-core-lib/general-cores.git" ],
+        "git@ohwr.org:hdl-core-lib/general-cores.git::wishbone_with_adapter" ],
     "svn" : [ "http://svn.ohwr.org/gn4124-core/branches/hdlmake-compliant/rtl" ]
  };

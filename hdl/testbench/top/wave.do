@@ -4,11 +4,6 @@ add wave -noupdate /main/DUT/clk_ref_i
 add wave -noupdate /main/DUT/clk_sys_i
 add wave -noupdate /main/DUT/rst_n_i
 add wave -noupdate /main/DUT/trig_a_n_i
-add wave -noupdate /main/DUT/delay_pulse_o(0)
-add wave -noupdate /main/DUT/chx_rearm
-add wave -noupdate -expand /main/DUT/U_Acam_TSU/trig_d
-add wave -noupdate /main/DUT/U_Acam_TSU/trig_pulse
-add wave -noupdate /main/DUT/U_Acam_TSU/tag_enable
 add wave -noupdate /main/DUT/trig_cal_o
 add wave -noupdate /main/DUT/tdc_start_i
 add wave -noupdate /main/DUT/led_trig_o
@@ -33,7 +28,7 @@ add wave -noupdate /main/DUT/spi_mosi_o
 add wave -noupdate /main/DUT/spi_miso_i
 add wave -noupdate /main/DUT/delay_len_o
 add wave -noupdate /main/DUT/delay_val_o
-add wave -noupdate -expand /main/DUT/delay_pulse_o
+add wave -noupdate /main/DUT/delay_pulse_o
 add wave -noupdate /main/DUT/wr_time_valid_i
 add wave -noupdate /main/DUT/wr_coarse_i
 add wave -noupdate /main/DUT/wr_utc_i
@@ -66,6 +61,7 @@ add wave -noupdate /main/DUT/tdc_rearm_p1
 add wave -noupdate /main/DUT/tdc_start_p1
 add wave -noupdate /main/DUT/dcr_enable_vec
 add wave -noupdate /main/DUT/dcr_mode_vec
+add wave -noupdate /main/DUT/chx_rearm
 add wave -noupdate /main/DUT/chx_delay_pulse
 add wave -noupdate /main/DUT/chx_delay_value
 add wave -noupdate /main/DUT/chx_delay_load
@@ -83,8 +79,10 @@ add wave -noupdate /main/DUT/regs_towb
 add wave -noupdate /main/DUT/spi_cs_vec
 add wave -noupdate /main/DUT/owr_en_int
 add wave -noupdate /main/DUT/owr_int
+add wave -noupdate /main/DUT/dbg
+add wave -noupdate /main/DUT/gen_cal_pulse
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {8140001510 fs} 0}
+WaveRestoreCursors {{Cursor 1} {3716002840 fs} 0}
 configure wave -namecolwidth 413
 configure wave -valuecolwidth 100
 configure wave -justifyvalue left
@@ -99,4 +97,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 fs} {16800 ns}
+WaveRestoreZoom {3191002840 fs} {4241002840 fs}

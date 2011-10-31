@@ -217,7 +217,9 @@ class CSimDrv_FineDelay;
 
    task force_cal_pulse(int channel, int delay_setpoint);
       m_acc.write(`ADDR_FD_FRR1 + (channel * 'h20), delay_setpoint);
-      m_acc.write(`ADDR_FD_DCR1 + (channel * 'h20), `FD_DCR1_FORCE_CP | `FD_DCR1_POL);
+      m_acc.write(`ADDR_FD_DCR1 + (channel * 'h20), `FD_DCR1_FORCE_DLY | `FD_DCR1_POL);
+      m_acc.write(`ADDR_FD_TDCSR, `FD_TDCSR_CAL_PULSE);
+      
    endtask // force_cal_pulse
    
 endclass // CSimDrv_FineDelay
@@ -540,12 +542,12 @@ module main;
       fd_drv  = new(wb);
       fd_drv.init();
       
-      fd_drv.config_output(0,1, 1000000, 200000);
+//      fd_drv.config_output(0,1, 1000000, 200000);
       // fd_drv.config_output(1,1, 1100500, 200000);
       //  fd_drv.config_output(2,1, 1100900, 200000);
       // fd_drv.config_output(3,1, 1110100, 200000);
 
-//      fd_drv.force_cal_pulse(0, 100);
+      fd_drv.force_cal_pulse(0, 100);
   //    #(320ns);
     //  fd_drv.force_cal_pulse(0, 200);
 

@@ -96,6 +96,7 @@ entity spec_top is
       fd_delay_val_o      : out   std_logic_vector(9 downto 0);
       fd_delay_pulse_o    : out   std_logic_vector(3 downto 0);
 
+
       fmc_scl_b : inout std_logic;
       fmc_sda_b : inout std_logic;
       onewire_b : inout std_logic
@@ -320,48 +321,58 @@ architecture rtl of spec_top is
 
   component fine_delay_core
     port (
-      clk_ref_i         : in  std_logic;
-      clk_sys_i         : in  std_logic;
-      rst_n_i           : in  std_logic;
-      trig_a_n_i        : in  std_logic;
-      trig_cal_o        : out std_logic;
-      tdc_start_i       : in  std_logic;
-      acam_a_o          : out std_logic_vector(3 downto 0);
-      acam_d_o          : out std_logic_vector(27 downto 0);
-      acam_d_i          : in  std_logic_vector(27 downto 0);
-      acam_d_oen_o      : out std_logic;
-      acam_err_i        : in  std_logic;
-      acam_int_i        : in  std_logic;
-      acam_emptyf_i     : in  std_logic;
-      acam_alutrigger_o : out std_logic;
-      acam_cs_n_o       : out std_logic;
-      acam_wr_n_o       : out std_logic;
-      acam_rd_n_o       : out std_logic;
-      acam_start_dis_o  : out std_logic;
-      acam_stop_dis_o   : out std_logic;
-      led_trig_o        : out std_logic;
-      spi_cs_dac_n_o    : out std_logic;
-      spi_cs_pll_n_o    : out std_logic;
-      spi_cs_gpio_n_o   : out std_logic;
-      spi_sclk_o        : out std_logic;
-      spi_mosi_o        : out std_logic;
-      spi_miso_i        : in  std_logic;
-      delay_len_o       : out std_logic_vector(3 downto 0);
-      delay_val_o       : out std_logic_vector(9 downto 0);
-      delay_pulse_o     : out std_logic_vector(3 downto 0);
-      owr_en_o          : out std_logic;
-      owr_i             : in  std_logic;
-      wr_time_valid_i   : in  std_logic;
-      wr_coarse_i       : in  std_logic_vector(27 downto 0);
-      wr_utc_i          : in  std_logic_vector(31 downto 0);
-      wb_adr_i          : in  std_logic_vector(7 downto 0);
-      wb_dat_i          : in  std_logic_vector(31 downto 0);
-      wb_dat_o          : out std_logic_vector(31 downto 0);
-      wb_cyc_i          : in  std_logic;
-      wb_stb_i          : in  std_logic;
-      wb_we_i           : in  std_logic;
-      wb_ack_o          : out std_logic;
-      wb_irq_o          : out std_logic);
+      clk_ref_i            : in  std_logic;
+      clk_sys_i            : in  std_logic;
+      rst_n_i              : in  std_logic;
+      trig_a_n_i           : in  std_logic;
+      trig_cal_o           : out std_logic;
+      tdc_start_i          : in  std_logic;
+      acam_a_o             : out std_logic_vector(3 downto 0);
+      acam_d_o             : out std_logic_vector(27 downto 0);
+      acam_d_i             : in  std_logic_vector(27 downto 0);
+      acam_d_oen_o         : out std_logic;
+      acam_err_i           : in  std_logic;
+      acam_int_i           : in  std_logic;
+      acam_emptyf_i        : in  std_logic;
+      acam_alutrigger_o    : out std_logic;
+      acam_cs_n_o          : out std_logic;
+      acam_wr_n_o          : out std_logic;
+      acam_rd_n_o          : out std_logic;
+      acam_start_dis_o     : out std_logic;
+      acam_stop_dis_o      : out std_logic;
+      led_trig_o           : out std_logic;
+      spi_cs_dac_n_o       : out std_logic;
+      spi_cs_pll_n_o       : out std_logic;
+      spi_cs_gpio_n_o      : out std_logic;
+      spi_sclk_o           : out std_logic;
+      spi_mosi_o           : out std_logic;
+      spi_miso_i           : in  std_logic;
+      delay_len_o          : out std_logic_vector(3 downto 0);
+      delay_val_o          : out std_logic_vector(9 downto 0);
+      delay_pulse_o        : out std_logic_vector(3 downto 0);
+      owr_en_o             : out std_logic;
+      owr_i                : in  std_logic;
+      tm_time_valid_i      : in  std_logic                     := '0';
+      tm_cycles_i          : in  std_logic_vector(27 downto 0) := x"0000000";
+      tm_utc_i             : in  std_logic_vector(39 downto 0) := x"0000000000";
+      tm_clk_aux_lock_en_o : out std_logic;
+      tm_clk_aux_locked_i  : in  std_logic                     := '0';
+      tm_dac_value_i       : in  std_logic_vector(23 downto 0) := x"000000";
+      tm_dac_wr_i          : in  std_logic                     := '0';
+      i2c_scl_o            : out std_logic;
+      i2c_scl_oen_o        : out std_logic;
+      i2c_scl_i            : in  std_logic;
+      i2c_sda_o            : out std_logic;
+      i2c_sda_oen_o        : out std_logic;
+      i2c_sda_i            : in  std_logic;
+      wb_adr_i             : in  std_logic_vector(7 downto 0);
+      wb_dat_i             : in  std_logic_vector(31 downto 0);
+      wb_dat_o             : out std_logic_vector(31 downto 0);
+      wb_cyc_i             : in  std_logic;
+      wb_stb_i             : in  std_logic;
+      wb_we_i              : in  std_logic;
+      wb_ack_o             : out std_logic;
+      wb_irq_o             : out std_logic);
   end component;
 
   signal rst_n : std_logic;
@@ -590,7 +601,6 @@ begin
     end if;
   end process;
 
-  --fd_tdc_oe_n_o <= '1';
 
 
 
@@ -630,35 +640,19 @@ begin
       master_o  => cnx_out);  
 
   cnx_in(2).int <= '0';
-  cnx_in(2).ack <= '0';
+  cnx_in(2).ack <= '1';
   cnx_in(2).rty <= '0';
   cnx_in(2).err <= '0';
 
 
+  cnx_in(0).int <= '0';
+  cnx_in(0).ack <= '1';
+  cnx_in(0).rty <= '0';
+  cnx_in(0).err <= '0';
 
-  U_I2C : xwb_i2c_master
-    generic map (
-      g_interface_mode => CLASSIC)
-
-    port map (
-      clk_sys_i    => clk_sys,
-      rst_n_i      => rst_n,
-      slave_i      => cnx_out(0),
-      slave_o      => cnx_in(0),
-      desc_o       => open,
-      scl_pad_i    => scl_pad_in,
-      scl_pad_o    => scl_pad_out,
-      scl_padoen_o => scl_pad_oen,
-      sda_pad_i    => sda_pad_in,
-      sda_pad_o    => sda_pad_out,
-      sda_padoen_o => sda_pad_oen);
 
   fmc_scl_b  <= scl_pad_out when scl_pad_oen = '0' else 'Z';
   fmc_sda_b  <= sda_pad_out when sda_pad_oen = '0' else 'Z';
-  scl_pad_in <= fmc_scl_b;
-  sda_pad_in <= fmc_sda_b;
-
-
 
   U_DELAY_CORE : fine_delay_core
     port map (
@@ -682,9 +676,7 @@ begin
       acam_rd_n_o       => fd_tdc_rd_n_o,
       acam_start_dis_o  => fd_tdc_start_dis_o,
       acam_stop_dis_o   => fd_tdc_stop_dis_o,
-      wr_time_valid_i   => '0',
-      wr_utc_i          => x"00000000",
-      wr_coarse_i       => x"0000000",
+      tm_time_valid_i=>'0',
       spi_cs_dac_n_o    => fd_spi_cs_dac_n_o,
       spi_cs_pll_n_o    => fd_spi_cs_pll_n_o,
       spi_cs_gpio_n_o   => fd_spi_cs_gpio_n_o,
@@ -694,6 +686,12 @@ begin
       delay_len_o       => fd_delay_len_o,
       delay_val_o       => fd_delay_val_o,
       delay_pulse_o     => fd_delay_pulse_o,
+      i2c_scl_i         => fmc_scl_b,
+      i2c_scl_o         => scl_pad_out,
+      i2c_scl_oen_o     => scl_pad_oen,
+      i2c_sda_i         => fmc_sda_b,
+      i2c_sda_o         => sda_pad_out,
+      i2c_sda_oen_o     => sda_pad_oen,
       owr_i             => onewire_b,
       owr_en_o          => onewire_en,
       wb_adr_i          => cnx_out(1).adr(7 downto 0),

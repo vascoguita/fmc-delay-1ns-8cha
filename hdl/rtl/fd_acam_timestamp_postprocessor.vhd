@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2011-10-20
+-- Last update: 2011-10-31
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -96,7 +96,7 @@ architecture behavioral of fd_acam_timestamp_postprocessor is
   -- timestamp
   constant c_SCALER_SHIFT : integer := 12;
 
-  signal pp_pipe : std_logic_vector(3 downto 0);
+  signal pp_pipe : std_logic_vector(4 downto 0);
 
   signal post_tag_coarse         : unsigned(27 downto 0);
   signal post_tag_frac           : unsigned(g_frac_bits-1 downto 0);
@@ -159,28 +159,31 @@ begin  -- behavioral
 -- rescale the fractional part to our internal time base 
 
         pp_pipe(2)           <= pp_pipe(1);
-        --post_frac_multiplied <= resize(signed(post_frac_start_adj) * signed(regs_i.adsfr_o), post_frac_multiplied'length);
---        post_frac_multiplied_d0 <= post_frac_multiplied;
 
         post_frac_multiplied <= resize(signed(post_frac_start_adj) * adsfr_d0, post_frac_multiplied'length);
 
+-- pipeline stage 4: pass the multiplication result through another register
+-- (timing improvement)
+
+        pp_pipe(3) <= pp_pipe(2);
+        post_frac_multiplied_d0 <= post_frac_multiplied;
         
 -- pipeline stage 4:
 -- - split the rescaled fractional part into the (mod 4096) tag_frac_o and add
 -- the rest to the coarse part, along with the start-to-timescale offset
 
-        pp_pipe(3) <= pp_pipe(2);
+        pp_pipe(4) <= pp_pipe(3);
 
         tag_utc_o <= std_logic_vector(post_tag_utc);
         tag_coarse_o <= std_logic_vector(
           signed(post_tag_coarse)       -- index of start pulse (mod 16 = 0)
           + signed(acam_subcycle_offset_i)  -- start-to-timescale offset
-          + signed(post_frac_multiplied(post_frac_multiplied'left downto c_SCALER_SHIFT + g_frac_bits))); 
+          + signed(post_frac_multiplied_d0(post_frac_multiplied_d0'left downto c_SCALER_SHIFT + g_frac_bits))); 
         -- extra coarse counts from ACAM's frac part after rescaling
 
-        tag_frac_o <= std_logic_vector(post_frac_multiplied(c_SCALER_SHIFT + g_frac_bits-1 downto c_SCALER_SHIFT));
+        tag_frac_o <= std_logic_vector(post_frac_multiplied_d0(c_SCALER_SHIFT + g_frac_bits-1 downto c_SCALER_SHIFT));
 
-        tag_valid_o <= pp_pipe(3);
+        tag_valid_o <= pp_pipe(4);
 
       end if;
     end if;
