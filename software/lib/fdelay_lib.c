@@ -16,73 +16,13 @@
 #include <sys/time.h>
 #include <math.h>
 
-#include "rr_io.h"
 #include "fdelay_regs.h"
 #include "pll_config.h"
 #include "acam_gpx.h"
 
 #include "fdelay_lib.h"
+#include "fdelay_private.h"
 
-/* SPI Bus chip selects */
-#define CS_PLL 1  /* AD9516 PLL */
-#define CS_GPIO 2 /* MCP23S17 GPIO */
-
-/* MCP23S17 GPIO expander pin locations: bit 8 = select bank 2, bits 7..0 = mask of the pin in the selected bank */
-#define SGPIO_TERM_EN  (0x100 | (1<<7)) 	/* Input termination enable (1 = on) */
-#define SGPIO_LED_TERM (0x100 | (1<<2))     /* Termination enable LED (1 = on) */
-#define SGPIO_DRV_OEN  (0x100 | (1<<0))		/* Output driver enable (0 = on) */
-#define SGPIO_TRIG_SEL  (0x100 | (1<<3))	/* TDC trigger select (0 = trigger input, 1 = FPGA) */
-
-/* ACAM TDC operation modes */
-#define ACAM_RMODE 0
-#define ACAM_IMODE 1
-
-/* MCP23S17 register addresses (only ones which are used by the lib) */
-#define MCP_IODIR 0x0
-#define MCP_GPIO 0x12
-#define MCP_IOCON 0x0a
-
-/* Number of fractional bits in the timestamps/time definitions. Must be consistent with the HDL bitstream.  */
-#define FDELAY_FRAC_BITS 12
-
-/* Fractional bits shifted away when converting the fine (< 8ns) part to fit the range of SY89295 delay line. */
-#define FDELAY_SCALER_SHIFT 12
-
-/* Number of delay line taps */
-#define FDELAY_NUM_TAPS 1024
-
-/* How many times each calibration measurement will be averaged */
-#define FDELAY_CAL_AVG_STEPS 1024
-
-/* Fine Delay Card Magic ID */
-#define FDELAY_MAGIC_ID 0xf19ede1a
-
-/* RSTR Register value which triggers a reset of the FD Core */
-#define FDELAY_RSTR_TRIGGER 0xdeadbeef
-
-/* ACAM Calibration parameters */
-struct fine_delay_calibration {
-	uint32_t magic;				/* magic ID: 0xf19ede1a */
-	uint32_t zero_offset[4]; 	/* Output zero offset, in nsec << FDELAY_FRAC_BITS */
-	uint32_t adsfr_val; 		/* ADSFR register value */
-	uint32_t acam_start_offset; /* ACAM Start offset value */
-	uint32_t atmcr_val; 		/* ATMCR register value */
-	int32_t dly_tempco[4]; 		/* SY89295 delay/temperature coefficient in ps/degC << FDELAY_FRAC_BITS */
-	int32_t zero_tempco[4];     /* Zero offset/temperature coefficient in ps/degC << FDELAY_FRAC_BITS */
-	int32_t cal_temp;			/* Calibration temperature in 0.1 degC */
-} __attribute__((packed));
-
-/* Internal state of the fine delay card */
-struct fine_delay_hw
-{
-	uint32_t base_addr; 		/* Base address of the core */
-	uint32_t base_spi;			/* SPI Controller offset */
-	double acam_bin; 			/* bin size of the ACAM TDC - calculated for */
-	uint32_t frr[4];			/* Fine range register for each output, determi*/
-	int32_t board_temp;			/* Current temperature of the board in 0.1 degC */
-
-	struct fine_delay_calibration calib;
-};
 
 /* 
 ----------------------
@@ -111,19 +51,12 @@ static inline int64_t get_tics()
 }
 
 /* Microsecond-accurate delay */
-static void udelay(uint32_t usecs)
+void udelay(uint32_t usecs)
 {
   int64_t ts = get_tics();
 
   while(get_tics() - ts < (int64_t)usecs);
 }
-
-/* useful declaration/wrapper macros */
-
-#define fd_writel(data, addr) dev->writel(dev->priv_io, data, (dev->base_addr + (addr)))
-#define fd_readl(addr) dev->readl(dev->priv_io, (dev->base_addr + (addr)))
-#define fd_decl_private(dev) struct fine_delay_hw *hw = (struct fine_delay_hw *) dev->priv_fd;
-
 
 /* 
 ----------------------------------
@@ -142,8 +75,8 @@ static void oc_spi_init(fdelay_device_t *dev)
 static void oc_spi_txrx(fdelay_device_t *dev, int ss, int num_bits, uint32_t in, uint32_t *out)
 {
 	fd_decl_private(dev);
-    uint32_t scr;
-    
+    uint32_t scr = 0, r;
+ 
     scr = FD_SCR_DATA_W(in) | FD_SCR_CPOL;
 	if(ss == CS_PLL)
 		scr |= FD_SCR_SEL_PLL;
@@ -152,11 +85,14 @@ static void oc_spi_txrx(fdelay_device_t *dev, int ss, int num_bits, uint32_t in,
 	
 	fd_writel(scr, FD_REG_SCR);
 	fd_writel(scr | FD_SCR_START, FD_REG_SCR);
-	while(! (fd_readl(FD_REG_SCR) & FD_SCR_READY))
+	while(! (fd_readl(FD_REG_SCR) & FD_SCR_READY));
 	scr = fd_readl(FD_REG_SCR);
-	
-	if(out) *out = FD_SCR_DATA_R(scr);
+	r = FD_SCR_DATA_R(scr);
+//	if(ss==CS_PLL)
+//		printf("IN %x OUT %x\n", in, scr);
+	if(out) *out=r;
 	udelay(100);
+
 }
 
 /* 
@@ -176,6 +112,7 @@ static inline uint8_t ad9516_read_reg(fdelay_device_t *dev, uint16_t reg)
 {
 	uint32_t rval;
 	oc_spi_txrx(dev, CS_PLL, 24, ((uint32_t)(reg & 0xfff) << 8) | (1<<23), &rval);
+	printf("ReadReg: %x %x\n", reg, rval);
 	return rval & 0xff;
 }
 
@@ -190,6 +127,7 @@ static int ad9516_init(fdelay_device_t *dev)
     dbg("%s: Initializing AD9516 PLL...\n", __FUNCTION__);
 	
 	ad9516_write_reg(dev, 0, 0x99);
+//xit(-1);
 	ad9516_write_reg(dev, 0x232, 1);
 
 	/* Check if the chip is present by reading its ID register */
@@ -202,6 +140,9 @@ static int ad9516_init(fdelay_device_t *dev)
 	/* Load the regs */
 	for(i=0;ad9516_regs[i].reg >=0 ;i++)
 		ad9516_write_reg (dev, ad9516_regs[i].reg, ad9516_regs[i].val);
+		
+	ad9516_write_reg(dev, 0x232, 1);
+
 
 	/* Wait until the PLL has locked */
 
@@ -257,6 +198,7 @@ static void sgpio_set_dir(fdelay_device_t *dev, int pin, int dir)
     uint8_t x;
     
     x = mcp_read(dev, iodir);
+    
 	if(dir) x &= ~(pin); else x |= (pin);
 	
 	mcp_write(dev, iodir, x);
@@ -269,6 +211,7 @@ static void sgpio_set_pin(fdelay_device_t *dev, int pin, int val)
     uint8_t x;
     
     x = mcp_read(dev, gpio);
+	
 	if(!val) x &= ~(pin); else x |= (pin);
 	mcp_write(dev, gpio, x);
 }
@@ -584,6 +527,22 @@ void poll_stats()
 }
 #endif
 
+static int read_calibration_eeprom(fdelay_device_t *dev, struct fine_delay_calibration *d_cal)
+{
+ 	struct fine_delay_calibration cal;
+ 	
+ 	mi2c_init(dev);
+ 	
+ 	if(eeprom_read(dev, EEPROM_ADDR, 0, (uint8_t *) &cal, sizeof(struct fine_delay_calibration)) != sizeof(struct fine_delay_calibration))
+ 		return -1;
+ 	
+	if(cal.magic != FDELAY_MAGIC_ID)
+		return -1;
+	
+	memcpy(d_cal, &cal, sizeof(cal));
+	return 0;
+}
+
 /*
 -------------------------------------
              Public API
@@ -595,6 +554,7 @@ int fdelay_init(fdelay_device_t *dev)
 {
 	struct fine_delay_hw *hw;
 	
+	dbg("Init: dev %x\n", dev);
 	hw = (struct fine_delay_hw *) malloc(sizeof(struct fine_delay_hw));
 	if(! hw)
 		return -1;
@@ -602,12 +562,11 @@ int fdelay_init(fdelay_device_t *dev)
 	dev->priv_fd = (void *) hw;
 	
 	hw->base_addr = dev->base_addr;	
- 	hw->base_spi = 0x100;
+ 	hw->base_i2c = 0x100;
+ 	hw->base_onewire = 0x200;
+ 	hw->wr_enabled = 0;
+ 	hw->wr_state = FDELAY_FREE_RUNNING;
 
-	/* Fixme: read these from the calibration EEPROM */
-	hw->calib.atmcr_val =  1 | (2000 << 4);
-	hw->calib.adsfr_val = 56648;
-	hw->calib.acam_start_offset = 10000;
 
 	dbg("%s: Initializing the Fine Delay Card\n", __FUNCTION__);
 	
@@ -617,6 +576,22 @@ int fdelay_init(fdelay_device_t *dev)
 	 	dbg("%s: invalid core signature. Are you sure you have loaded the FPGA with the Fine Delay firmware?\n", __FUNCTION__);
 	 	return -1;
 	}
+
+	//if(read_calibration_eeprom(dev, &hw->calib) < 0)
+	{
+		int i;
+		dbg("%s: Calibration EEPROM not found or unreadable. Using default calibration values\n", __FUNCTION__);
+
+		hw->calib.tdc_zero_offset = 35600;
+		hw->calib.atmcr_val =  1 | (2000 << 4);
+		hw->calib.adsfr_val = 56648;
+		hw->calib.acam_start_offset = 10000;
+     	for(i=0;i<4;i++)
+     		hw->calib.zero_offset[i] = 50000;
+	}
+	
+//	exit(-1);
+
 
 	/* Initialize the clock system - AD9516 PLL */	
 	oc_spi_init(dev);
@@ -642,7 +617,7 @@ int fdelay_init(fdelay_device_t *dev)
 	fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 	
 	/* Calibrate the output delay lines */
-	calibrate_outputs(dev);
+//	calibrate_outputs(dev);
 
 	/* Switch to the R-MODE (more precise) */
 	acam_configure(dev, ACAM_RMODE);
@@ -665,7 +640,11 @@ int fdelay_init(fdelay_device_t *dev)
 	   all the time counters inside the FD Core are in sync */
 	fd_writel(FD_GCR_CSYNC_INT, FD_REG_GCR);
 
-	/* Enable outputs */	
+	/* Enable input */	
+	udelay(1);
+	fd_writel(FD_GCR_INPUT_EN, FD_REG_GCR);
+
+	/* Enable output driver */
 	sgpio_set_pin(dev, SGPIO_DRV_OEN, 1);
 
 	dbg("FD initialized\n");
@@ -689,15 +668,19 @@ int fdelay_configure_trigger(fdelay_device_t *dev, int enable, int termination)
 	};
 
 	if(enable)
-		fd_writel(FD_GCR_INPUT_EN, FD_REG_GCR);
-	else
-		fd_writel(0, FD_REG_GCR);
+	{
+//		fd_writel(FD_GCR_BYPASS, FD_REG_GCR);
+//		dbg("EF %d\n", fd_readl(FD_REG_TDCSR) & FD_TDCSR_EMPTY ?  1: 0);
+//		fd_writel(0, FD_REG_GCR);
+		fd_writel(fd_readl(FD_REG_GCR) | FD_GCR_INPUT_EN, FD_REG_GCR);
+	} else	
+		fd_writel(fd_readl(FD_REG_GCR) & (~FD_GCR_INPUT_EN) , FD_REG_GCR);
 
 	return 0;
 }
 
 /* Converts a positive time interval expressed in picoseconds to the timestamp format used in the Fine Delay core */
-fdelay_time_t fdelay_from_picos(const uint64_t ps)
+/*fdelay_time_t fdelay_from_picos(const uint64_t ps)
 {
 	fdelay_time_t t;
 	int64_t rescaled;
@@ -707,13 +690,51 @@ fdelay_time_t fdelay_from_picos(const uint64_t ps)
 	t.frac = rescaled % 4096;
 	rescaled -= t.frac;
 	rescaled /= 4096;
-	t.coarse = rescaled % 125000000;
+	t.coarse = rescaled % 125000000ULL;
 	rescaled -= t.coarse;
-	rescaled /= 125000000;
+	rescaled /= 125000000ULL;
 	t.utc = rescaled;
 	
-	//dbg("fdelay_from_picos: %d:%d:%d\n", t.utc, t.coarse, t.frac);
+	dbg("fdelay_from_picos: %d:%d:%d\n", t.utc, t.coarse, t.frac);
 	return t;
+}*/
+
+fdelay_time_t fdelay_from_picos(const uint64_t ps)
+{
+	fdelay_time_t t;
+	uint64_t tmp = ps;
+//	int64_t rescaled;
+	
+//	rescaled = (int64_t) ((long double) ps * (long double)4096 / (long double)8000);
+	
+	t.frac = (tmp % 8000ULL) * 4096ULL / 8000ULL;
+	tmp -= (tmp % 8000ULL);
+	tmp /= 8000ULL;
+	t.coarse = tmp % 125000000ULL;
+	tmp -= (tmp % 125000000ULL);
+	tmp /= 125000000ULL;
+	t.utc = tmp;
+	
+	dbg("fdelay_from_picos: %d:%d:%d\n", t.utc, t.coarse, t.frac);
+	return t;
+}
+
+/* Substract two timestamps */
+static fdelay_time_t ts_sub(fdelay_time_t a, fdelay_time_t b)
+{
+ 	a.frac -= b.frac;
+ 	if(a.frac < 0)
+ 	{
+ 	 	a.frac += 4096;
+ 	 	a.coarse--;
+ 	}
+ 	a.coarse -= b.coarse;
+ 	if(a.coarse < 0)
+ 	{
+ 	 	a.coarse += 125000000;
+ 	 	a.utc ++;
+ 	}
+ 	return a;
 }
 
 /* Converts a Fine Delay time stamp to plain picoseconds */
@@ -730,11 +751,26 @@ static int poll_rbuf(fdelay_device_t *dev)
 	return 0;
 }
 
+int fdelay_configure_readout(fdelay_device_t *dev, int enable)
+{
+	if(enable)
+	{
+		fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
+		fd_writel( FD_TSBCR_ENABLE, FD_REG_TSBCR);
+    } else
+		fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
+
+	return 0;
+}
+
 /* Reads up to (how_many) timestamps from the FD ring buffer and stores them in (timestamps). 
    Returns the number of read timestamps. */
 int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 {
+	fd_decl_private(dev)
+
 	int n_read = 0;
+	
 	while(poll_rbuf(dev))
 	{
 		fdelay_time_t ts;
@@ -746,11 +782,13 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 		seq_frac =  fd_readl(FD_REG_TSBR_FID);
 		ts.frac = seq_frac & 0xfff;
 		ts.seq_id = seq_frac >> 16;
-		*timestamps++ = ts;
+		*timestamps++ = ts_sub(ts, fdelay_from_picos(hw->calib.tdc_zero_offset));
 		
 		how_many--;
 		n_read++;
 	}
+//	printf("read %d\n", how_many, n_read);
+
 	return n_read;
 }
 
@@ -766,9 +804,11 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	if(channel < 1 || channel > 4)
  		return -1;
  	
+ 	delay_ps -= hw->calib.zero_offset[channel-1];
  	start = fdelay_from_picos(delay_ps);
  	end = fdelay_from_picos(delay_ps + width_ps);
  	
+	
  	fd_writel(hw->frr[channel-1], base + FD_REG_FRR1);
  	fd_writel(start.utc, base + FD_REG_U_START1);
  	fd_writel(start.coarse, base + FD_REG_C_START1);
@@ -785,20 +825,60 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	return 0;
 }
 
-#if 0
-
-int fdelay_get_raw(int *coarse, int *frac)
+int fdelay_configure_sync(fdelay_device_t *dev, int mode)
 {
- 	if(! (fd_readl(FD_REG_RAWFIFO_CSR) & FD_RAWFIFO_CSR_EMPTY))
- 	{
- 	 	*frac = fd_readl(FD_REG_RAWFIFO_R0) & 0xfffff;
- 	 	*coarse = fd_readl(FD_REG_RAWFIFO_R1) & 0xfffffff;
- 	 	return 1;
- 	}
- 	return 0;
+	fd_decl_private(dev)
+
+	if(mode == FDELAY_SYNC_LOCAL)
+	{
+	 	fd_writel(0, FD_REG_GCR);
+	 	fd_writel(FD_GCR_CSYNC_INT, FD_REG_GCR);
+	 	hw->wr_enabled = 0;
+	} else {
+	 	fd_writel(0, FD_REG_GCR);
+	 	hw->wr_enabled = 1;
+	 	hw->wr_state = FDELAY_WR_OFFLINE;
+	}
 }
 
+int fdelay_get_sync_status(fdelay_device_t *dev)
+{
+	fd_decl_private(dev)
 
+	if(!hw->wr_enabled) return FDELAY_FREE_RUNNING;
+	
+	switch(hw->wr_state)
+	{
+	 	case FDELAY_WR_OFFLINE: 
+	 		if(fd_readl(FD_REG_GCR) & FD_GCR_WR_READY)
+	 			{
+	 			 	dbg("-> WR Core synced\n");
+	 			 	hw->wr_state = FDELAY_WR_READY;
+	 			}
+ 			break;
+ 		
+ 		case FDELAY_WR_READY:
+ 		 	fd_writel(FD_GCR_WR_LOCK_EN, FD_REG_GCR);
+ 		 	hw->wr_state = FDELAY_WR_SYNCING;
+ 		  	break;
 
+ 		case FDELAY_WR_SYNCING:
+ 			if(fd_readl(FD_REG_GCR) & FD_GCR_WR_LOCKED)
+ 			{
+	 			fd_writel(FD_GCR_WR_LOCK_EN | FD_GCR_CSYNC_WR, FD_REG_GCR);
+	 			fd_writel(FD_GCR_WR_LOCK_EN , FD_REG_GCR);
+	 			fd_writel(FD_GCR_WR_LOCK_EN | FD_GCR_INPUT_EN, FD_REG_GCR);
+ 			
+				hw->wr_state = FDELAY_WR_SYNCED;
+			}
+ 			break;
+ 			
+ 		case FDELAY_WR_SYNCED:
+ 			if((fd_readl(FD_REG_GCR) & FD_GCR_WR_LOCKED) == 0)
+ 				hw->wr_state = FDELAY_WR_OFFLINE;
+ 			break;
+	}
 
-#endif
+	return hw->wr_state;
+}
+
