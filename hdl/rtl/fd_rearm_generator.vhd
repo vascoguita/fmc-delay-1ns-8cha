@@ -41,7 +41,7 @@ begin  -- behavioral
         else
           rearm_p1_o <= '0';
           for i in 0 to 3 loop
-            if(dcr_enable_i(i) = '1' and rearm_i(i) = '1') then
+            if((dcr_enable_i(i) = '1' and rearm_i(i) = '1') or dcr_enable_i(i) = '0') then
               rearm_ch(i) <= '1';
             end if;
           end loop;  -- i 
