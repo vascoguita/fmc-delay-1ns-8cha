@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2011-10-20
+-- Last update: 2011-10-31
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -176,6 +176,7 @@ architecture behavioral of fd_acam_timestamper is
   type t_acam_fsm_state is (IDLE, R_ADDR, R_PULSE, R_READ, R_EXTEND_R_PULSE1, R_END_CYCLE, R_ADDR2, W_DATA_ADDR, W_PULSE, W_WAIT,
                             RMODE_PURGE_FIFO,
                             RMODE_PURGE_WAIT,
+                            RMODE_PURGE_WAIT2,
                             RMODE_PURGE_CHECK_EMPTY,
                             RMODE_READ,
                             RMODE_READ_PULSE,
@@ -416,7 +417,7 @@ begin  -- behave
         start_ok_sreg    <= (others => '0');
         acam_start_dis_o <= '1';
       else
-        if(regs_i.gcr_bypass_o = '1' or regs_i.gcr_input_en_o = '0') then
+        if(regs_i.gcr_bypass_o = '1') then
           acam_start_dis_o <= host_start_dis;
           start_ok_sreg    <= (others => '0');
         else
@@ -549,7 +550,7 @@ begin  -- behave
               acam_rd_n_o <= '1';
               acam_wr_n_o <= '1';
 
-              if(tag_rearm_p1_i = '1' or gcr_input_en_d0 = '1') then
+              if(tag_rearm_p1_i = '1' or gcr_input_en_d0 = '0') then
                 tag_enable <= '1';
               end if;
 
@@ -652,6 +653,9 @@ begin  -- behave
             afsm_state  <= RMODE_PURGE_WAIT;
 
           when RMODE_PURGE_WAIT =>
+            afsm_state <= RMODE_PURGE_WAIT2;
+
+          when RMODE_PURGE_WAIT2 =>
             afsm_state <= RMODE_PURGE_CHECK_EMPTY;
 
           when RMODE_PURGE_CHECK_EMPTY =>
