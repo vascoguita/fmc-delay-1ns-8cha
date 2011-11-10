@@ -380,8 +380,8 @@ architecture rtl of fine_delay_core is
   signal chx_delay_load      : std_logic_vector(3 downto 0);
   signal chx_delay_load_done : std_logic_vector(3 downto 0);
 
-  signal fan_out : t_wishbone_master_out_array(0 to 2);
-  signal fan_in  : t_wishbone_master_in_array(0 to 2);
+  signal fan_out : t_wishbone_master_out_array(0 to 1);
+  signal fan_in  : t_wishbone_master_in_array(0 to 1);
 
   signal wb_in  : t_wishbone_slave_in;
   signal wb_out : t_wishbone_slave_out;
@@ -405,10 +405,11 @@ architecture rtl of fine_delay_core is
   signal cal_pulse_trigger : std_logic;
 
 signal tm_dac_val_int : std_logic_vector(31 downto 0);
-  
+
   
 begin  -- rtl
 
+  
   wb_in.adr(7 downto 0) <= wb_adr_i;
   wb_in.cyc             <= wb_cyc_i;
   wb_in.stb             <= wb_stb_i;
@@ -421,9 +422,10 @@ begin  -- rtl
 
   tm_dac_val_int <= x"00" & tm_dac_value_i;
 
+
   U_WB_Fanout : xwb_bus_fanout
     generic map (
-      g_num_outputs    => 3,
+      g_num_outputs    => 2,
       g_bits_per_slave => 6)
     port map (
       clk_sys_i => clk_sys_i,
@@ -458,27 +460,12 @@ begin  -- rtl
       regs_o          => regs_towb_csync);
 
   regs_towb_local.gcr_wr_locked_i <= tm_clk_aux_locked_i;
-  tm_clk_aux_lock_en_o            <= regs_fromwb.gcr_wr_lock_en_o;
 
-  U_I2C_Master : xwb_i2c_master
-    generic map (
-      g_interface_mode => CLASSIC)
-    port map (
-      clk_sys_i    => clk_sys_i,
-      rst_n_i      => rst_n_i,
-      slave_i      => fan_out(1),
-      slave_o      => fan_in(1),
-      scl_pad_o    => i2c_scl_o,
-      scl_padoen_o => i2c_scl_oen_o,
-      scl_pad_i    => i2c_scl_i,
-      sda_pad_o    => i2c_sda_o,
-      sda_padoen_o => i2c_sda_oen_o,
-      sda_pad_i    => i2c_sda_i);
-
+  tm_clk_aux_lock_en_o            <= regs_fromwb.gcr_wr_lock_en_o and tm_time_valid_i;
 
   U_SPI_Arbiter : fd_spi_dac_arbiter
     generic map (
-      g_div_ratio_log2 => 4)
+      g_div_ratio_log2 => 3)
     port map (
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_sys,
@@ -501,8 +488,8 @@ begin  -- rtl
     port map (
       clk_sys_i   => clk_sys_i,
       rst_n_i     => rst_n_i,
-      slave_i     => fan_out(2),
-      slave_o     => fan_in(2),
+      slave_i     => fan_out(1),
+      slave_o     => fan_in(1),
       desc_o      => open,
       owr_pwren_o => open,
       owr_en_o    => owr_en_int,
@@ -510,7 +497,6 @@ begin  -- rtl
 
   owr_en_o   <= owr_en_int(0);
   owr_int(0) <= owr_i;
-
 
   regs_towb <= regs_towb_csync or regs_towb_tsu or regs_towb_rbuf or regs_towb_local or regs_towb_spi;
 
@@ -850,4 +836,14 @@ begin  -- rtl
 
   delay_pulse_o <= chx_delay_pulse;
 
+
+  i2c_scl_o <='0';
+  i2c_scl_oen_o <= regs_fromwb.i2cr_scl_out_o;
+  i2c_sda_o <='0';
+  i2c_sda_oen_o <= regs_fromwb.i2cr_sda_out_o;
+
+  regs_towb_local.i2cr_sda_in_i <= i2c_sda_i;
+  regs_towb_local.i2cr_scl_in_i <= i2c_scl_i;
+  
+  
 end rtl;

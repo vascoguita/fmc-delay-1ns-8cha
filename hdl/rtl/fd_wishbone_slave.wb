@@ -573,6 +573,39 @@ peripheral {
       };
    };
 
+   reg {
+      name = "I2C bitbanged IO register";
+      prefix = "I2CR";
+      field {
+         name = "SCL Line out";
+         prefix = "SCL_OUT";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+      field {
+         name = "SDA Line out";
+         prefix = "SDA_OUT";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+      field {
+         name = "SCL Line in";
+         prefix = "SCL_IN";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+      field {
+         name = "SDA Line in";
+         prefix = "SDA_IN";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+   };
+
    fifo_reg {
       direction = CORE_TO_BUS;
       size = 256;
