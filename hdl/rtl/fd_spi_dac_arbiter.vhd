@@ -111,6 +111,7 @@ begin  -- behavioral
     end if;
   end process;
 
+
   p_rq_host : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
@@ -120,26 +121,22 @@ begin  -- behavioral
         rq_host.sel_dac    <= '0';
         rq_host.sel_pll    <= '0';
         rq_host.sel_gpio   <= '0';
-        regs_o.scr_ready_i <= '1';
-        regs_o.scr_data_i  <= (others => '0');
+       regs_o.scr_ready_i <= '1';
         
-      else
-        if(regs_i.scr_start_o = '1' and rq_host.pending = '0') then
-          rq_host.pending    <= '1';
-          rq_host.data       <= scr_data_in;
-          rq_host.sel_pll    <= regs_i.scr_sel_pll_o;
-          rq_host.sel_dac    <= regs_i.scr_sel_dac_o;
-          rq_host.sel_gpio   <= regs_i.scr_sel_gpio_o;
-          regs_o.scr_ready_i <= '0';
-          regs_o.scr_data_i  <= (others => '0');
-
-        elsif(rq_host.done = '1') then
-          regs_o.scr_ready_i <= '1';
-          regs_o.scr_data_i  <= s_data_out;
-          rq_host.pending    <= '0';
-        end if;
-      end if;
-    end if;
+     else
+       if(regs_i.scr_start_o = '1' and rq_host.pending = '0') then
+         rq_host.pending    <= '1';
+         rq_host.data       <= scr_data_in;
+         rq_host.sel_pll    <= regs_i.scr_sel_pll_o;
+         rq_host.sel_dac    <= regs_i.scr_sel_dac_o;
+         rq_host.sel_gpio   <= regs_i.scr_sel_gpio_o;
+         regs_o.scr_ready_i <= '0';
+       elsif(rq_host.done = '1') then
+         regs_o.scr_ready_i <= '1';
+         rq_host.pending    <= '0';
+       end if;
+     end if;
+   end if;
   end process;
 
   rq_pll.sel_gpio <= '0';
@@ -148,88 +145,93 @@ begin  -- behavioral
 
   p_rq_pll : process(clk_sys_i)
   begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
-        rq_pll.pending <= '0';
-        rq_pll.data    <= (others => '0');
-      else
-        if(tm_dac_wr_i = '1' and rq_pll.pending = '0') then
-          rq_pll.pending <= '1';
-          rq_pll.data    <= tm_dac_value_i(23 downto 0);
-        elsif(rq_pll.done = '1') then
-          rq_pll.pending <= '0';
-        end if;
-      end if;
-    end if;
+   if rising_edge(clk_sys_i) then
+     if rst_n_i = '0' then
+       rq_pll.pending <= '0';
+       rq_pll.data    <= (others => '0');
+     else
+       if(tm_dac_wr_i = '1' and rq_pll.pending = '0') then
+         rq_pll.pending <= '1';
+         rq_pll.data    <= tm_dac_value_i(23 downto 0);
+       elsif(rq_pll.done = '1') then
+         rq_pll.pending <= '0';
+       end if;
+     end if;
+   end if;
   end process;
 
   p_grant : process(prev_rq, rq_pll, rq_host)
   begin
-    if(rq_pll.pending = '1' and rq_host.pending = '0') then
-      rq_pll.grant  <= '1' and not rq_pll.done;
-      rq_host.grant <= '0';
-    elsif (rq_pll.pending = '0' and rq_host.pending = '1') then
-      rq_pll.grant  <= '0';
-      rq_host.grant <= '1' and not rq_host.done;
-    elsif (rq_pll.pending = '1' and rq_host.pending = '1') then
-      rq_pll.grant  <= prev_rq and not rq_pll.done;
-      rq_host.grant <= not prev_rq and not rq_host.done;
-    else
-      rq_pll.grant  <= '0';
-      rq_host.grant <= '0';
-    end if;
+   if(rq_pll.pending = '1' and rq_host.pending = '0') then
+     rq_pll.grant  <= '1' and not rq_pll.done;
+     rq_host.grant <= '0';
+   elsif (rq_pll.pending = '0' and rq_host.pending = '1') then
+     rq_pll.grant  <= '0';
+     rq_host.grant <= '1' and not rq_host.done;
+   elsif (rq_pll.pending = '1' and rq_host.pending = '1') then
+     rq_pll.grant  <= prev_rq and not rq_pll.done;
+     rq_host.grant <= not prev_rq and not rq_host.done;
+   else
+     rq_pll.grant  <= '0';
+     rq_host.grant <= '0';
+   end if;
   end process;
 
   p_arbitrate : process(clk_sys_i)
   begin
-    if rising_edge(clk_sys_i) then
-      if rst_n_i = '0' then
+   if rising_edge(clk_sys_i) then
+     if rst_n_i = '0' then
         
-        state      <= WAIT_RQ;
-        s_start    <= '0';
-        s_data_in  <= (others => '0');
-        s_sel_gpio <= '0';
-        s_sel_pll  <= '0';
-        s_sel_dac  <= '0';
-      else
-        case state is
-          when WAIT_RQ =>
-            rq_pll.done  <= '0';
-            rq_host.done <= '0';
+       state      <= WAIT_RQ;
+       s_start    <= '0';
+       s_data_in  <= (others => '0');
+       s_sel_gpio <= '0';
+       s_sel_pll  <= '0';
+       s_sel_dac  <= '0';
+              regs_o.scr_data_i  <= (others => '0');
 
-            rq_pll.granted  <= rq_pll.grant;
-            rq_host.granted <= rq_host.grant;
+     else
+       case state is
+         when WAIT_RQ =>
+           rq_pll.done  <= '0';
+           rq_host.done <= '0';
+
+           rq_pll.granted  <= rq_pll.grant;
+           rq_host.granted <= rq_host.grant;
 
 
-            if(rq_pll.grant = '1')then
-              prev_rq    <= '0';
-              s_start    <= '1';
-              s_data_in  <= rq_pll.data;
-              s_sel_dac  <= rq_pll.sel_dac;
-              s_sel_pll  <= rq_pll.sel_pll;
-              s_sel_gpio <= rq_pll.sel_gpio;
-              state      <= SERVE_RQ;
-            elsif(rq_host.grant = '1') then
-              prev_rq    <= '1';
-              s_start    <= '1';
-              s_data_in  <= rq_host.data;
-              s_sel_dac  <= rq_host.sel_dac;
-              s_sel_pll  <= rq_host.sel_pll;
-              s_sel_gpio <= rq_host.sel_gpio;
-              state      <= SERVE_RQ;
-            end if;
+           if(rq_pll.grant = '1')then
+             prev_rq    <= '0';
+             s_start    <= '1';
+             s_data_in  <= rq_pll.data;
+             s_sel_dac  <= rq_pll.sel_dac;
+             s_sel_pll  <= rq_pll.sel_pll;
+             s_sel_gpio <= rq_pll.sel_gpio;
+             state      <= SERVE_RQ;
+           elsif(rq_host.grant = '1') then
+             prev_rq    <= '1';
+             s_start    <= '1';
+             s_data_in  <= rq_host.data;
+             s_sel_dac  <= rq_host.sel_dac;
+             s_sel_pll  <= rq_host.sel_pll;
+             s_sel_gpio <= rq_host.sel_gpio;
+             state      <= SERVE_RQ;
+           end if;
 
-          when SERVE_RQ =>
+         when SERVE_RQ =>
 
-            if(s_ready = '1' and s_start = '0') then
-              state        <= WAIT_RQ;
-              rq_host.done <= rq_host.granted;
-              rq_pll.done  <= rq_pll.granted;
-            end if;
-            s_start <= '0';
+           if(s_ready = '1' and s_start = '0') then
+             state        <= WAIT_RQ;
+             rq_host.done <= rq_host.granted;
+             rq_pll.done  <= rq_pll.granted;
+             if(rq_host.granted = '1') then
+               regs_o.scr_data_i <= s_data_out;
+             end if;
+           end if;
+           s_start <= '0';
 
-        end case;
-      end if;
+       end case;
+     end if;
     end if;
 
   end process;
