@@ -46,7 +46,7 @@ architecture behavioral of fd_spi_master is
   signal sreg    : std_logic_vector(23 downto 0);
   signal rx_sreg : std_logic_vector(23 downto 0);
 
-  type t_state is (IDLE, TX_CS, TX_SCK1, TX_SCK2, TX_CS2, TX_GAP);
+  type t_state is (IDLE, TX_CS, TX_DAT1, TX_DAT2, TX_SCK1, TX_SCK2, TX_CS2, TX_GAP);
   signal state : t_state;
   signal sclk  : std_logic;
 
@@ -88,7 +88,7 @@ begin  -- rtl
       else
         case state is
           when IDLE =>
-            sclk    <= '1';
+            sclk    <= '0';
             counter <= (others => '0');
             if(start_i = '1') then
               sreg            <= data_i;
@@ -101,26 +101,37 @@ begin  -- rtl
 
           when TX_CS =>
             if divider_muxed = '1' then
-              state <= TX_SCK1;
+              state <= TX_DAT1;
             end if;
 
+          when TX_DAT1 =>
+            if(divider_muxed = '1') then
+              spi_mosi_o <= sreg(sreg'high);
+              sreg       <= sreg(sreg'high-1 downto 0) & '0';
+              state <= TX_SCK1;
+            end if;
+            
           when TX_SCK1 =>
             if(divider_muxed = '1') then
               sclk       <= not sclk;
-              spi_mosi_o <= sreg(sreg'high);
-              sreg       <= sreg(sreg'high-1 downto 0) & '0';
               counter    <= counter + 1;
-              state      <= TX_SCK2;
+              state      <= TX_DAT2;
             end if;
 
+          when TX_DAT2 =>
+
+            if(divider_muxed = '1') then
+              rx_sreg <= rx_sreg(rx_sreg'high-1 downto 0) & spi_miso_i;
+              state <= TX_SCK2;
+            end if;
+            
           when TX_SCK2 =>
             if(divider_muxed = '1') then
               sclk    <= not sclk;
-              rx_sreg <= rx_sreg(rx_sreg'high-1 downto 0) & spi_miso_i;
               if(counter = 24) then
                 state <= TX_CS2;
               else
-                state <= TX_SCK1;
+                state <= TX_DAT1;
               end if;
             end if;
 
