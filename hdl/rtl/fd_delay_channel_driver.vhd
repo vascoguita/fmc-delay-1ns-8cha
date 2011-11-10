@@ -338,6 +338,7 @@ begin
 
           when WAIT_START_PULSE =>
             if(dcr_enable_i = '0') then
+              rearm_p1_o <='1';
               state <= IDLE;
               delay_load_o <= '0';
             elsif (hit_start_d0 = '1') then
@@ -348,6 +349,7 @@ begin
 
           when WAIT_ARB_END =>
             if(dcr_enable_i = '0') then
+              rearm_p1_o <= '1';
               state        <= IDLE;
               delay_load_o <= '0';
             elsif(delay_load_done_i = '1') then
