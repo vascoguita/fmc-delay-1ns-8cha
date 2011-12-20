@@ -20,10 +20,10 @@
 #define CS_GPIO 2 /* MCP23S17 GPIO */
 
 /* MCP23S17 GPIO expander pin locations: bit 8 = select bank 2, bits 7..0 = mask of the pin in the selected bank */
-#define SGPIO_TERM_EN  (0x100 | (1<<7)) 	/* Input termination enable (1 = on) */
-#define SGPIO_LED_TERM (0x100 | (1<<2))     /* Termination enable LED (1 = on) */
-#define SGPIO_DRV_OEN  (0x100 | (1<<0))		/* Output driver enable (0 = on) */
-#define SGPIO_TRIG_SEL  (0x100 | (1<<3))	/* TDC trigger select (0 = trigger input, 1 = FPGA) */
+#define SGPIO_TERM_EN  (1<<0)	 	/* Input termination enable (1 = on) */
+#define SGPIO_OUTPUT_EN(x) (1<<(6-x))		/* Output driver enable (1 = on) */
+#define SGPIO_TRIG_SEL  (1<<3)  	/* TDC trigger select (0 = trigger input, 1 = FPGA) */
+#define SGPIO_CAL_EN  (1<<3)  	/* Calibration mode enable (0 = on) */
 
 /* ACAM TDC operation modes */
 #define ACAM_RMODE 0
