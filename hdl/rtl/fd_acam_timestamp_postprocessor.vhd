@@ -6,12 +6,13 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2011-10-31
+-- Last update: 2011-12-07
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
 -- Description: Merges the coarse timestamp produced with the internal FPGA
--- counter with the fractional part obtained from the ACAM TDC, generating a final
+-- counter with the fractional part obtained from the ACAM TDC. Merged timestamp
+-- is then converted to standard White Rabbit time format, generating a final
 -- UTC timestamp used for further processing. 
 -------------------------------------------------------------------------------
 --
@@ -93,7 +94,7 @@ end fd_acam_timestamp_postprocessor;
 architecture behavioral of fd_acam_timestamp_postprocessor is
 
   -- number of the fractional bits to ignore in the rescaled ACAM's fractional
-  -- timestamp
+  -- timestamp. Too little = low resolution, too high = crappy timing.
   constant c_SCALER_SHIFT : integer := 12;
 
   signal pp_pipe : std_logic_vector(4 downto 0);
@@ -109,6 +110,8 @@ architecture behavioral of fd_acam_timestamp_postprocessor is
   
 begin  -- behavioral
 
+  -- Place an intermediate register on the ADSFR register (user as multiplicand
+  -- later), so the multiplier can be balanced by the synthesis tool.
   p_buffer_adsfr : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
@@ -131,21 +134,28 @@ begin  -- behavioral
         tag_frac_o   <= (others => '0');
       else
 
--- pipeline stage 1:
--- - subtract the start offset from the fractional value got from the ACAM,
-
+        -- Pipeline stage 1:
+        -- Subtract the start offset from the fractional value got from the ACAM. 
+        --
+        -- ACAM logic is stupid and can't handle negative numbers correctly (which can occur
+        -- when the start edge is too close to the stop edge). In order to avoid such
+        -- situations, ACAM internally adds a constant offset (StartOffset), which we have
+        -- to subtract here.
+        
+ 
         pp_pipe(0) <= raw_valid_i;
 
         post_frac_start_adj         <= signed(raw_frac_i) - signed(regs_i.asor_offset_o);
         post_tag_coarse(3 downto 0) <= (others => '0');
         post_tag_utc                <= unsigned(raw_utc_i);
 
--- pipeline stage 2:
--- - check for the "wraparound" condition and adjust the coarse start counter.
--- Wraparound occurs when the ACAM's hasn't yet accounted for the next start pulse
--- (resulting with a value of the fractional timestamp close to the upper
--- bound), but the FPGA counter had already "noticed" the next start. This
--- happens because of different routing delays and jitter. 
+        -- pipeline stage 2:
+        -- Check for the "wraparound" condition and adjust the coarse start counter.
+        --
+        -- Wraparound occurs when the ACAM's hasn't yet processed the latest start pulse
+        -- (resulting with a value of the fractional timestamp close to the upper
+        -- bound), but the FPGA counter had already "noticed" the next start. This
+        -- happens because of different routing delays and jitter.
 
         pp_pipe(1) <= pp_pipe(0);
 
@@ -155,34 +165,50 @@ begin  -- behavioral
           post_tag_coarse(post_tag_coarse'left downto 4) <= unsigned(raw_coarse_i);
         end if;
 
--- pipeline stage 3:
--- rescale the fractional part to our internal time base 
+        -- Pipeline stage 3:
+        -- Rescale the fractional part to our internal time base
+        --
+        -- ACAM counts in bins (of 27.something picoseconds), while we count in
+        -- fractions of 8 ns period. A simple multiply operation does the trick
+        -- here.
 
         pp_pipe(2)           <= pp_pipe(1);
-
         post_frac_multiplied <= resize(signed(post_frac_start_adj) * adsfr_d0, post_frac_multiplied'length);
 
--- pipeline stage 4: pass the multiplication result through another register
--- (timing improvement)
+        -- Pipeline stage 4
+        -- Pass the multiplication result through another register, allowing
+        -- the synthesis tool to spread the multiplier across several stages,
+        -- improving the timing of the design.
 
         pp_pipe(3) <= pp_pipe(2);
         post_frac_multiplied_d0 <= post_frac_multiplied;
         
--- pipeline stage 4:
--- - split the rescaled fractional part into the (mod 4096) tag_frac_o and add
--- the rest to the coarse part, along with the start-to-timescale offset
-
+        -- Pipeline stage 4:
+        -- Split the rescaled fractional part into the (mod 4096) tag_frac_o and add
+        -- the rest to the coarse part, along with the start-to-timescale offset.
+        --
+        -- A short explanation about the latter:
+        -- We don't have control of the relation between the WR timescale (WR PPS)
+        -- and the TDC start signal (which is the WR reference clock divided by
+        -- 16 at the AD9516 PLL). So, every time there's a counter resync event
+        -- (from associated WR PTP Core or an internal one), we simply count
+        -- the number of ref clock cycles between the 1-PPS and the nearest TDC
+        -- start edge and store it in acam_subcycle_offset_i.
+        --
+        -- This value is added here to align the result to our timescale
+        -- without messing around with the PLL.
+        
         pp_pipe(4) <= pp_pipe(3);
 
         tag_utc_o <= std_logic_vector(post_tag_utc);
         tag_coarse_o <= std_logic_vector(
-          signed(post_tag_coarse)       -- index of start pulse (mod 16 = 0)
+          signed(post_tag_coarse)           -- index of start pulse (mod 16 = 0)
           + signed(acam_subcycle_offset_i)  -- start-to-timescale offset
           + signed(post_frac_multiplied_d0(post_frac_multiplied_d0'left downto c_SCALER_SHIFT + g_frac_bits))); 
         -- extra coarse counts from ACAM's frac part after rescaling
 
+      
         tag_frac_o <= std_logic_vector(post_frac_multiplied_d0(c_SCALER_SHIFT + g_frac_bits-1 downto c_SCALER_SHIFT));
-
         tag_valid_o <= pp_pipe(4);
 
       end if;

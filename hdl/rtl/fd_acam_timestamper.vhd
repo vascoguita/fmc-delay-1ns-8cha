@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2011-10-31
+-- Last update: 2011-12-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -14,7 +14,25 @@
 -- TDC-GPX chip for fine delay measurement and a simple counter to capture the
 -- coarse part. See comments inside the RTL code for the details.
 -------------------------------------------------------------------------------
+--
 -- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author          Description
@@ -504,7 +522,7 @@ begin  -- behave
 
         acam_d_oe_o    <= '0';
         acam_d_o       <= (others => '0');
-        acam_cs_n_o    <= '1';
+        acam_cs_n_o    <= '0';
         acam_rd_n_o    <= '1';
         acam_wr_n_o    <= '1';
         acam_a_o       <= (others => '0');
@@ -681,7 +699,7 @@ begin  -- behave
             afsm_state  <= W_WAIT;
 
           when W_WAIT =>
-            acam_cs_n_o <= '1';
+            acam_cs_n_o <= '0';
             acam_wr_n_o <= '1';
             afsm_state  <= IDLE;
 
@@ -709,7 +727,7 @@ begin  -- behave
             afsm_state              <= R_END_CYCLE;
 
           when R_END_CYCLE =>
-            acam_cs_n_o <= '1';
+            acam_cs_n_o <= '0';
             acam_rd_n_o <= '1';
             afsm_state <= IDLE;
             
