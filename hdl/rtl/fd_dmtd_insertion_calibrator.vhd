@@ -97,7 +97,7 @@ architecture rtl of fd_dmtd_insertion_calibrator is
   constant c_INPUT_DEGLITCH_THRESHOLD : integer := 200;
 
 
-  component hpll_period_detect
+  component fd_hpll_period_detect
     generic (
       g_freq_err_frac_bits : integer);
     port (
@@ -113,7 +113,7 @@ architecture rtl of fd_dmtd_insertion_calibrator is
       hpll_fbcr_ferr_set_i : in  std_logic_vector(11 downto 0));
   end component;
 
-  component dmtd_with_deglitcher
+  component fd_dmtd_with_deglitcher
     generic (
       g_counter_bits : natural;
       g_chipscope    : boolean := false);
@@ -163,7 +163,7 @@ begin  -- rtl
       synced_o => rst_n_dmtd);
 
   gen_without_wr_core : if(g_with_wr_core = false) generate
-    U_Period_Detect : hpll_period_detect
+    U_Period_Detect : fd_hpll_period_detect
       generic map (
         g_freq_err_frac_bits => 0)
       port map (
@@ -179,7 +179,7 @@ begin  -- rtl
         hpll_fbcr_ferr_set_i => x"000"  -- no error setpoint, we can do that in software
         );
 
-    U_SoftPLL_DMTD : dmtd_with_deglitcher
+    U_SoftPLL_DMTD : fd_dmtd_with_deglitcher
       generic map (
         g_counter_bits => 20,
         g_chipscope    => false)

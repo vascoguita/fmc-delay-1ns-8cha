@@ -32,7 +32,7 @@ use ieee.numeric_std.all;
 
 use work.gencores_pkg.all;
 
-entity hpll_period_detect is
+entity fd_hpll_period_detect is
   generic(
     g_freq_err_frac_bits: integer);
   port (
@@ -75,9 +75,9 @@ entity hpll_period_detect is
     hpll_fbcr_ferr_set_i : in std_logic_vector(11 downto 0)
     );
 
-end hpll_period_detect;
+end fd_hpll_period_detect;
 
-architecture rtl of hpll_period_detect is
+architecture rtl of fd_hpll_period_detect is
 
 -- derived from the maximum gating period (2 ^ 21 + 1 "safety" bit)
    constant c_COUNTER_BITS : integer := 22;  

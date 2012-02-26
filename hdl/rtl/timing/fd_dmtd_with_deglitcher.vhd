@@ -2,7 +2,7 @@
 -- Title      : Digital DMTD Edge Tagger
 -- Project    : White Rabbit
 -------------------------------------------------------------------------------
--- File       : dmtd_with_deglitcher.vhd
+-- File       : fd_dmtd_with_deglitcher.vhd
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN BE-Co-HT
 -- Created    : 2010-02-25
@@ -48,7 +48,7 @@ use ieee.NUMERIC_STD.all;
 library work;
 use work.gencores_pkg.all;
 
-entity dmtd_with_deglitcher is
+entity fd_dmtd_with_deglitcher is
   generic (
     -- Size of the phase tag counter. Must be big enough to cover at least one
     -- full period of the DDMTD detector output. Given the frequencies of clk_in_i
@@ -95,9 +95,9 @@ entity dmtd_with_deglitcher is
     tag_stb_p1_o : out std_logic
     );
 
-end dmtd_with_deglitcher;
+end fd_dmtd_with_deglitcher;
 
-architecture rtl of dmtd_with_deglitcher is
+architecture rtl of fd_dmtd_with_deglitcher is
 
   type t_state is (WAIT_STABLE_0, WAIT_EDGE, GOT_EDGE);
 

@@ -1,14 +1,12 @@
 files = ["fd_acam_timestamper.vhd",
          "fd_ring_buffer.vhd",
          "fd_ts_adder.vhd",
-         "fd_ts_normalizer.vhd",
          "fd_reset_generator.vhd",
          "fd_csync_generator.vhd",
          "fd_timestamper_stat_unit.vhd",
          "fd_acam_timestamp_postprocessor.vhd",
          "fd_delay_channel_driver.vhd",
          "fd_delay_line_arbiter.vhd",
-         "fd_rearm_generator.vhd",
          "fd_spi_master.vhd",
          "fd_spi_dac_arbiter.vhd",
          "fine_delay_pkg.vhd",
@@ -18,8 +16,8 @@ files = ["fd_acam_timestamper.vhd",
          "fd_channel_wbgen2_pkg.vhd",
          "fd_main_wbgen2_pkg.vhd",
          "fd_dmtd_insertion_calibrator.vhd",
-         "timing/dmtd_with_deglitcher.vhd",
-				 "timing/hpll_period_detect.vhd"
+         "timing/fd_dmtd_with_deglitcher.vhd",
+				 "timing/fd_hpll_period_detect.vhd"
     ];
 
 fetchto = "../ip_cores"
