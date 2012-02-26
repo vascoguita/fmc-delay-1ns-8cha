@@ -323,6 +323,7 @@ architecture rtl of fine_delay_core is
   signal dmtd_pattern : std_logic;
   signal calr_rd_ack, spllr_rd_ack : std_logic;
   signal csync_pps : std_logic;
+  signal tdc_cal_pulse : std_logic;
   
   
 begin  -- rtl

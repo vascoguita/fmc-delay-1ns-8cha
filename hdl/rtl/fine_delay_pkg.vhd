@@ -10,7 +10,7 @@
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
--- Description: Main package
+-- Description: Main package.
 -------------------------------------------------------------------------------
 --
 -- Copyright (c) 2011 CERN / BE-CO-HT
@@ -48,15 +48,34 @@ use work.fd_channel_wbgen2_pkg.all;
 
 package fine_delay_pkg is
 
+  -----------------------------------------------------------------------------
+  -- User editable constants
+  -----------------------------------------------------------------------------
+
+  -- Timestamp field bits (if you change them, you must also change the WB files)
   constant c_TIMESTAMP_UTC_BITS         : integer := 40;
   constant c_TIMESTAMP_COARSE_BITS      : integer := 28;
   constant c_TIMESTAMP_FRAC_BITS        : integer := 12;
+
+  -- log2(Number of entries in the timestamp buffer)
   constant c_RING_BUFFER_SIZE_LOG2      : integer := 10;
+
+  -- Reference clock frequency in Hz
   constant c_REF_CLK_FREQ               : integer := 125000000;
+
+  -- System clock frequency in Hz
   constant c_SYS_CLK_FREQ               : integer := 62500000;
+
+  -- Reference clock period in picoseconds
   constant c_REF_CLK_PERIOD_PS          : integer := 8000;
+
+  -- Number of card outputs 
   constant c_FD_NUM_OUTPUTS             : integer := 4;
+
+  -- Number of reference clock cycles per one DDMTD calibration period
   constant c_FD_DMTD_CALIBRATION_PERIOD : integer := 125;
+
+  -- Calibration pulse width
   constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 3;
 
   type t_fd_timestamp is record
@@ -69,6 +88,9 @@ package fine_delay_pkg is
   type t_fd_timestamp_array is array (0 to c_FD_NUM_OUTPUTS-1) of t_fd_timestamp;
 
 
+  -------------------------------------------------------------------------------
+  -- Component declarations
+  -----------------------------------------------------------------------------  
   component fd_ts_adder
     generic (
       g_frac_bits    : integer := c_TIMESTAMP_FRAC_BITS;
@@ -149,7 +171,6 @@ package fine_delay_pkg is
       csync_coarse_i    : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
       csync_utc_i       : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
       csync_p1_i        : in  std_logic;
-      tdc_start_p1_o    : out std_logic;
       regs_i            : in  t_fd_main_out_registers;
       regs_o            : out t_fd_main_in_registers;
       dbg_o             : out std_logic_vector(3 downto 0));
