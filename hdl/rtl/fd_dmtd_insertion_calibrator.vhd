@@ -346,7 +346,7 @@ begin  -- rtl
         regs_o.calr_dmtd_tag_rdy_i <= '0';
       else
         if(new_edge_p = '1') then
-          regs_o.calr_dmtd_tag_i     <= std_logic_vector(tag_int);
+          regs_o.calr_dmtd_tag_i     <= std_logic_vector(tag_int(22 downto 0));
           regs_o.calr_dmtd_tag_rdy_i <= '1';
         elsif(calr_rd_ack_i = '1') then
           regs_o.calr_dmtd_tag_rdy_i <= '0';
