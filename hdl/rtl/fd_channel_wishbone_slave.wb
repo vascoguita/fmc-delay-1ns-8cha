@@ -1,0 +1,348 @@
+-- -*- Mode: LUA; tab-width: 2 -*-
+
+-------------------------------------------------------------------------------
+-- Title        : Fine Delay Core Wishbone register block (output channel)
+-- Project      : Fine Delay FMC (FmcDel1ns4cha)
+-------------------------------------------------------------------------------
+-- File         : fd_channel_wb_slave.wb
+-- Author       : Tomasz Włostowski
+-- Company      : CERN BE-CO-HT
+-- Created      : 2011-01-30
+-- Last update  : 2012-01-30
+-- Standard     : Lua 5.1
+-- Dependencies : wbgen2 ver 0.6+
+-------------------------------------------------------------------------------
+-- Description: Wishbone register block definition a single-channel pulse 
+-- generator.
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 - 2012 CERN
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author          Description
+-- 2011-01-30  1.0      twlostow        Created
+-------------------------------------------------------------------------------
+
+peripheral {
+   name = "Fine Delay Channel WB Slave";
+   hdl_entity = "fd_channel_wb_slave";
+   hdl_prefix = "fd_channel";
+   c_prefix = "fd";
+  
+   reg {
+      name = "Delay Control Register";
+      prefix = "DCR";
+      align = 8;
+
+      field {
+         name = "Enable channel";
+         prefix = "ENABLE";
+         description = "0: channel is disabled\
+                        1: channel is enabled";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "Delay mode select";
+         prefix = "MODE";
+         description = "0: Channel will work as a delay generator, producing delayed copies of pulses comming to the trigger input\
+1: Channel will work as a programmable pulse generator - producing a pulse which begins at UTC time [U_START, C_START, F_START] and ends at [U_END, C_END, F_END].\
+   <b>Warning:</b> MODE_DLY bit can be safely set only when the TDC and the delay logic are disabled (i.e. when GCR.BYPASS = 1)";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+      field {
+         name = "Pulse generator arm";
+         prefix = "PG_ARM";
+         description = "write 1: arms the pulse generator. \
+         write 0: no effect.\
+         Note that the time written to [U/C/F]START must be bigger by at least 200 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much bigger, as it's affected by the non-determinism of the operating system."; 
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         clock = "clk_ref_i";
+      };
+      
+      field {
+         name = "Pulse generator triggered";
+         prefix = "PG_TRIG";
+         description = "read 1: pulse generator has been triggered and produced a pulse\
+         read 0: pulse generator is busy or hasn't triggered yet"; 
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "Start Delay Update";
+         prefix = "UPDATE";
+         description = "write 1: Starts delay update procedure. The start and end times from [U/C/F][START/END] will be transferred in an atomic way to the internal delay/pulse generator registers\
+        write 0: no effect.";
+         type = MONOSTABLE;
+         clock = "clk_ref_i";
+      };
+      
+      field {
+         name = "Delay Update Done";
+         prefix = "UPD_DONE";
+         description = "read 1: The delays from [U/C/F][START/END] have been loaded into internal registers\
+        read 0: update operation in progress";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+         clock = "clk_ref_i";
+      };
+
+      field {
+         name = "Force Calibration Delay";
+         prefix = "FORCE_DLY";
+         description = "write 1: preloads the delay line with the contents of FRR register. Used for self-calibration purposes.\
+      write 0: no effect";
+
+         type = MONOSTABLE;
+         clock = "clk_ref_i";
+      };
+
+
+      field {
+         name = "Disable Fine Part update";
+         prefix = "NO_FINE";
+         description = "write 1: disables updating of the fine part of the pulse delay to allow for producing faster signals (i.e. pulse width/spacing < 200 ns), at the cost of less accurate width/spacing control (multiple of 4 ms). \
+write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
+
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+
+   reg {
+      name = "Fine Range Register";
+      prefix = "FRR";
+      description = "Delay line tap setting at which the line generates an 8 ns (one cycle) longer delay than when set to 0.";
+
+      field {
+         name = "Fine Range";
+         size = 10;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+   };
+
+   reg {
+      name = "Pulse start time / offset (MSB TAI seconds)";
+      prefix = "U_STARTH";
+      description = "TAI seconds (8 upper bits) part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).";
+
+      field {
+         name = "TAI seconds (MSB)";
+         size = 8;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "Pulse start time / offset (LSB TAI seconds)";
+      prefix = "U_STARTL";
+      description = "TAI seconds (32 lower bits) part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).";
+
+      field {
+         name = "TAI seconds (LSB)";
+         size = 32;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+
+
+   reg {
+      name = "Pulse start time / offset (8 ns cycles)";
+      prefix = "C_START";
+      description = "Sub-second part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
+
+      field {
+         name = "Reference clock cycles";
+         size = 28;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "Pulse start time / offset (sub-cycle fine part)";
+      prefix = "F_START";
+      description = "Sub-clock cycle part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
+
+      field {
+         name = "Fractional part";
+         size = 12;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+   
+
+ reg {
+      name = "Pulse end time / offset (MSB TAI seconds)";
+      prefix = "U_ENDH";
+      description = "TAI seconds (8 upper bits) part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode).";
+
+      field {
+         name = "TAI seconds (MSB)";
+         size = 8;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "Pulse end time / offset (LSB TAI seconds)";
+      prefix = "U_ENDL";
+      description = "TAI seconds (32 lower bits) part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode).";
+
+      field {
+         name = "TAI seconds (LSB)";
+         size = 32;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+
+
+   reg {
+      name = "Pulse end time / offset (8 ns cycles)";
+      prefix = "C_END";
+      description = "Sub-second part of the pulse endabsolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
+
+      field {
+         name = "Reference clock cycles";
+         size = 28;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "Pulse end time / offset (sub-cycle fine part)";
+      prefix = "F_END";
+      description = "Sub-clock cycle part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
+
+      field {
+         name = "Fractional part";
+         size = 12;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+
+-- Delta
+
+ reg {
+      name = "Pulse spacing (TAI seconds)";
+      prefix = "U_DELTA";
+      description = "TAI seconds between rising edges of subsequent output pulses.";
+
+      field {
+         name = "TAI seconds";
+         size = 4;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "Pulse spacing (8 ns cycles)";
+      prefix = "C_DELTA";
+      description = "Reference clock cycles between rising edges of subsequent output pulses.";
+
+      field {
+         name = "Reference clock cycles";
+         size = 28;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+   reg {
+      name = "Pulse spacing (sub-cycle fine part)";
+      prefix = "F_DELTA";
+      description = "Sub-cycle part of spacing between rising edges of subsequent output pulses.";
+
+      field {
+         name = "Fractional part";
+         size = 12;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+   
+   reg {
+      name = "Repeat Count Register";
+      prefix = "RCR";
+      description = "Register controlling the number of output pulses to be generated upon reception of a trigger pulse.";
+
+      field {
+         name = "Repeat Count";
+         descriptions = "Number of pulses - 1 (0 = 1 pulse, 0xffff = 65536 pulses)";
+         prefix = "REP_CNT";
+         size = 16;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+      field {
+         name = "Continuous Waveform Mode";
+         prefix = "CONT";
+         description = "write 1: output will produce a contiguous square wave upon receptio of trigger pulse. The generation can be aborted by disabling the channel (DCRx.ENABLE = 0)\
+         write 0: output will produce trains of  REP_CNT+1 pulses.";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+};
+

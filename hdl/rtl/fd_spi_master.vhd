@@ -1,21 +1,68 @@
+-----------------------------------------------------------------------------
+-- Title      : SPI Bus Master
+-- Project    : Fine Delay FMC (fmc-delay-1ns-4cha)
+-------------------------------------------------------------------------------
+-- File       : fd_spi_master.vhd
+-- Author     : Tomasz Wlostowski
+-- Company    : CERN
+-- Created    : 2011-08-24
+-- Last update: 2012-02-26
+-- Platform   : FPGA-generic
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Description: Just a simple SPI master.
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author          Description
+-- 2011-08-24  1.0      twlostow        Created
+-------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 entity fd_spi_master is
   generic(
+    -- clock division ratio (SCLK = clk_sys_i / (2 ** g_div_ratio_log2).
     g_div_ratio_log2 : integer := 2);
   port (
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
 
+    -- 1: start next transfer (using CPOL, DATA and SEL from the inputs below)
     start_i    : in  std_logic;
+    -- Clock polarity: 1: slave clocks in the data on rising SCLK edge, 0: ...
+    -- on falling SCLK edge
     cpol_i     : in  std_logic;
+    -- TX Data input (fixed to 24 bits)
     data_i     : in  std_logic_vector(23 downto 0);
+    -- Peripheral selects (VCTCXO DAC, AD9516 PLL, MCP23S17 GPIO)
     sel_dac_i  : in  std_logic;
     sel_pll_i  : in  std_logic;
     sel_gpio_i : in  std_logic;
     ready_o    : out std_logic;
+
+    -- data read from selected slave, valid when ready_o == 1.
     data_o     : out std_logic_vector(23 downto 0);
 
 
@@ -46,7 +93,7 @@ architecture behavioral of fd_spi_master is
   signal sreg    : std_logic_vector(23 downto 0);
   signal rx_sreg : std_logic_vector(23 downto 0);
 
-  type t_state is (IDLE, TX_CS, TX_DAT1, TX_DAT2, TX_SCK1, TX_SCK2, TX_CS2, TX_GAP);
+  type   t_state is (IDLE, TX_CS, TX_DAT1, TX_DAT2, TX_SCK1, TX_SCK2, TX_CS2, TX_GAP, TX_DUMMY_CK1, TX_DUMMY_CK2);
   signal state : t_state;
   signal sclk  : std_logic;
 
@@ -96,7 +143,7 @@ begin  -- rtl
               spi_cs_dac_n_o  <= not sel_dac_i;
               spi_cs_pll_n_o  <= not sel_pll_i;
               spi_cs_gpio_n_o <= not sel_gpio_i;
-              spi_mosi_o <= data_i(sreg'high);
+              spi_mosi_o      <= data_i(sreg'high);
             end if;
 
           when TX_CS =>
@@ -108,26 +155,26 @@ begin  -- rtl
             if(divider_muxed = '1') then
               spi_mosi_o <= sreg(sreg'high);
               sreg       <= sreg(sreg'high-1 downto 0) & '0';
-              state <= TX_SCK1;
+              state      <= TX_SCK1;
             end if;
             
           when TX_SCK1 =>
             if(divider_muxed = '1') then
-              sclk       <= not sclk;
-              counter    <= counter + 1;
-              state      <= TX_DAT2;
+              sclk    <= not sclk;
+              counter <= counter + 1;
+              state   <= TX_DAT2;
             end if;
 
           when TX_DAT2 =>
 
             if(divider_muxed = '1') then
               rx_sreg <= rx_sreg(rx_sreg'high-1 downto 0) & spi_miso_i;
-              state <= TX_SCK2;
+              state   <= TX_SCK2;
             end if;
             
           when TX_SCK2 =>
             if(divider_muxed = '1') then
-              sclk    <= not sclk;
+              sclk <= not sclk;
               if(counter = 24) then
                 state <= TX_CS2;
               else
@@ -137,11 +184,23 @@ begin  -- rtl
 
           when TX_CS2 =>
             if(divider_muxed = '1') then
-              state           <= TX_GAP;
+              state           <= TX_DUMMY_CK1;
               spi_cs_gpio_n_o <= '1';
               spi_cs_pll_n_o  <= '1';
               spi_cs_dac_n_o  <= '1';
               data_o          <= rx_sreg;
+            end if;
+
+          when TX_DUMMY_CK1 =>
+            if(divider_muxed = '1') then
+              sclk  <= not sclk;
+              state <= TX_DUMMY_CK2;
+            end if;
+            
+          when TX_DUMMY_CK2 =>
+            if(divider_muxed = '1') then
+              sclk  <= not sclk;
+              state <= TX_GAP;
             end if;
 
           when TX_GAP =>

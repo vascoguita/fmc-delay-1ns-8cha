@@ -1,5 +1,4 @@
 files = ["fd_acam_timestamper.vhd",
-         "fd_wbgen2_pkg.vhd",
          "fd_ring_buffer.vhd",
          "fd_ts_adder.vhd",
          "fd_ts_normalizer.vhd",
@@ -10,16 +9,20 @@ files = ["fd_acam_timestamper.vhd",
          "fd_delay_channel_driver.vhd",
          "fd_delay_line_arbiter.vhd",
          "fd_rearm_generator.vhd",
-         "fd_wishbone_slave.vhd",
          "fd_spi_master.vhd",
          "fd_spi_dac_arbiter.vhd",
          "fine_delay_pkg.vhd",
-         "fine_delay_core.vhd"];
+         "fine_delay_core.vhd",
+         "fd_channel_wishbone_slave.vhd",
+         "fd_main_wishbone_slave.vhd",
+         "fd_channel_wbgen2_pkg.vhd",
+         "fd_main_wbgen2_pkg.vhd",
+         "fd_dmtd_insertion_calibrator.vhd",
+         "timing/dmtd_with_deglitcher.vhd",
+				 "timing/hpll_period_detect.vhd"
+    ];
 
 fetchto = "../ip_cores"
 
-modules = {
-    "git" :  [
-        "git@ohwr.org:hdl-core-lib/general-cores.git::wishbone_with_adapter" ],
-    "svn" : [ "http://svn.ohwr.org/gn4124-core/branches/hdlmake-compliant/rtl" ]
- };
+modules = { "git" : [ "git@ohwr.org:hdl-core-lib/general-cores.git::proposed_master"] }
+

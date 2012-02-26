@@ -1,7 +1,48 @@
+-----------------------------------------------------------------------------
+-- Title      : SPI Bus Master with arbitration
+-- Project    : Fine Delay FMC (fmc-delay-1ns-4cha)
+-------------------------------------------------------------------------------
+-- File       : fd_spi_dac_arbiter.vhd
+-- Author     : Tomasz Wlostowski
+-- Company    : CERN
+-- Created    : 2011-08-24
+-- Last update: 2012-02-26
+-- Platform   : FPGA-generic
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Description: A simple SPI master with built-in arbitration mechanism for
+-- multiplexing accesses between the FD software driver (host) and the SoftPLL
+-- in the associated WR core controlling the oscillator tuning DAC.
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author          Description
+-- 2011-08-24  1.0      twlostow        Created
+-------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;
 
-use work.fd_wbgen2_pkg.all;
+use work.fd_main_wbgen2_pkg.all;
 
 
 
@@ -14,6 +55,7 @@ entity fd_spi_dac_arbiter is
     clk_sys_i : in std_logic;
     rst_n_i   : in std_logic;
 
+    -- DAC value (valid when tm_dac_wr_i == 1)
     tm_dac_value_i : in std_logic_vector(31 downto 0);
     tm_dac_wr_i    : in std_logic;
 
@@ -36,8 +78,8 @@ entity fd_spi_dac_arbiter is
     spi_mosi_o : out std_logic;
     spi_miso_i : in  std_logic;
 
-    regs_i : in  t_fd_out_registers;
-    regs_o : out t_fd_in_registers
+    regs_i : in  t_fd_main_out_registers;
+    regs_o : out t_fd_main_in_registers
     );
 
 end fd_spi_dac_arbiter;
@@ -111,7 +153,7 @@ begin  -- behavioral
     end if;
   end process;
 
-
+-- FIXME: this could be probably rewritten in a more elegant way
   p_rq_host : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then

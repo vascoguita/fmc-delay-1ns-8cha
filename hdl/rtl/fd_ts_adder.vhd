@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2011-09-05
+-- Last update: 2012-02-14
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -63,8 +63,8 @@ entity fd_ts_adder is
     clk_i   : in std_logic;
     rst_n_i : in std_logic;
 
-    valid_i : in std_logic;  -- when HI, a_* and b_* contain valid timestamps
-
+    valid_i  : in std_logic;  -- when HI, a_* and b_* contain valid timestamps
+    enable_i : in std_logic := '1';     -- pipeline enable
 
     -- Input timestamps
     a_utc_i    : in std_logic_vector(g_utc_bits-1 downto 0);
@@ -109,19 +109,16 @@ begin  -- rtl
   begin
     if rising_edge(clk_i) then
       if rst_n_i = '0' then
-        pipe(0)        <= '0';
-        sums(0).utc    <= (others => '0');
-        sums(0).coarse <= (others => '0');
-        sums(0).frac   <= (others => '0');
-        
-      else
+        pipe(0) <= '0';
+      elsif(enable_i = '1') then
         pipe(0) <= valid_i;
 
         sums(0).frac   <= signed("00" & a_frac_i) + signed("00" & b_frac_i);
         sums(0).coarse <= resize(signed(a_coarse_i), sums(0).coarse'length) +
                           resize(signed(b_coarse_i), sums(0).coarse'length);
         sums(0).utc <= signed(a_utc_i) + signed(b_utc_i);
-        
+      else
+        pipe(0) <= '0';
       end if;
     end if;
   end process;
@@ -135,10 +132,7 @@ begin  -- rtl
     if rising_edge(clk_i) then
       
       if rst_n_i = '0' then
-        pipe(1)        <= '0';
-        sums(1).utc    <= (others => '0');
-        sums(1).coarse <= (others => '0');
-        sums(1).frac   <= (others => '0');
+        pipe(1) <= '0';
       else
         pipe(1) <= pipe(0);
 
@@ -161,9 +155,7 @@ begin  -- rtl
   begin
     if rising_edge(clk_i) then
       if rst_n_i = '0' then
-        pipe(2)    <= '0';
-        ovf_coarse <= (others => '0');
-        unf_coarse <= '0';
+        pipe(2) <= '0';
       else
 
         sums(2) <= sums(1);

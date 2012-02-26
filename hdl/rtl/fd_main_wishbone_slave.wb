@@ -1,26 +1,86 @@
-
 -- -*- Mode: LUA; tab-width: 2 -*-
 
+-------------------------------------------------------------------------------
+-- Title        : Fine Delay Core Wishbone register block (main registers)
+-- Project      : Fine Delay FMC (FmcDel1ns4cha)
+-------------------------------------------------------------------------------
+-- File         : fd_main_wb_slave.wb
+-- Author       : Tomasz Włostowski
+-- Company      : CERN BE-CO-HT
+-- Created      : 2011-01-30
+-- Last update  : 2012-01-30
+-- Standard     : Lua 5.1
+-- Dependencies : wbgen2 ver 0.6+
+-------------------------------------------------------------------------------
+-- Description: Wishbone register block definition for the Fine Delay Core.
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 - 2012 CERN
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author          Description
+-- 2011-01-30  1.0      twlostow        Created
+-------------------------------------------------------------------------------
+
 peripheral {
-   name = "Fine Delay Wishbone slave";
-   hdl_entity = "fd_wishbone_slave";
-   prefix = "fd";
-   
+   name = "Fine Delay Main WB Slave";
+   hdl_entity = "fd_main_wb_slave";
+   hdl_prefix = "fd_main";
+   c_prefix = "fd";
 
    reg {
       name = "Reset Register";
       prefix = "RSTR";
 
       field {
-         name = "Reset trigger";
-         description = "Writing 0xDEADBEEF into this register will trigger a full reset of the \               				  fine delay core";
+         name = "State of the reset Line of the FMC Card";
+         description = "write 0: FMC is held in reset\
+                        write 1: Normal FMC operation";
          type = PASS_THROUGH;
-         size = 32;
+         size = 1;
+         prefix = "RST_FMC";	
+      };
+
+      field {
+         name = "State of the reset of the Fine Delay HDL Core";
+         description = "write 0: FD Core is held in reset\
+                        write 1: Normal FD Core operation";
+         type = PASS_THROUGH;
+         size = 1;
+         prefix = "RST_CORE";	
+      };
+
+      field {
+         name = "Reset magic value";
+         description = "Protection field - the state of RST_FMC/RST_CORE lines will\
+                        only be updated if LOCK is written with 0xdead";
+         type = PASS_THROUGH;
+         prefix = "LOCK";
+         align = 16;
+         size = 16;
       };
    };
 
    reg {
       name = "ID Register";
+      description = "Magic identification value (for detecting FD cores by the driver)";
       prefix = "IDR";
 
       field {
@@ -29,22 +89,22 @@ peripheral {
          size = 32;
          type = CONSTANT;
          value = 0xf19ede1a;
-
       };
-
    };
 
    reg {
       name = "Global Control Register";
+      description = "Common control bits used throughout the core.";
       prefix = "GCR";
       
       field {
          clock = "clk_ref_i";
 
-         name = "Bypass delay block";
+         name = "Bypass Hardware TDC/Delay Controller";
          prefix = "BYPASS";
-         description = "0: normal operation (fine-delay)\
-				           1: TDC and delay lines controlled from the host";
+         description = "Descides who is in charge of the TDC and delay lines:\
+         write 0: TDC and delay lines are controlled by the HDL core (normal operation)\
+         write 1: TDC and delay lines controlled from the host (calibration)";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -54,86 +114,186 @@ peripheral {
          clock = "clk_ref_i";
          
          name = "Enable trigger input";
+         description = "write 1: trigger input is enabled\
+                        write 0: trigger input is disabled";
          prefix = "INPUT_EN";
-         description = "";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
       };
 
-      field {
-         name = "Internal Counter Sync";
-         description = "write 1: re-synchronizes the TDC and the Delay Generator counters. Must be done each time the card/core is reset if the card is not receiving the time information from White Rabbit.\
-         write 0: no effect. ";
-         prefix = "CSYNC_INT";
-         type = MONOSTABLE;
-         clock = "clk_ref_i";
-      };
 
       field {
-         name = "White Rabbit Counter Sync";
-         description = "write 1: re-synchronizes the TDC and the Delay Generator counters with the time value provided by the White Rabbit Core. Resynchronization must be performed each time the card is reset. \
-         write 0: no effect. ";
-         prefix = "CSYNC_WR";
-         type = MONOSTABLE;
-         clock = "clk_ref_i";
+         name = "PLL Locked";
+         description = "read 1: AD9516 and internal DDR PLLs locked\
+         read 0: PLL(s) not locked";
+         prefix = "DDR_LOCKED";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
       };
+   };
+   
+   reg {
+      name = "Timing Control Register";
+      description = "Controls timing stuff (and White Rabbit referencing)";
+      prefix = "TCR";
+      
+      
+    
 
       field {
-         name = "White Rabbit Timecode Ready";
-         description = "read 1: time code provided to the external input from White Rabbit Core is valid. Can proceed with counter sync.\
-         read 0: WR time code input is invalid. Can't do sounter sync for the moment.";
-         prefix = "WR_READY";
+         ack_read = "tcr_rd_ack_o";
+
+         name = "DMTD Clock Status";
+         prefix = "DMTD_STAT";
+         description = "Status of the DMTD (helper) clock, used for calibration purposes.\
+         read 0: DMTD clock is not available or has been lost since last read operation of WR_TCR register\
+         read 1: DMTD clock is OK and has been like this since the previous read of WR_TCR register";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
 
       field {
-         name = "White Rabbit Locking Enable";
-         description = "write 1: enable locking of the local oscillator to the WR clock.";
-         prefix = "WR_LOCK_EN";
+         name = "WR Timing Enable";
+         prefix = "WR_ENABLE";
+         description = "Enables/disables WR synchronization.\
+         write 1: WR synchronization is enabled. Poll the WR_LOCKED bit to check if the WR Core is still locked.\
+         write 0: WR synchronization is disabled, the card is in free running mode.";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
       };
 
+
       field {
-         name = "White Rabbit Oscillator Locked";
-         description = "read 1: LO is locked to WR\n 0: LO not locked of free running.";
+         name = "WR Timing Locked";
          prefix = "WR_LOCKED";
+         description = "Status of WR synchronization. \
+         read 0: local oscillator/time base is not locked to WR (or has lost its lock since last read of WR_TCR register)\
+         read 1: local oscillator is syntonized to WR and local timebase is aligned with WR time.";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
 
+     field {
+        name = "WR Core Present";
+        prefix = "WR_PRESENT";
+        description = "Indicates whether we have a WR Core associated with this Fine Delay Core. Reflects the state\
+        of 'g_with_wr_core' generic HDL parameter. \
+        read 0: No WR Core present.\
+        read 1: WR Core available.";
+        type = BIT;
+        access_bus = READ_ONLY;
+        access_dev = WRITE_ONLY;
+     }; 
 
+     field {
+        name = "WR Core Time Ready";
+        prefix = "WR_READY";
+        description = "read 0: WR Core time syncing in progress (or no link).\
+        read 1: WR Core time ready.";
+        type = BIT;
+        access_bus = READ_ONLY;
+        access_dev = WRITE_ONLY;
+     };
 
+     field {
+        name = "WR Core Link Up";
+        prefix = "WR_LINK";
+        description = "read 0: Link is down.\
+        read 1: Link is up.";
+        type = BIT;
+        access_bus = READ_ONLY;
+        access_dev = WRITE_ONLY;
+     };
+
+     field {
+        name = "Capture Current Time";
+        prefix = "CAP_TIME";
+        description = "Controls the readout of TM_x registers.\
+        write 1: transfers the current value of UTC/Nsec counters to TM_x registers.\
+        write 0: no effect";
+        type = MONOSTABLE;
+        clock = "clk_ref_i";
+     };
+
+     field {
+        name = "Set Current Time";
+        prefix = "SET_TIME";
+        description = "Controls the write of TM_x registers to the internal time counter.\
+        write 1: transfers the current value of TM_x to the timebase counters.\
+        write 0: no effect.\
+        <b>WARNING</b> Setting time also resynchronizes internal timebase counters, therefore \
+        time registers must be set after every reset/power cycle. ";
+        type = MONOSTABLE;
+        clock = "clk_ref_i";
+     };
+
+  };
+
+   reg {
+      name = "Time Register - TAI seconds (MSB)";
+      prefix = "TM_SECH";
+      description = "read: value of internal seconds counter taken during write to TCR.CAP_TIME bit.\
+      write: new value of time (acked by writing TCR.SET_TIME bit)";
+      field {
+         name = "TAI seconds (MSB)";
+         size = 8;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         clock = "clk_ref_i";
+      };
    };
 
    reg {
-      name = "TDC Address/Data Register";
-      prefix = "TAR";
+      name = "Time Register - TAI seconds (LSB)";
+      prefix = "TM_SECL";
+      description = "read: value of internal seconds counter taken during write to TCR.CAP_TIME bit.\
+      write: new value of time (acked by writing TCR.SET_TIME bit)";
+      field {
+         name = "TAI seconds (LSB)";
+         size = 32;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         clock = "clk_ref_i";
+      };
+   };
+
+   reg {
+      name = "Time Register - sub-second 125 MHz clock cycles ";
+      prefix = "TM_CYCLES";
+      description = "read: value of internal 125 MHz cycles counter taken during write to TCR.CAP_TIME bit.\
+      write: new value of time (acked by writing TCR.SET_TIME bit)";
+      field {
+         name = "Reference clock cycles";
+         size = 28;
+         type = SLV;
+         access_bus = READ_WRITE;
+         access_dev = READ_WRITE;
+         load = LOAD_EXT;
+         clock = "clk_ref_i";
+      };
+   };
+
+   reg {
+      name = "TDC Data Register";
+      prefix = "TDR";
       
       field {
          clock = "clk_ref_i";
-         name = "DATA";
-         prefix = "DATA";
+         name = "TDC Data";
          type = SLV;
          size = 28;
          access_bus = READ_WRITE;
          access_dev = READ_WRITE;
          load = LOAD_EXT;
-      };
-      
-      field {
-         clock = "clk_ref_i";
-         name = "ADDR";
-         prefix = "ADDR";
-         type = SLV;
-         size = 4;
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
       };
    };
 
@@ -156,34 +316,6 @@ peripheral {
          type = MONOSTABLE;
       };
       
-      
-      field {
-         clock = "clk_ref_i";
-         name = "Error flag";
-         prefix = "ERR";
-         type = BIT;
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      };
-
-      field {
-         clock = "clk_ref_i";
-         name = "Interrupt flag";
-         prefix = "INT";
-         type = BIT;
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      };
-
-      field {
-         clock = "clk_ref_i";
-         name = "Load flag";
-         prefix = "LOAD";
-         type = BIT;
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      };
-
       field {
          clock = "clk_ref_i";
          name = "Empty flag";
@@ -233,19 +365,43 @@ peripheral {
       prefix = "CALR";
       name = "Calibration register";
 
+      
       field {
          clock = "clk_ref_i";
          name = "Triggers calibration pulses";
-         description = "write 1: Generates synchronous calibration pulses the channels selected in PSEL field.";
+         description = "write 1: Generates synchronous calibration pulse on the channels selected in the PSEL field.\
+         write 0: no effect.";
          prefix = "CAL_PULSE";
          type = MONOSTABLE;
       };
 
       field {
          clock = "clk_ref_i";
+         name = "PPS Calibration output enable";
+         description = "write 1: Feeds TDC input with internally generated PPS signal.\
+         write 0: PPS generation disabled.";
+         prefix = "CAL_PPS";
+         type = BIT;
+         access_dev = READ_ONLY;
+         access_bus = READ_WRITE;
+      };
+
+      field {
+         clock = "clk_ref_i";
+         name = "Triggers calibration pulses";
+         description = "write 1: Enables DMTD test pattern generation on Delay chain input and output selected in PSEL.\
+write 0: DMTD pattern generation disabled.";
+         prefix = "CAL_DMTD";
+         type = BIT;
+         access_dev = READ_ONLY;
+         access_bus = READ_WRITE;
+      };
+
+      field {
+         clock = "clk_ref_i";
          name = "Enable pulse generation";
          description = "1: enable generation of calibration pulses on the output corresponding to the written bit\
-                 0: disable generation of these pulses";
+         0: disable generation on the corresponding output";
          prefix = "PSEL";
          type = SLV;
          size = 4;
@@ -253,13 +409,91 @@ peripheral {
          access_dev = READ_ONLY;
       };
 
+      field {
+         name = "DMTD Feedback Channel Select";
+         prefix = "DMTD_FBSEL";
+         type = BIT;
+         description = "0: samples DDMTD pattern on the delay input\
+         1: samples DDMTD pattern on the delay output";
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+      field {
+         ack_read = "calr_rd_ack_o";
+
+         name = "DMTD Tag";
+         prefix = "DMTD_TAG";
+         size = 23;
+         type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "DMTD Tag Ready";
+         prefix = "DMTD_TAG_RDY";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+   };
+
+   reg {
+      name = "Softpll Register";
+      prefix = "SPLLR";
+      description = "Minimal SoftPLL register required to calibrate the card if it there's no WR core in the design";
+
+      
+      field {
+         ack_read = "spllr_rd_ack_o";
+
+         name = "Frequency/Phase tag";
+         prefix = "TAG";
+         type = SLV;
+         size = 20;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "Tag Ready";
+         prefix = "TAG_RDY";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "Freq/Phase mode select";
+         description = "0: sample frequency (pre-locking)\
+                        1: sample phase";
+         prefix = "MODE";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+  reg {
+      name = "Softpll DAC Register";
+      prefix = "SDACR";
+      description = "DMTD Dac Control register, used for calibration when there's no associated WR core";
+
+      
+      field {
+         name = "DAC Value";
+         prefix = "DAC_VAL";
+         type = PASS_THROUGH;
+         size = 16;
+      };
    };
 
 
    reg {
       prefix = "ADSFR";
       name = "Acam to Delay line fractional part Scale Factor Register";
-      description = "Coefficient used to re-scale the fine part of the timestamp produced by Acam. Contains the number of Delay line bins per one Acam bin. Can be used to compensate the INL error of the delay lines induced by temperature changes. It's value can be calculated with the following formula: <b>ADFSR = (2 ** 14) * Acam_bin [ps] / Delay_bin [ps]</b>";
+      description = "Coefficient used to re-scale the fine part of the timestamp produced by Acam. Contains the number of Delay line bins per one Acam bin. Can be used to compensate the INL error and jitter of the delay lines induced by temperature changes. It's value can be calculated with the following formula: <b>ADFSR = (2 ** 14) * Acam_bin [ps] / Delay_bin [ps]</b>";
 
       field {
          name = "ADFSR Value";
@@ -457,25 +691,22 @@ peripheral {
 
 
    reg {
-      name = "Reference Clock Frequency Register";
-      prefix = "RCFR";
-      description = "Current frequency of the reference clock. Used for testing/calibration purposes.";
-
-      field {
-         name = "Frequency";
-         type = SLV;
-         size = 32;
-         clock = "clk_ref_i";
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      }
-   };
-
-   reg {
       name = "Timestamp Buffer Control Register";
       prefix = "TSBCR";
-      
 
+
+      field {
+         name = "Channel Mask";
+         prefix = "CHAN_MASK";
+         description = "Selects which channels' time tags shall be written to the buffer. \
+                        bit 0 = TDC input, bits 1..4 = Delay outputs";
+
+         type = SLV;
+         size = 5;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+         clock = "clk_ref_i";
+      };
 
       field {
          name = "Buffer enable";
@@ -492,7 +723,7 @@ peripheral {
       };
 
       field {
-         name = "Reset TS Sequence Number";
+         name = "Reset TS Sequence Numbers";
          prefix = "RST_SEQ";
          clock = "clk_ref_i";
          type = MONOSTABLE;
@@ -513,20 +744,61 @@ peripheral {
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
-   };
-
-   irq {
-      name = "TS Buffer not empty";
-      trigger = LEVEL_0;
-      prefix = "ts_buf_notempty";
+      field {
+         name = "Buffer entries count";
+         prefix = "COUNT";
+         type = SLV;
+         size = 12;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
    };
 
    reg {
-      name = "Timestamp Buffer Readout UTC Register";
-      prefix = "TSBR_U";
+      name = "Timestamp Buffer Interrupt Register";
+      prefix = "TSBIR";
 
       field {
-         name = "UTC Value [seconds]";
+         name = "IRQ timeout [milliseconds]";
+         description = "The IRQ line will be asserted after TIMEOUT milliseconds even if the amount of data in the buffer is below the THRESHOLD.";
+         prefix = "TIMEOUT";
+         type = SLV;
+         size = 10;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+
+      field {
+         name = "Interrupt threshold";
+         description = "Number of samples (timestamps) in the buffer, which will immediately trigger an interrupt.";
+         prefix = "THRESHOLD";
+         type = SLV;
+         size = 12;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
+   };
+
+
+   reg {
+      name = "Timestamp Buffer Readout Seconds Register (MSB)";
+      prefix = "TSBR_SECH";
+
+      field {
+         name = "Timestamps TAI Seconds (bits 39-32)";
+         size = 8;
+         type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY; 
+      };
+   };
+
+   reg {
+      name = "Timestamp Buffer Readout Seconds Register (LSB)";
+      prefix = "TSBR_SECL";
+
+      field {
+         name = "Timestamps TAI Seconds (bits 31-0)";
          size = 32;
          type = SLV;
          access_bus = READ_ONLY;
@@ -536,7 +808,7 @@ peripheral {
 
    reg {
       name = "Timestamp Buffer Readout Cycles Register";
-      prefix = "TSBR_C";
+      prefix = "TSBR_CYCLES";
 
       field {
          name = "Cycles Value [in 8 ns ticks]";
@@ -548,8 +820,19 @@ peripheral {
    };
 
    reg {
-      name = "Timestamp Buffer Readout Fine / Seq ID Register";
+      name = "Timestamp Buffer Readout Fine / Channel / Seq ID Register";
       prefix = "TSBR_FID";
+
+      field {
+         name = "Channel ID";
+         prefix = "CHANNEL";
+         description = "ID of the originating channel):\
+                        0 = TDC input, 1..4 = delay outputs";
+         size = 4;
+         type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
 
       field {
          name = "Fine Value [in phase units]";
@@ -569,7 +852,6 @@ peripheral {
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY; 
          ack_read = "advance_rbuf_o";
-
       };
    };
 
@@ -604,262 +886,35 @@ peripheral {
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
-   };
-
-   fifo_reg {
-      direction = CORE_TO_BUS;
-      size = 256;
-      prefix = "RAWFIFO";
-      name = "RAW FIFO";
-      flags_bus = {FIFO_EMPTY};
-      flags_dev = {FIFO_FULL};
-      clock = "clk_ref_i";
-
 
       field {
-         name = "RawFrac";
-         prefix = "FRAC";
-         size = 28;
+         name = "Debug in";
+         prefix = "DBG";
          type = SLV;
-      };
-
-      field {
-         name = "RawCoarse";
-         prefix = "COARSE";
-         size = 28;
-         type = SLV;
-      };
-   };
-};
-
-channel_template = {
-   reg {
-      name = "Delay Control Register (channel %d)";
-      prefix = "DCR%d";
-      align = 8;
-
-      field {
-         name = "Enable channel";
-         prefix = "ENABLE";
-         description = "0: channel is disabled\
-                        1: channel is enabled";
-         type = BIT;
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-         clock = "clk_ref_i";
-      };
-
-      field {
-         name = "Delay mode select";
-         prefix = "MODE";
-         description = "0: Channel will work as a delay generator, producing delayed copies of pulses comming to the trigger input\
-1: Channel will work as a programmable pulse generator - producing a pulse which begins at UTC time [U_START, C_START, F_START] and ends at [U_END, C_END, F_END].\
-   <b>Warning:</b> MODE_DLY bit can be safely set only when the TDC and the delay logic are disabled (i.e. when GCR.BYPASS = 1)";
-         type = BIT;
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-         clock = "clk_ref_i";
-      };
-
-      field {
-         name = "Pulse generator arm";
-         prefix = "PG_ARM";
-         description = "write 1: arms the pulse generator. \
-         write 0: no effect.\
-         read 1: pulse generator is armed. \
-         read 0: pulse generator is not armed. \
-         Note that the time written to [U/C/F]START must be bigger by at least 200 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much bigger, as it's affected by the non-determinism of the operating system."; 
-         type = BIT;
-         access_bus = READ_WRITE;
-         access_dev = READ_WRITE;
-         load = LOAD_EXT;
-         clock = "clk_ref_i";
-      };
-      
-      field {
-         name = "Pulse generator triggered";
-         prefix = "PG_TRIG";
-         description = "read 1: pulse generator has been triggered and produced a pulse\
-         read 0: pulse generator is busy or hasn't triggered yet"; 
-         type = BIT;
-         clock = "clk_ref_i";
+         size = 4;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
-
-      field {
-         name = "Start Delay Update";
-         prefix = "UPDATE";
-         description = "write 1: Starts delay update procedure. The start and end times from [U/C/F][START/END] will be transferred in an atomic way to the internal delay/pulse generator registers\
-        write 0: no effect.";
-         type = MONOSTABLE;
-         clock = "clk_ref_i";
-      };
-      
-      field {
-         name = "Delay Update Done";
-         prefix = "UPD_DONE";
-         description = "read 1: The delays from [U/C/F][START/END] have been loaded into internal registers\
-        read 0: update operation in progress";
-         clock = "clk_ref_i";
-         type = BIT;
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      };
-
-      field {
-         name = "Force Calibration Delay";
-         prefix = "FORCE_DLY";
-         description = "write 1: preloads the delay line with the contents of FRR register. Used for self-calibration purposes.\
-      write 0: no effect";
-
-         clock = "clk_ref_i";
-         type = MONOSTABLE;
-      };
-
-
-
-      field {
-         name = "Output Polarity";
-         prefix = "POL";
-         description = "1: output is active HIGH\
-                       0: output is active LOW";
-         clock = "clk_ref_i";
-         type = BIT;
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-
-      };
    };
 
+  
 
-   reg {
-      name = "Fine Range Register (channel %d)";
-      prefix = "FRR%d";
-      description = "Delay line tap setting at which the line generates an 8 ns (one cycle) longer delay than when set to 0.";
-
-      field {
-         name = "Fine Range";
-         size = 10;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
-
+   irq {
+      name = "TS Buffer not empty.";
+      trigger = LEVEL_0;
+      prefix = "ts_buf_notempty";
    };
 
-   reg {
-      name = "Pulse start time / offset (UTC part, channel %d)";
-      prefix = "U_START%d";
-      description = "UTC part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).";
-
-      field {
-         name = "UTC seconds";
-         size = 32;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
+   irq {
+      name = "DMTD Softpll interrupt";
+      trigger = EDGE_RISING;
+      prefix = "dmtd_spll";
    };
 
-   reg {
-      name = "Pulse start time / offset (8 ns cycles, channel %d)";
-      prefix = "C_START%d";
-      description = "Sub-second part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
-
-      field {
-         name = "Refclk cycles";
-         size = 28;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
+   irq {
+      name = "Sync Status Changed";
+      trigger = EDGE_RISING;
+      prefix = "sync_status";
    };
-
-   reg {
-      name = "Pulse start time / offset (sub-cycle fine part, channel %d)";
-      prefix = "F_START%d";
-      description = "Sub-clock cycle part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
-
-      field {
-         name = "Fractional part";
-         size = 12;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
-   };
-   
-
-   reg {
-      name = "Pulse end time / offset (UTC part, channel %d)";
-      prefix = "U_END%d";
-      description = "UTC part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode).";
-
-      field {
-         name = "UTC seconds";
-         size = 32;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
-   };
-
-   reg {
-      name = "Pulse end time / offset (8 ns cycles, channel %d)";
-      prefix = "C_END%d";
-      description = "Sub-second part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
-
-      field {
-         name = "Refclk cycles";
-         size = 28;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
-   };
-
-   reg {
-      name = "Pulse end time / offset (sub-cycle fine part, channel %d)";
-      prefix = "F_END%d";
-      description = "Sub-clock cycle part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
-
-      field {
-         name = "Fractional part";
-         size = 12;
-         type = SLV;
-         clock = "clk_ref_i";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
-   };
-   
-   
 };
 
-
-
-function generate_channels(n)
-   local i;
-
-   for i=1,n do
-      local T=deepcopy(channel_template);
-
-
-      foreach_reg({TYPE_REG}, function(r)
-                                 r.name = string.format(r.name, i);
-                                 r.prefix = string.format(r.prefix, i);
-                                 print(r.name)
-                              end, T);
-
-      table_join(periph, T);
-   end
-end
-
-generate_channels(4);

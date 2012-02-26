@@ -1,8 +1,47 @@
+-----------------------------------------------------------------------------
+-- Title      : TDC Statistics Unit
+-- Project    : Fine Delay FMC (fmc-delay-1ns-4cha)
+-------------------------------------------------------------------------------
+-- File       : fd_timestamper_stat_unit.vhd
+-- Author     : Tomasz Wlostowski
+-- Company    : CERN
+-- Created    : 2011-08-24
+-- Last update: 2012-02-26
+-- Platform   : FPGA-generic
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Description: Counts processed/missed trigger pulses and measures the maximum
+-- trigger-to-timestamp processing delay.
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author          Description
+-- 2011-08-24  1.0      twlostow        Created
+-------------------------------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-use work.fd_wbgen2_pkg.all;
+use work.fd_main_wbgen2_pkg.all;
 
 
 entity fd_timestamper_stat_unit is
@@ -13,8 +52,8 @@ entity fd_timestamper_stat_unit is
     trig_pulse_i    : in std_logic;
     raw_tag_valid_i : in std_logic;
 
-    regs_i : in  t_fd_out_registers;
-    regs_o : out t_fd_in_registers);
+    regs_i : in  t_fd_main_out_registers;
+    regs_o : out t_fd_main_in_registers);
 
 end fd_timestamper_stat_unit;
 
