@@ -26,10 +26,10 @@ NET "L_WR_RDY[0]" IOSTANDARD = "SSTL18_I";
 NET "L_WR_RDY[1]" LOC = T22;
 NET "L_WR_RDY[1]" IOSTANDARD = "SSTL18_I";
 
-NET "L_CLKN" LOC = N19;
-NET "L_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
-NET "L_CLKP" LOC = P20;
-NET "L_CLKP" IOSTANDARD = "DIFF_SSTL18_I";
+#NET "L_CLKN" LOC = N19;
+#NET "L_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
+#NET "L_CLKP" LOC = P20;
+#NET "L_CLKP" IOSTANDARD = "DIFF_SSTL18_I";
 
 NET "P2L_CLKN" LOC = M19;
 NET "P2L_CLKN" IOSTANDARD = "DIFF_SSTL18_I";
@@ -154,6 +154,9 @@ NET "LED_RED" IOSTANDARD = "LVCMOS25";
 NET "LED_GREEN" LOC = E5;
 NET "LED_GREEN" IOSTANDARD = "LVCMOS25";
 
+#
+# Fine Delay V3 Pin definitions
+#
 
 
 NET "fd_clk_ref_n_i" LOC =  L22 ;
@@ -210,18 +213,18 @@ NET "fd_spi_mosi_o" LOC =  AA18 ;
 NET "fd_spi_mosi_o" IOSTANDARD =LVCMOS25;
 NET "fd_spi_sclk_o" LOC =  Y17 ;
 NET "fd_spi_sclk_o" IOSTANDARD =LVCMOS25;
-NET "fd_tdc_a_o[0]" LOC =  T12 ;
-NET "fd_tdc_a_o[0]" IOSTANDARD =LVCMOS25;
-NET "fd_tdc_a_o[1]" LOC =  U12 ;
-NET "fd_tdc_a_o[1]" IOSTANDARD =LVCMOS25;
-NET "fd_tdc_a_o[2]" LOC =  Y15 ;
-NET "fd_tdc_a_o[2]" IOSTANDARD =LVCMOS25;
-NET "fd_tdc_a_o[3]" LOC =  AB15 ;
-NET "fd_tdc_a_o[3]" IOSTANDARD =LVCMOS25;
+NET "fd_dmtd_clk_o" LOC =  T12 ;
+NET "fd_dmtd_clk_o" IOSTANDARD =LVCMOS25;
+NET "fd_dmtd_fb_out_i" LOC =  U12 ;
+NET "fd_dmtd_fb_out_i" IOSTANDARD =LVCMOS25;
+NET "fd_tdc_cal_pulse_o" LOC =  Y15 ;
+NET "fd_tdc_cal_pulse_o" IOSTANDARD =LVCMOS25;
+NET "fd_pll_status_i" LOC =  AB15 ;
+NET "fd_pll_status_i" IOSTANDARD =LVCMOS25;
 NET "fd_tdc_alutrigger_o" LOC =  W12 ;
 NET "fd_tdc_alutrigger_o" IOSTANDARD =LVCMOS25;
-NET "fd_tdc_cs_n_o" LOC =  T11 ;
-NET "fd_tdc_cs_n_o" IOSTANDARD =LVCMOS25;
+NET "fd_ext_rst_n_o" LOC =  T11 ;
+NET "fd_ext_rst_n_o" IOSTANDARD =LVCMOS25;
 NET "fd_tdc_d_b[0]" LOC =  AB12 ;
 NET "fd_tdc_d_b[0]" IOSTANDARD =LVCMOS25;
 NET "fd_tdc_d_b[1]" LOC =  U8 ;
@@ -296,17 +299,33 @@ NET "fd_tdc_wr_n_o" LOC =  Y13 ;
 NET "fd_tdc_wr_n_o" IOSTANDARD =LVCMOS25;
 NET "fd_trig_a_i" LOC =  Y11 ;
 NET "fd_trig_a_i" IOSTANDARD =LVCMOS25;
-NET "fd_trig_cal_o" LOC =  AB11 ;
-NET "fd_trig_cal_o" IOSTANDARD =LVCMOS25;
+NET "fd_dmtd_fb_in_i" LOC =  AB11 ;
+NET "fd_dmtd_fb_in_i" IOSTANDARD =LVCMOS25;
 NET "fmc_scl_b" LOC =  F7 ;
 NET "fmc_scl_b" IOSTANDARD =LVCMOS25;
 NET "fmc_sda_b" LOC =  F8 ;
 NET "fmc_sda_b" IOSTANDARD =LVCMOS25;
-#NET "onewire_b" LOC =  W11 ;
-#NET "onewire_b" IOSTANDARD =LVCMOS25;
-NET "L_CLKp" TNM_NET = "l_clkp_grp";
+NET "onewire_b" LOC =  W11 ;
+NET "onewire_b" IOSTANDARD =LVCMOS25;
+NET "dac_cs1_n_o" LOC = A3;
+NET "dac_cs1_n_o" IOSTANDARD = "LVCMOS25";
+
+NET "dac_cs2_n_o" LOC = B3;
+NET "dac_cs2_n_o" IOSTANDARD = "LVCMOS25";
+
+#NET "dac_clr_n_o" LOC = F7;
+#NET "dac_clr_n_o" IOSTANDARD = "LVCMOS25";
+
+NET "dac_din_o" LOC = C4;
+NET "dac_din_o" IOSTANDARD = "LVCMOS25";
+
+NET "dac_sclk_o" LOC = A4;
+NET "dac_sclk_o" IOSTANDARD = "LVCMOS25";
+
+#NET "L_CLKp" TNM_NET = "l_clkp_grp";
 NET "P2L_CLKp" TNM_NET = "p2l_clkp_grp";
 NET "P2L_CLKn" TNM_NET = "p2l_clkn_grp";
+PIN "U_DDR_PLL/clkout1_buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
 TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 
 # System clock
@@ -326,9 +345,9 @@ NET "fd_clk_ref_n_i" TNM_NET = fd_clk_ref_n_i;
 TIMESPEC TS_fd_clk_ref_n_i = PERIOD "fd_clk_ref_n_i" 8 ns HIGH 50%;
 NET "fd_clk_ref_p_i" TNM_NET = fd_clk_ref_p_i;
 TIMESPEC TS_fd_clk_ref_p_i = PERIOD "fd_clk_ref_p_i" 8 ns HIGH 50%;
-NET "L_CLKn" TNM_NET = L_CLKn;
+#NET "L_CLKn" TNM_NET = L_CLKn;
 #>DISABLED<#TIMESPEC TS_L_CLKn = PERIOD "L_CLKn" 5 ns HIGH 50%;
-NET "L_CLKp" TNM_NET = L_CLKp;
+#NET "L_CLKp" TNM_NET = L_CLKp;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/09/06
 NET "clk_20m_vcxo_i" TNM_NET = clk_20m_vcxo_i;
 NET "clk_sys" TNM_NET = clk_sys;

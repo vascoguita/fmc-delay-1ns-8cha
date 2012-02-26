@@ -1,10 +1,11 @@
 files = [
 "spec_top.vhd",
 "spec_top.ucf",
-#"wb_gpio_port_notristates.vhd"
+"spec_serial_dac.vhd",
+"spec_serial_dac_arb.vhd"
 ];
 
-fetchto = "../../ip_cores"
+fetchto = "../../../ip_cores"
 
-modules = {"local" : "../../rtl",
+modules = {"local" : [ "../../../rtl", "../../../platform" ], 
 					 "svn" : "http://svn.ohwr.org/gn4124-core/branches/hdlmake-compliant/rtl" }
