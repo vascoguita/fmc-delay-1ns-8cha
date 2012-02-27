@@ -37,10 +37,11 @@ typedef struct fdelay_device
 
 typedef struct 
 {
-	int32_t utc;
+	int64_t utc;
 	int32_t coarse;
 	int32_t frac;
 	uint16_t seq_id;
+	int channel;
 } fdelay_time_t;
 
 /* 
@@ -60,10 +61,11 @@ int fdelay_init(fdelay_device_t *dev);
 int fdelay_release(fdelay_device_t *dev);
 int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many);
 int fdelay_configure_trigger(fdelay_device_t *dev, int enable, int termination);
-int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64_t delay_ps, int64_t width_ps);
+int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64_t delay_ps, int64_t width_ps, int64_t delta_ps, int rep_count);
 
 int fdelay_configure_sync(fdelay_device_t *dev, int mode);
 int fdelay_update_sync_status(fdelay_device_t *dev);
+int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t);
 
 
 #endif

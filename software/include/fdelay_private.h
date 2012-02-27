@@ -1,11 +1,11 @@
-/* 
+/*
 	FmcDelay1ns4Cha (a.k.a. The Fine Delay Card)
 	User-space driver/library
-	
+
 	Private includes
-	
+
 	Tomasz Włostowski/BE-CO-HT, 2011
-	
+
 	(c) Copyright CERN 2011
 	Licensed under LGPL 2.1
 */
@@ -22,8 +22,8 @@
 /* MCP23S17 GPIO expander pin locations: bit 8 = select bank 2, bits 7..0 = mask of the pin in the selected bank */
 #define SGPIO_TERM_EN  (1<<0)	 	/* Input termination enable (1 = on) */
 #define SGPIO_OUTPUT_EN(x) (1<<(6-x))		/* Output driver enable (1 = on) */
-#define SGPIO_TRIG_SEL  (1<<3)  	/* TDC trigger select (0 = trigger input, 1 = FPGA) */
-#define SGPIO_CAL_EN  (1<<3)  	/* Calibration mode enable (0 = on) */
+#define SGPIO_TRIG_SEL  (1<<6)  	/* TDC trigger select (0 = trigger input, 1 = FPGA) */
+#define SGPIO_CAL_EN  (1<<7)  	/* Calibration mode enable (0 = on) */
 
 /* ACAM TDC operation modes */
 #define ACAM_RMODE 0
@@ -31,8 +31,9 @@
 
 /* MCP23S17 register addresses (only ones which are used by the lib) */
 #define MCP_IODIR 0x0
-#define MCP_GPIO 0x12
+#define MCP_OLAT  0x14
 #define MCP_IOCON 0x0a
+#define MCP_GPIO  0x12
 
 /* Number of fractional bits in the timestamps/time definitions. Must be consistent with the HDL bitstream.  */
 #define FDELAY_FRAC_BITS 12
@@ -62,10 +63,8 @@ struct fine_delay_calibration {
 	uint32_t adsfr_val; 		/* ADSFR register value */
 	uint32_t acam_start_offset; /* ACAM Start offset value */
 	uint32_t atmcr_val; 		/* ATMCR register value */
-	int32_t dly_tempco[4]; 		/* SY89295 delay/temperature coefficient in ps/degC << FDELAY_FRAC_BITS */
-	int32_t zero_tempco[4];     /* Zero offset/temperature coefficient in ps/degC << FDELAY_FRAC_BITS */
-	int32_t cal_temp;			/* Calibration temperature in 0.1 degC */
 	uint32_t tdc_zero_offset;   /* Zero offset of the TDC, in picoseconds */
+	int64_t frr_poly[3];        /* SY89295 delay/temperature polynomial coefficients */
 } __attribute__((packed));
 
 /* Internal state of the fine delay card */
@@ -74,17 +73,20 @@ struct fine_delay_hw
 	uint32_t base_addr; 		/* Base address of the core */
 	uint32_t base_onewire; 		/* Base address of the core */
 	uint32_t base_i2c;			/* SPI Controller offset */
-	double acam_bin; 			/* bin size of the ACAM TDC - calculated for */
-	uint32_t frr[4];			/* Fine range register for each output, determi*/
-	int32_t board_temp;			/* Current temperature of the board in 0.1 degC */
+	uint32_t acam_addr;         /* Current state of ACAM's address lines */
+	double acam_bin; 			/* bin size of the ACAM TDC - calculated for 31.25 MHz reference */
+    uint32_t frr_offset[4];     /* Offset between the FRR measured at a known temperature at startup and poly-fitted FRR */
+	uint32_t frr_cur[4];		/* Fine range register for each output, current value (after online temp. compensation) */
+	int32_t cal_temp;           /* SY89295 calibration temperature in 1/16 degC units */
+	int32_t board_temp;			/* Current temperature of the board, unit = 1/16 degC */
 	int wr_enabled;
 	int wr_state;
 	struct fine_delay_calibration calib;
 };
 
 /* some useful access/declaration macros */
-#define fd_writel(data, addr) dev->writel(dev->priv_io, data, (dev->base_addr + (addr)))
-#define fd_readl(addr) dev->readl(dev->priv_io, (dev->base_addr + (addr)))
+#define fd_writel(data, addr) dev->writel(dev->priv_io, data, (hw->base_addr + (addr)))
+#define fd_readl(addr) dev->readl(dev->priv_io, (hw->base_addr + (addr)))
 #define fd_decl_private(dev) struct fine_delay_hw *hw = (struct fine_delay_hw *) dev->priv_fd;
 
 
