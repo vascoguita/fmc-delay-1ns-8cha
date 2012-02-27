@@ -2,7 +2,7 @@
 
 #include "fdelay_lib.h"
 #include "fdelay_private.h"
-#include "fdelay_regs.h"
+#include "fd_main_regs.h"
 
 
 #define M_SDA_OUT(x) {							\
@@ -73,6 +73,7 @@ static void mi2c_stop(fdelay_device_t *dev)
 
 void mi2c_get_byte(fdelay_device_t *dev, unsigned char *data, int ack)
 {
+	fd_decl_private(dev)
 
   int i;
   unsigned char indata = 0;
@@ -99,7 +100,7 @@ void mi2c_get_byte(fdelay_device_t *dev, unsigned char *data, int ack)
 void mi2c_init(fdelay_device_t *dev)
 {
 	fd_decl_private(dev);
-		
+
 	M_SCL_OUT(1);
 	M_SDA_OUT(1);
 }
@@ -113,7 +114,7 @@ void mi2c_scan(fdelay_device_t *dev)
 		if(!mi2c_put_byte(dev,i))
 			printf("Found device at 0x%x\n", i>>1);
 		mi2c_stop(dev);
- 	 	
+
  	}
 }
 
@@ -137,7 +138,7 @@ int eeprom_read(fdelay_device_t *dev, uint8_t i2c_addr, uint32_t offset, uint8_t
 	mi2c_start(dev);
  	mi2c_put_byte(dev, (i2c_addr << 1) | 1);
 	mi2c_get_byte(dev, &c, 0);
-	printf("readback: %x\n", c);
+//	printf("readback: %x\n", c);
 	*buf++ = c;
  	mi2c_stop(dev);
  	}
@@ -148,9 +149,9 @@ int eeprom_write(fdelay_device_t *dev, uint8_t i2c_addr, uint32_t offset, uint8_
 {
 	int i, busy;
 	for(i=0;i<size;i++)
-	{	
+	{
 	 	mi2c_start(dev);
- 
+
 	 	if(mi2c_put_byte(dev, i2c_addr << 1) < 0)
 	 	{
 		 	mi2c_stop(dev);
@@ -163,11 +164,11 @@ int eeprom_write(fdelay_device_t *dev, uint8_t i2c_addr, uint32_t offset, uint8_
 		offset++;
 		mi2c_stop(dev);
 
-		
+
 		do /* wait until the chip becomes ready */
 		{
             mi2c_start(dev);
-			busy = mi2c_put_byte(dev, i2c_addr << 1); 
+			busy = mi2c_put_byte(dev, i2c_addr << 1);
 			mi2c_stop(dev);
 		} while(busy);
 
