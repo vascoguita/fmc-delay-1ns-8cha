@@ -457,7 +457,7 @@ static double measure_output_delay(fdelay_device_t *dev, int channel, int fine, 
 	int i;
 
 /* Mapping between the channel of the delay card and the stop inputs of the ACAM */
-	int chan_to_acam[5] = {0, 4, 3, 2, 1};
+	int chan_to_acam[5] = {0, 1, 2, 3, 4};
 
 /* Mapping between the channel number and the time tag FIFOs of the ACAM */
 	int chan_to_fifo[5] = {0, 8, 8, 8, 8};
@@ -600,7 +600,6 @@ void calibrate_outputs(fdelay_device_t *dev)
     fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 	acam_configure(dev, ACAM_IMODE);
 	fd_writel( FD_TDCSR_START_EN | FD_TDCSR_STOP_EN, FD_REG_TDCSR);
-
 
 	for(channel = 1; channel <= 4; channel++)
 	{   
@@ -868,6 +867,25 @@ static fdelay_time_t ts_sub(fdelay_time_t a, fdelay_time_t b)
  	if(a.coarse < 0)
  	{
  	 	a.coarse += 125000000;
+ 	 	a.utc --;
+ 	}
+ 	return a;
+}
+
+
+/* Add two timestamps */
+static fdelay_time_t ts_add(fdelay_time_t a, fdelay_time_t b)
+{
+ 	a.frac += b.frac;
+ 	if(a.frac >= (1<<FDELAY_FRAC_BITS))
+ 	{
+ 	 	a.frac -= (1<<FDELAY_FRAC_BITS);
+ 	 	a.coarse++;
+ 	}
+ 	a.coarse += b.coarse;
+ 	if(b.coarse >= 125000000)
+ 	{
+ 	 	a.coarse -= 125000000;
  	 	a.utc ++;
  	}
  	return a;
@@ -989,6 +1007,66 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	return 0;
 }
 
+
+
+/* Configures the output channel (channel) to produce pulses delayed from the trigger by (delay_ps).
+   The output pulse width is proviced in (width_ps) parameter. */
+int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fdelay_time_t t_start, int64_t width_ps, int64_t delta_ps, int rep_count)
+{
+	fd_decl_private(dev)
+ 	uint32_t base = (channel-1) * 0x20;
+ 	uint32_t dcr;
+ 	fdelay_time_t start, end, delta;
+
+ 	if(channel < 1 || channel > 4)
+ 		return -1;
+
+ 	start = t_start;
+ 	end = ts_add(start, fdelay_from_picos(width_ps));
+    delta = fdelay_from_picos(delta_ps);
+
+// 	printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+
+
+ 	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
+ 	chan_writel(start.utc >> 32, FD_REG_U_STARTH);
+ 	chan_writel(start.utc & 0xffffffff, FD_REG_U_STARTL);
+ 	chan_writel(start.coarse, FD_REG_C_START);
+ 	chan_writel(start.frac, FD_REG_F_START);
+ 	chan_writel(end.utc >> 32,  FD_REG_U_ENDH);
+ 	chan_writel(end.utc & 0xffffffff,  FD_REG_U_ENDL);
+ 	chan_writel(end.coarse, FD_REG_C_END);
+ 	chan_writel(end.frac, FD_REG_F_END);
+
+ 	chan_writel(delta.utc & 0xf,  FD_REG_U_DELTA);
+ 	chan_writel(delta.coarse, FD_REG_C_DELTA);
+ 	chan_writel(delta.frac, FD_REG_F_DELTA);
+
+// 	chan_writel(0, FD_REG_RCR);
+ 	chan_writel(FD_RCR_REP_CNT_W(rep_count < 0 ? 0 :rep_count-1) | (rep_count < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
+
+    dcr = FD_DCR_MODE;
+        
+    /* For narrowly spaced pulses, we don't have enough time to reload the tap number into the corresponding
+        SY89295 - therefore, the width/spacing resolution is limited to 4 ns. */
+    if((delta_ps - width_ps) < 200000 || (width_ps < 200000))
+        dcr |= FD_DCR_NO_FINE;
+
+ 	chan_writel(dcr | FD_DCR_UPDATE, FD_REG_DCR);
+ 	chan_writel(dcr | FD_DCR_ENABLE, FD_REG_DCR);
+ 	chan_writel(dcr | FD_DCR_ENABLE | FD_DCR_PG_ARM, FD_REG_DCR);
+
+ 	sgpio_set_pin(dev, SGPIO_OUTPUT_EN(channel), enable ? 1 : 0);
+
+ 	return 0;
+}
+
+int fdelay_channel_triggered(fdelay_device_t *dev, int channel)
+{
+	fd_decl_private(dev)
+    return chan_readl(FD_REG_DCR) & FD_DCR_PG_TRIG ? 1: 0;
+}
+
 /* Todo: write get_time() */
 int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t)
 {
@@ -1006,6 +1084,20 @@ int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t)
     fd_writel(tcr | FD_TCR_SET_TIME, FD_REG_TCR);
     return 0;
 
+}
+
+
+/* Todo: write get_time() */
+int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t)
+{
+	fd_decl_private(dev)
+	uint32_t tcr;
+
+    tcr = fd_readl(FD_REG_TCR);
+    fd_writel(tcr | FD_TCR_CAP_TIME, FD_REG_TCR);
+    t->utc = fd_readl(FD_REG_TM_SECL);
+    t->coarse = fd_readl(FD_REG_TM_CYCLES);
+    return 0;
 }
 
 #if 0

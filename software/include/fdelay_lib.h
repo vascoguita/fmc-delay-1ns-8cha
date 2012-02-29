@@ -66,6 +66,9 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
 int fdelay_configure_sync(fdelay_device_t *dev, int mode);
 int fdelay_update_sync_status(fdelay_device_t *dev);
 int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t);
+int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fdelay_time_t t_start, int64_t width_ps, int64_t delta_ps, int rep_count);
+int fdelay_channel_triggered(fdelay_device_t *dev, int channel);
+int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t);
 
 
 #endif

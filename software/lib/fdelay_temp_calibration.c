@@ -28,8 +28,6 @@ main()
 		return -1;
  	fdelay_configure_trigger(&dev, 1,1);
 
-    
-
     fdelay_configure_output(&dev,1,1,500000, 100000, 100000, 0);
     fdelay_configure_output(&dev,2,1,500000, 100000, 100000, 0);
     fdelay_configure_output(&dev,3,1,500000, 100000, 100000, 0);
@@ -58,10 +56,5 @@ main()
 	  }
 	  #endif
 
-    for(;;)
-    {
-     fdelay_update_calibration(&dev);
-     sleep(1);
-    }
 
 }
