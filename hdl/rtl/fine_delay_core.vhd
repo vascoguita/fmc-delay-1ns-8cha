@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2012-02-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,10 +50,10 @@ entity fine_delay_core is
   generic (
     -- when true, the FD core can take its' internal timebase from an
     -- associated White Rabbit core
-    g_with_wr_core        : boolean                        := false;
+    g_with_wr_core : boolean := false;
 
     -- when true, some timeouts are reduced to speed up simulations
-    g_simulation          : boolean                        := false;
+    g_simulation : boolean := false;
 
     -- Wishbone slave settings
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
@@ -95,13 +95,13 @@ entity fine_delay_core is
     -- DMTD insertion delay calibration signals:
 
     -- Sampled pattern (input side)
-    dmtd_fb_in_i  : in  std_logic;
+    dmtd_fb_in_i : in std_logic;
 
     -- Sampled pattern (output side)
-    dmtd_fb_out_i : in  std_logic;
+    dmtd_fb_out_i : in std_logic;
 
     -- Sampling clock
-    dmtd_samp_o   : out std_logic;
+    dmtd_samp_o : out std_logic;
 
     -- LED indicating trigger pulses
     led_trig_o : out std_logic;
@@ -197,7 +197,7 @@ entity fine_delay_core is
     ---------------------------------------------------------------------------
     -- I2C EEPROM
     ---------------------------------------------------------------------------
-    
+
     i2c_scl_o     : out std_logic;
     i2c_scl_oen_o : out std_logic;
     i2c_scl_i     : in  std_logic;
@@ -301,7 +301,7 @@ architecture rtl of fine_delay_core is
   signal regs_towb_tsu   : t_fd_main_in_registers;
   signal regs_towb_rbuf  : t_fd_main_in_registers;
   signal regs_towb_local : t_fd_main_in_registers;
-  signal regs_towb_dmtd : t_fd_main_in_registers;
+  signal regs_towb_dmtd  : t_fd_main_in_registers;
   signal regs_towb       : t_fd_main_in_registers;
 
   signal spi_cs_vec : std_logic_vector(7 downto 0);
@@ -320,10 +320,16 @@ architecture rtl of fine_delay_core is
   signal delay_tag_mask   : std_logic;
   signal tag_valid_masked : std_logic;
 
-  signal dmtd_pattern : std_logic;
+  signal dmtd_pattern              : std_logic;
   signal calr_rd_ack, spllr_rd_ack : std_logic;
-  signal csync_pps : std_logic;
-  signal tdc_cal_pulse : std_logic;
+  signal csync_pps                 : std_logic;
+  signal tdc_cal_pulse             : std_logic;
+
+
+  signal pwm_count : unsigned(11 downto 0);
+  signal pwm_out   : std_logic;
+
+  signal spi_cs_dac_n, spi_cs_pll_n, spi_cs_gpio_n, spi_mosi : std_logic;
   
   
 begin  -- rtl
@@ -402,7 +408,7 @@ begin  -- rtl
 
       irq_sync_o   => irq_sync,
       tcr_rd_ack_i => tcr_rd_ack,
-      csync_pps_o => csync_pps,
+      csync_pps_o  => csync_pps,
       regs_i       => regs_fromwb,
       regs_o       => regs_towb_csync);
 
@@ -414,11 +420,11 @@ begin  -- rtl
       rst_n_i         => rst_n_sys,
       tm_dac_value_i  => tm_dac_val_int,
       tm_dac_wr_i     => tm_dac_wr_i,
-      spi_cs_dac_n_o  => spi_cs_dac_n_o,
-      spi_cs_pll_n_o  => spi_cs_pll_n_o,
-      spi_cs_gpio_n_o => spi_cs_gpio_n_o,
+      spi_cs_dac_n_o  => spi_cs_dac_n,
+      spi_cs_pll_n_o  => spi_cs_pll_n,
+      spi_cs_gpio_n_o => spi_cs_gpio_n,
       spi_sclk_o      => spi_sclk_o,
-      spi_mosi_o      => spi_mosi_o,
+      spi_mosi_o      => spi_mosi,
       spi_miso_i      => spi_miso_i,
       regs_i          => regs_fromwb,
       regs_o          => regs_towb_spi);
@@ -467,8 +473,8 @@ begin  -- rtl
       irq_dmtd_spll_i       => irq_spll,
       irq_sync_status_i     => irq_sync,
       advance_rbuf_o        => advance_rbuf,
-      spllr_rd_ack_o => spllr_rd_ack,
-      calr_rd_ack_o => calr_rd_ack
+      spllr_rd_ack_o        => spllr_rd_ack,
+      calr_rd_ack_o         => calr_rd_ack
       );
 
   irq_spll <= '0';
@@ -616,10 +622,10 @@ begin  -- rtl
       rst_n_i      => rst_n_ref,
       load_i       => chx_delay_load,
       done_o       => chx_delay_load_done,
-      delay_val0_i => chx_delay_value(0),
-      delay_val1_i => f_reverse_bits(chx_delay_value(1)),
-      delay_val2_i => chx_delay_value(2),
-      delay_val3_i => f_reverse_bits(chx_delay_value(3)),
+      delay_val0_i => f_reverse_bits(chx_delay_value(0)),
+      delay_val1_i => chx_delay_value(1),
+      delay_val2_i => f_reverse_bits(chx_delay_value(2)),
+      delay_val3_i => chx_delay_value(3),
       delay_val_o  => delay_val_o,
       delay_len_o  => delay_len_o);
 
@@ -680,5 +686,30 @@ begin  -- rtl
   regs_towb_local.i2cr_scl_in_i <= i2c_scl_i;
 
   regs_towb_local.gcr_ddr_locked_i <= pll_status_i;
+
+  -- Debug PWM driver for adjusting Peltier temperature. Drivers SPI MOSI line
+  -- with PWM waveform when none of the SPI peripherals is in use (we have no
+  -- spare pins in the FMC connector left)
+
+  p_peltier_pwm : process(clk_sys_i)
+  begin
+    if rising_edge(Clk_sys_i) then
+      if rst_n_sys = '0' then
+        pwm_count <= (others => '0');
+      else
+        pwm_count <= pwm_count + 1;
+        if(pwm_count > unsigned(regs_fromwb.i2cr_dbgout_o)) then
+          pwm_out <= '1';
+        else
+          pwm_out <= '0';
+        end if;
+      end if;
+    end if;
+  end process;
+
+  spi_mosi_o      <= spi_mosi when (spi_cs_gpio_n and spi_cs_pll_n and spi_cs_dac_n) = '0' else pwm_out;
+  spi_cs_gpio_n_o <= spi_cs_gpio_n;
+  spi_cs_dac_n_o  <= spi_cs_dac_n;
+  spi_cs_pll_n_o  <= spi_cs_pll_n;
   
 end rtl;
