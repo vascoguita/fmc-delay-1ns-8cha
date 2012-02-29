@@ -79,10 +79,7 @@ peripheral {
          description = "write 1: arms the pulse generator. \
          write 0: no effect.\
          Note that the time written to [U/C/F]START must be bigger by at least 200 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much bigger, as it's affected by the non-determinism of the operating system."; 
-         type = BIT;
-         access_bus = READ_WRITE;
-         access_dev = READ_WRITE;
-         load = LOAD_EXT;
+         type = MONOSTABLE;
          clock = "clk_ref_i";
       };
       

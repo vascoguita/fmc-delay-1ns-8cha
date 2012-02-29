@@ -388,7 +388,7 @@ wb_dat_o[31:0]
 
 </td>
 <td  class="td_pblock_right">
-fd_channel_dcr_pg_arm_i
+fd_channel_dcr_pg_trig_i
 </td>
 <td  class="td_arrow_right">
 &larr;
@@ -405,7 +405,7 @@ wb_cyc_i
 
 </td>
 <td  class="td_pblock_right">
-fd_channel_dcr_pg_arm_load_o
+fd_channel_dcr_update_o
 </td>
 <td  class="td_arrow_right">
 &rarr;
@@ -422,7 +422,7 @@ wb_sel_i[3:0]
 
 </td>
 <td  class="td_pblock_right">
-fd_channel_dcr_pg_trig_i
+fd_channel_dcr_upd_done_i
 </td>
 <td  class="td_arrow_right">
 &larr;
@@ -439,7 +439,7 @@ wb_stb_i
 
 </td>
 <td  class="td_pblock_right">
-fd_channel_dcr_update_o
+fd_channel_dcr_force_dly_o
 </td>
 <td  class="td_arrow_right">
 &rarr;
@@ -456,40 +456,6 @@ wb_we_i
 
 </td>
 <td  class="td_pblock_right">
-fd_channel_dcr_upd_done_i
-</td>
-<td  class="td_arrow_right">
-&larr;
-</td>
-</tr>
-<tr>
-<td  class="td_arrow_left">
-&larr;
-</td>
-<td  class="td_pblock_left">
-wb_ack_o
-</td>
-<td  class="td_sym_center">
-
-</td>
-<td  class="td_pblock_right">
-fd_channel_dcr_force_dly_o
-</td>
-<td  class="td_arrow_right">
-&rarr;
-</td>
-</tr>
-<tr>
-<td  class="td_arrow_left">
-&larr;
-</td>
-<td  class="td_pblock_left">
-wb_stall_o
-</td>
-<td  class="td_sym_center">
-
-</td>
-<td  class="td_pblock_right">
 fd_channel_dcr_no_fine_o
 </td>
 <td  class="td_arrow_right">
@@ -498,10 +464,10 @@ fd_channel_dcr_no_fine_o
 </tr>
 <tr>
 <td  class="td_arrow_left">
-
+&larr;
 </td>
 <td  class="td_pblock_left">
-
+wb_ack_o
 </td>
 <td  class="td_sym_center">
 &nbsp;
@@ -515,10 +481,10 @@ fd_channel_dcr_no_fine_o
 </tr>
 <tr>
 <td  class="td_arrow_left">
-
+&larr;
 </td>
 <td  class="td_pblock_left">
-
+wb_stall_o
 </td>
 <td  class="td_sym_center">
 
@@ -1442,7 +1408,7 @@ MODE
 <br>0: Channel will work as a delay generator, producing delayed copies of pulses comming to the trigger input<br>1: Channel will work as a programmable pulse generator - producing a pulse which begins at UTC time [U_START, C_START, F_START] and ends at [U_END, C_END, F_END].<br>   <b>Warning:</b> MODE_DLY bit can be safely set only when the TDC and the delay logic are disabled (i.e. when GCR.BYPASS = 1)
 <li><b>
 PG_ARM
-</b>[<i>read/write</i>]: Pulse generator arm
+</b>[<i>write-only</i>]: Pulse generator arm
 <br>write 1: arms the pulse generator. <br>         write 0: no effect.<br>         Note that the time written to [U/C/F]START must be bigger by at least 200 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much bigger, as it's affected by the non-determinism of the operating system.
 <li><b>
 PG_TRIG
