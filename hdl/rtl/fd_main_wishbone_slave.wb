@@ -895,6 +895,14 @@ write 0: DMTD pattern generation disabled.";
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+      field {
+         name = "Debug out";
+         prefix = "DBGOUT";
+         type = SLV;
+         size = 12;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+      };
    };
 
   
