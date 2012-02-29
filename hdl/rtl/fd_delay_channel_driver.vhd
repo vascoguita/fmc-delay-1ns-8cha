@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2012-02-29
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -572,12 +572,12 @@ begin
             delay_pulse0_o <= '0';
             delay_pulse1_o <= '0';
 
-            if(pulse_count = 0) then
+            if(pulse_count = 0 and rep_cont_int = '0') then
               state                  <= IDLE;
               delay_idle_o           <= '1';
               regs_out.dcr_pg_trig_i <= '1';
             else
-              regs_out.dcr_pg_trig_i <= rep_cont_int;
+              regs_out.dcr_pg_trig_i <= '1';
               if(no_fine_int = '1') then
                 state <= WAIT_START_PULSE;
               else
