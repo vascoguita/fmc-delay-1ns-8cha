@@ -18,15 +18,27 @@
 
 static int fd;
 
-int rr_init()
+int rr_init(int bus, int devfn)
 {
 	struct rr_devsel devsel;
 
 	int ret = -EINVAL;
 
+    devsel.bus = bus;
+    devsel.devfn = devfn;
+    devsel.subvendor = RR_DEVSEL_UNUSED;
+    devsel.vendor = 0x10dc;//RR_DEVSEL_UNUSED;
+    devsel.device = 0x18d; //RR_DEVSEL_UNUSED;
+    devsel.subdevice = RR_DEVSEL_UNUSED;
+    
+    
 	fd = open(DEVNAME, O_RDWR);
 	if (fd < 0) {
 		return -1;
+	}
+	
+	if (ioctl(fd, RR_DEVSEL, &devsel) < 0) {
+        return -EIO;
 	}
 
 	return 0;
@@ -80,49 +92,80 @@ static inline int64_t get_tics()
     return (int64_t)tv.tv_sec * 1000000LL + (int64_t) tv.tv_usec;
 }
 
-int rr_load_bitstream(const void *data, int size8)
+/* These must be set to choose the FPGA configuration mode */
+#define GPIO_BOOTSEL0 15
+#define GPIO_BOOTSEL1 14
+
+static inline uint8_t reverse_bits8(uint8_t x)
 {
-	int i, ctrl, done = 0, wrote = 0;
-	unsigned long j;
-	uint8_t val8;
-	const uint8_t *data8 = data;
-	const uint32_t *data32 = data;
+	x = ((x >> 1) & 0x55) | ((x & 0x55) << 1);
+	x = ((x >> 2) & 0x33) | ((x & 0x33) << 2);
+	x = ((x >> 4) & 0x0f) | ((x & 0x0f) << 4);
+
+	return x;
+}
+
+static uint32_t unaligned_bitswap_le32(const uint32_t *ptr32)
+{
+	static uint32_t tmp32;
+	static uint8_t *tmp8 = (uint8_t *) &tmp32;
+	static uint8_t *ptr8;
+
+	ptr8 = (uint8_t *) ptr32;
+
+	*(tmp8 + 0) = reverse_bits8(*(ptr8 + 0));
+	*(tmp8 + 1) = reverse_bits8(*(ptr8 + 1));
+	*(tmp8 + 2) = reverse_bits8(*(ptr8 + 2));
+	*(tmp8 + 3) = reverse_bits8(*(ptr8 + 3));
+
+	return tmp32;
+}
+
+static inline void gpio_out(int fd, const uint32_t addr, const int bit, const int value)
+{
+	uint32_t reg;
+
+	reg = gennum_readl(addr);
+
+	if(value)
+		reg |= (1<<bit);
+	else
+		reg &= ~(1<<bit);
+
+    gennum_writel(reg, addr);
+}
+
+/*
+ * Unfortunately, most of the following is from fcl_gn4124.cpp, for which
+ * the license terms are at best ambiguous. 
+ */
+
+int loader_low_level(int fd,  const void *data, int size8)
+{
 	int size32 = (size8 + 3) >> 2;
+	const uint32_t *data32 = data;
+	int ctrl = 0, i, done = 0, wrote = 0;
 
 
-//        fprintf(stderr,"Loading %d bytes...\n", size8);
+	/* configure Gennum GPIO to select GN4124->FPGA configuration mode */
+	gpio_out(fd, GNGPIO_DIRECTION_MODE, GPIO_BOOTSEL0, 0);
+	gpio_out(fd, GNGPIO_DIRECTION_MODE, GPIO_BOOTSEL1, 0);
+	gpio_out(fd, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL0, 1);
+	gpio_out(fd, GNGPIO_OUTPUT_ENABLE, GPIO_BOOTSEL1, 1);
+	gpio_out(fd, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL0, 1);
+	gpio_out(fd, GNGPIO_OUTPUT_VALUE, GPIO_BOOTSEL1, 0);
 
-	if (1) {
-		/*
-		 * Hmmm.... revers bits for xilinx images?
-		 * We can't do in kernel space anyways, as the pages are RO
-		 */
-		uint8_t *d8 = (uint8_t *)data8; /* Horrible: kill const */
-		for (i = 0; i < size8; i++) {
-			val8 = d8[i];
-			d8[i] =  0
-				| ((val8 & 0x80) >> 7)
-				| ((val8 & 0x40) >> 5)
-				| ((val8 & 0x20) >> 3)
-				| ((val8 & 0x10) >> 1)
-				| ((val8 & 0x08) << 1)
-				| ((val8 & 0x04) << 3)
-				| ((val8 & 0x02) << 5)
-				| ((val8 & 0x01) << 7);
-		}
-	}
 
-	/* Do real stuff */
-	gennum_writel(0x00, FCL_CLK_DIV);
-	gennum_writel(0x40, FCL_CTRL); /* Reset */
+	gennum_writel( 0x00, FCL_CLK_DIV);
+	gennum_writel( 0x40, FCL_CTRL); /* Reset */
 	i = gennum_readl( FCL_CTRL);
 	if (i != 0x40) {
-		fprintf(stderr, "%s: %i: error\n", __func__, __LINE__);
-		return;
+		printf("%s: %i: error\n", __func__, __LINE__);
+		return -EIO;
 	}
-	gennum_writel(0x00,  FCL_CTRL);
+	gennum_writel( 0x00, FCL_CTRL);
 
-	gennum_writel(0x00,  FCL_IRQ); /* clear pending irq */
+	gennum_writel( 0x00, FCL_IRQ); /* clear pending irq */
 
 	switch(size8 & 3) {
 	case 3: ctrl = 0x116; break;
@@ -130,82 +173,56 @@ int rr_load_bitstream(const void *data, int size8)
 	case 1: ctrl = 0x136; break;
 	case 0: ctrl = 0x106; break;
 	}
-	gennum_writel(ctrl,  FCL_CTRL);
+	gennum_writel( ctrl, FCL_CTRL);
 
-	gennum_writel(0x00,  FCL_CLK_DIV); /* again? maybe 1 or 2? */
+	gennum_writel( 0x00, FCL_CLK_DIV); /* again? maybe 1 or 2? */
 
-	gennum_writel(0x00,  FCL_TIMER_CTRL); /* "disable FCL timer func" */
+	gennum_writel( 0x00, FCL_TIMER_CTRL); /* "disable FCL timr fun" */
 
-	gennum_writel(0x10,  FCL_TIMER_0); /* "pulse width" */
-	gennum_writel(0x00,  FCL_TIMER_1);
+	gennum_writel( 0x10, FCL_TIMER_0); /* "pulse width" */
+	gennum_writel( 0x00, FCL_TIMER_1);
 
-	/* Set delay before data and clock is applied by FCL after SPRI_STATUS is
-		detected being assert.
-	*/
-	gennum_writel(0x08,  FCL_TIMER2_0); /* "delay before data/clock..." */
-	gennum_writel(0x00,  FCL_TIMER2_1);
-	gennum_writel(0x17,  FCL_EN); /* "output enable" */
+	/*
+	 * Set delay before data and clock is applied by FCL
+	 * after SPRI_STATUS is	detected being assert.
+	 */
+	gennum_writel( 0x08, FCL_TIMER2_0); /* "delay before data/clk" */
+	gennum_writel( 0x00, FCL_TIMER2_1);
+	gennum_writel( 0x17, FCL_EN); /* "output enable" */
 
 	ctrl |= 0x01; /* "start FSM configuration" */
-	gennum_writel(ctrl,  FCL_CTRL);
+	gennum_writel( ctrl, FCL_CTRL);
 
 	while(size32 > 0)
 	{
-
-
 		/* Check to see if FPGA configuation has error */
 		i = gennum_readl( FCL_IRQ);
 		if ( (i & 8) && wrote) {
 			done = 1;
-			fprintf(stderr,"EarlyDone");
-//			fprintf(stderr,"%s: %idone after %i\n", __func__, __LINE__,				wrote);
+			printf("%s: %i: done after %i\n", __func__, __LINE__,
+				wrote);
 		} else if ( (i & 0x4) && !done) {
-			fprintf(stderr,"Error after %i\n", wrote);
-			return -1;
+			printf("%s: %i: error after %i\n", __func__, __LINE__,
+				wrote);
+			return -EIO;
 		}
 
-   // fprintf(stderr,".");
-    
-		while(gennum_readl(FCL_IRQ) & (1<<5)); // wait until at least 1/2 of the FIFO is empty
-		
-		/* Write 64 dwords into FIFO at a time. */
+		/* Wait until at least 1/2 of the fifo is empty */
+		while (gennum_readl( FCL_IRQ)  & (1<<5))
+			;
+
+		/* Write a few dwords into FIFO at a time. */
 		for (i = 0; size32 && i < 32; i++) {
-			gennum_writel(*data32,  FCL_FIFO);
+			gennum_writel( unaligned_bitswap_le32(data32),
+				  FCL_FIFO);
 			data32++; size32--; wrote++;
-//			udelay(20);
 		}
 	}
 
-	gennum_writel(0x186,  FCL_CTRL); /* "last data written" */
-	int64_t tstart = get_tics();
-	//j = jiffies + 2 * HZ;
-	/* Wait for DONE interrupt  */
-	while(!done) {
-	//	fprintf(stderr,stderr, "Wait!");
-	
-		i = gennum_readl( FCL_IRQ);
-		printf("irqr: %x %x\n", FCL_IRQ, i);
-		if (i & 0x8) {
-			fprintf(stderr,"done after %i\n",       wrote);
-			done = 1;
-		} else if( (i & 0x4) && !done) {
-			fprintf(stderr,"Error after %i\n",   wrote);
-			return -1;
-		}
-		usleep(10000);
-		
-		if(get_tics() - tstart > 1000000LL)
-		{
-		    fprintf(stderr,"Loader: DONE timeout. Did you choose proper bitgen options?\n");
-		    return;
-		}
-		/*if (time_after(jiffies, j)) {
-			printk("%s: %i: tout after %i\n", __func__, __LINE__,
-			       wrote);
-			return;
-		} */
-	}
-	return done?0:-1;
+	gennum_writel( 0x186, FCL_CTRL); /* "last data written" */
+
+	/* Checking for the "interrupt" condition is left to the caller */
+	return wrote;
 }
 
 int rr_load_bitstream_from_file(const char *file_name)
@@ -227,7 +244,8 @@ int rr_load_bitstream_from_file(const char *file_name)
     fseek(f, 0, SEEK_SET);
     fread(buf, 1, size, f);
     fclose(f);
-    int rval = rr_load_bitstream(buf, size);
+    int rval = loader_low_level(0, buf, size);
     free(buf);
     return rval;
 }
+

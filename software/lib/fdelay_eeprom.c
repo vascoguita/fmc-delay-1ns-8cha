@@ -21,7 +21,7 @@ main()
 	fdelay_device_t dev;
     struct fine_delay_calibration cal;
     
-	rr_init();
+	rr_init(RR_DEVSEL_UNUSED, RR_DEVSEL_UNUSED);
 
 	dev.writel = my_writel;
 	dev.readl = my_readl;

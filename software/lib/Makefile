@@ -1,6 +1,6 @@
 CFLAGS = -I../include -g -Imini_bone -Ispll
 
-OBJS_LIB = fdelay_lib.o rr_io.o  i2c_master.o onewire.o mini_bone/minibone_lib.o mini_bone/ptpd_netif.o  fdelay_bus.o
+OBJS_LIB = fdelay_lib.o rr_io.o  i2c_master.o onewire.o mini_bone/minibone_lib.o mini_bone/ptpd_netif.o  spec_common.o
 
 all:    testprog lib testprog2 testprog3 testprog4
 

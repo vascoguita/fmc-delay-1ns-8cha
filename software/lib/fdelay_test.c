@@ -3,32 +3,17 @@
 #include "fdelay_lib.h"
 #include "rr_io.h"
 
-void my_writel(void *priv, uint32_t data, uint32_t addr)
+int spec_fdelay_init(int argc, char *argv[], fdelay_device_t *dev);
+
+main(int argc, char *argv[])
 {
- 	rr_writel(data, addr);
-}
+    fdelay_device_t dev;
+    fdelay_time_t t_cur, t_start;
 
-uint32_t my_readl(void *priv, uint32_t addr)
-{
-	uint32_t d = rr_readl(addr);
-	return d;
-}
+    if(spec_fdelay_init(argc, argv, &dev) < 0)
+        return -1;
 
-main()
-{
-	fdelay_device_t dev;
-
-	rr_init();
-
-	dev.writel = my_writel;
-	dev.readl = my_readl;
-	dev.base_addr = 0x84000;
-
-	if(fdelay_init(&dev) < 0)
-		return -1;
  	fdelay_configure_trigger(&dev, 1,1);
-
-    
 
     fdelay_configure_output(&dev,1,1,500000, 100000, 100000, 0);
     fdelay_configure_output(&dev,2,1,500000, 100000, 100000, 0);
