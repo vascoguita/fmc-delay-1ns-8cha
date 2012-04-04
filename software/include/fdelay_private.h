@@ -31,6 +31,7 @@
 
 /* MCP23S17 register addresses (only ones which are used by the lib) */
 #define MCP_IODIR 0x0
+#define MCP_IPOL 0x1
 #define MCP_OLAT  0x14
 #define MCP_IOCON 0x0a
 #define MCP_GPIO  0x12
