@@ -35,13 +35,40 @@
 static int acam_test_bus(fdelay_device_t *dev);
 
 
+#define TEST_PRESENCE 0
+#define TEST_FIRMWARE 1
+#define TEST_DELAY_LINE 2
+#define TEST_SPI 3
+#define TEST_SENSORS 4
+#define TEST_ACAM_IF 5
+
 /*
 ----------------------
 Some utility functions
 ----------------------
 */
 
+char fail_test_msg[1024];
+int fail_test_id = -1;
+
+static void fail(int test_id, const char *fmt, ...)
+{
+	va_list ap;
+    fail_test_id = test_id;
+	va_start(ap, fmt);
+	vsprintf(fail_test_msg,fmt,ap);
+	va_end(ap);
+}
+
 static int extra_debug = 1;
+
+void fdelay_show_test_results()
+{
+    if(fail_test_id >= 0)
+    {
+        fprintf(stderr,"\n\n\n ***** FAILED TEST: %d (%s) ****** \n", fail_test_id, fail_test_msg);
+    }
+}
 
 void dbg(const char *fmt, ...)
 {
@@ -106,7 +133,6 @@ Simple SPI Master driver
 static void oc_spi_init(fdelay_device_t *dev)
 {
 	fd_decl_private(dev)
-
 }
 
 /* Sends (num_bits) from (in) to slave at CS line (ss), storint the readback data in (*out) */
@@ -167,6 +193,7 @@ static int ad9516_init(fdelay_device_t *dev)
   if(ad9516_read_reg(dev, 0x3) != 0xc3)
     {
       dbg("%s: AD9516 PLL not responding.\n", __FUNCTION__);
+      fail(TEST_SPI, "Broken SPI connection to AD9516 PLL");
       return -1;
     }
 
@@ -222,10 +249,23 @@ static uint8_t mcp_read(fdelay_device_t *dev, uint8_t reg)
   return rval & 0xff;
 }
 
-static void sgpio_init(fdelay_device_t *dev)
+static int sgpio_init(fdelay_device_t *dev)
 {
+  int failed = 0;
   mcp_write(dev, MCP_IOCON, 0);
+
+/* try to read and write a register to test the SPI connection */
+  mcp_write(dev, MCP_IPOL, 0xaa);
+  if(mcp_read(dev, MCP_IPOL) != 0xaa)
+    failed = 1;
+  mcp_write(dev, MCP_IPOL, 0);
+  if(mcp_read(dev, MCP_IPOL) != 0)
+    failed = 1;
+  
+  fail(TEST_SPI, "Failed to access MCP23S17. Broken SPI connection?");
+  return failed ? - 1: 0;
 }
+
 
 /* Sets the direction (0 = input, non-zero = output) of a particular MCP23S17 GPIO pin */
 static void sgpio_set_dir(fdelay_device_t *dev, int pin, int dir)
@@ -333,13 +373,38 @@ static inline int acam_pll_locked(fdelay_device_t *dev)
  	return !(r12 & AR12_NotLocked);
 }
 
-/* Configures the ACAM TDC to work in a particular mode. Currently there are two modes
-   supported: R-Mode for the normal operation (delay/timestamper) and I-Mode for the purpose
-   of calibrating the fine delay lines. */
+static int test_addr_bit(fdelay_device_t *dev, int addr1, int addr2, int addr_bit, int data_bit)
+{
+    int failed = 0;
+    
+    acam_write_reg(dev, addr1, acam_read_reg(dev, addr1) & ~(1<<data_bit)); // set the data bit to 0
+    acam_write_reg(dev, addr2, acam_read_reg(dev, addr2) |  (1<<data_bit)); // set the data bit to 1
+    
+    if(acam_read_reg(dev, addr1) & (1<<data_bit)  || !(acam_read_reg(dev, addr2) & (1<<data_bit)))
+       failed= 1;
+
+    /* the other way around */
+    acam_write_reg(dev, addr1, acam_read_reg(dev, addr1) | (1<<data_bit)); 
+    acam_write_reg(dev, addr2, acam_read_reg(dev, addr2) & ~(1<<data_bit));
+    
+    if(!(acam_read_reg(dev, addr1) & (1<<data_bit))  || acam_read_reg(dev, addr2) & (1<<data_bit))
+       failed= 1;
+
+    if(failed)
+    {
+        dbg("Bit failure on ACAM_A[%d]\n",addr_bit);
+        fail(TEST_ACAM_IF, "Bit failure on ACAM_A[%d]", addr_bit);
+        return -1;
+    }
+  
+    
+    return 0;
+}
 
 static int acam_test_bus(fdelay_device_t *dev)
 {
-    int i;
+    int i, failed = 0;
+    
 
     dbg("Testing ACAM Bus...\n");
 
@@ -348,15 +413,32 @@ static int acam_test_bus(fdelay_device_t *dev)
         acam_write_reg(dev, 5, (1<<i));
         acam_read_reg(dev, 0);
         uint32_t rb = acam_read_reg(dev, 5);
-        if(rb != (1<<i))
+
+        acam_write_reg(dev, 5, ~(1<<i));
+        acam_read_reg(dev, 0);
+        uint32_t rb2 = acam_read_reg(dev, 5);
+        
+        if(rb != (1<<i) || rb2 != (~(1<<i) & 0xfffffff))
         {
             dbg("Bit failure on ACAM_D[%d]: %x shouldbe %x \n", i, rb, (1<<i));
+            fail(TEST_ACAM_IF, "Bit failure on ACAM_D[%d]: %x shouldbe %x ", i, rb, (1<<i));
             return -1;
         }
     }
+    
+    failed |= test_addr_bit(dev, 0, 1, 0, 1);
+    failed |= test_addr_bit(dev, 1, 3, 1, 3);
+    failed |= test_addr_bit(dev, 0, 4, 2, 1);
+    failed |= test_addr_bit(dev, 3, 11, 3, 16);
 
-
+    return failed;
 }
+
+
+/* Configures the ACAM TDC to work in a particular mode. Currently there are two modes
+   supported: R-Mode for the normal operation (delay/timestamper) and I-Mode for the purpose
+   of calibrating the fine delay lines. */
+
 
 static int acam_configure(fdelay_device_t *dev, int mode)
 {
@@ -423,6 +505,7 @@ static int acam_configure(fdelay_device_t *dev, int mode)
 		if(get_tics() - start_tics > lock_timeout)
 		{
 			 dbg("%s: ACAM PLL does not lock.\n", __FUNCTION__);
+			 fail(TEST_ACAM_IF, "ACAM PLL does not lock.");
 			 return -1;
 		}
 		usleep(10000);
@@ -515,14 +598,45 @@ static double measure_output_delay(fdelay_device_t *dev, int channel, int fine, 
 	return acc;
 }
 
-
-/* Measures the transfer function of the fine delay line. Used for testing/debugging purposes. */
-static void dbg_transfer_function(fdelay_device_t *dev)
+static void measure_linearity(double *x, int n, double *inl, double *dnl)
 {
+    double slope = (x[n-1] - x[0]) / (double)(n-1);
+    int i;
+    
+    *inl = 0;
+    *dnl = 0;
+    for(i=0;i<n;i++)
+    {
+        double d = fabs(x[i] - (((double)i) * slope + x[0]));
+
+        if(*inl < d)
+            *inl = d;
+            
+        if(i>0)
+        {
+            d=fabs(x[i]-x[i-1]-slope);
+            if(d>*dnl)
+                *dnl = d;
+        }
+    }
+}
+
+
+
+/* Measures the transfer function of the fine delay line (i.e. delay vs number of taps) and checks 
+   its linearity, performing an indirect check of the delay lines' and TDC signal connections. */
+
+#define MAX_DNL 20
+#define MAX_INL 50
+
+static int test_delay_transfer_function(fdelay_device_t *dev)
+{
+    double inl, dnl;
+    
 	fd_decl_private(dev)
 
 	int channel, i;
-	double bias, x, meas[FDELAY_NUM_TAPS][4], sdev[FDELAY_NUM_TAPS][4];
+	double bias, x, meas[4][FDELAY_NUM_TAPS], sdev[4][FDELAY_NUM_TAPS];
 
 	fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 	acam_configure(dev, ACAM_IMODE);
@@ -533,16 +647,29 @@ static void dbg_transfer_function(fdelay_device_t *dev)
 	{
 		dbg("calibrating channel %d\n", channel);
 		bias = measure_output_delay(dev, channel, 0, FDELAY_CAL_AVG_STEPS, &sdev[0][channel-1]);
-		meas[0][channel-1] = 0.0;
+		meas[channel-1][0] = 0.0;
 		for(i=FDELAY_NUM_TAPS-1;i>=0;i--)
 		{
 			x = measure_output_delay(dev, channel, i,
-				FDELAY_CAL_AVG_STEPS, &sdev[i][channel-1]);
-			meas[i][channel-1] = x - bias;
+				FDELAY_CAL_AVG_STEPS, &sdev[channel-1][i]);
+			meas[channel-1][i] = x - bias;
 		}
+
+        measure_linearity(meas[channel-1], FDELAY_NUM_TAPS-1, &inl, &dnl);
+	    dbg("Linearity: INL = %.1f ps, DNL = %.1f ps\n",  inl, dnl);
+	    
+	    if(inl > MAX_INL || dnl > MAX_DNL)
+	    {
+	        dbg("Linearity check failed.\n");
+	        fail(TEST_DELAY_LINE, "Maximum INL/DNL exceeded, indicating a wrong connection of the delay chip and/or the TDC calibration signals");
+	        return -1;
+	    }
+	    
+	    
 	}
 
-	FILE *f=fopen("t_func.dat","w");
+    return 0;
+/*	FILE *f=fopen("t_func.dat","w");
 
 	for(i=0;i<FDELAY_NUM_TAPS;i++)
 	{
@@ -550,8 +677,9 @@ static void dbg_transfer_function(fdelay_device_t *dev)
 	 	meas[i][0], meas[i][1], meas[i][2], meas[i][3],
 	 	sdev[i][0], sdev[i][1], sdev[i][2], sdev[i][3]);
 	}
+	
 
-	fclose(f);
+	fclose(f);*/
 }
 
 /* Finds the preset (i.e. the numer of taps) of the output delay line in (channel)
@@ -591,12 +719,16 @@ static int32_t eval_poly(int64_t *coef, int32_t x)
 }
 
 /* Performs the startup calibration of the output delay lines. */
-void calibrate_outputs(fdelay_device_t *dev)
+int calibrate_outputs(fdelay_device_t *dev)
 {
 	fd_decl_private(dev)
 	int i, channel, temp;
 
-//	dbg_transfer_function(dev);
+#ifdef PERFORM_LONG_TESTS
+    if(test_delay_transfer_function(dev) < 0)
+        return -1;
+#endif
+
     fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 	acam_configure(dev, ACAM_IMODE);
 	fd_writel( FD_TDCSR_START_EN | FD_TDCSR_STOP_EN, FD_REG_TDCSR);
@@ -614,6 +746,8 @@ void calibrate_outputs(fdelay_device_t *dev)
      	hw->frr_cur[channel-1] = cal_measd;
      	hw->frr_offset[channel-1] = cal_measd - cal_fitted;
 	}
+	
+	return 0;
 }
 
 
@@ -669,11 +803,11 @@ static int read_calibration_eeprom(fdelay_device_t *dev, struct fine_delay_calib
 	if(cal.magic != FDELAY_MAGIC_ID)
 	{
 	    dbg("EEPROM doesn't contain valid calibration block.\n");
- 	    return -1;
+ 	    return 0;
 	}
 
 	memcpy(d_cal, &cal, sizeof(cal));
-	return 0;
+	return 1;
 }
 
 /*
@@ -685,7 +819,7 @@ static int read_calibration_eeprom(fdelay_device_t *dev, struct fine_delay_calib
 /* Initialize & self-calibrate the Fine Delay card */
 int fdelay_init(fdelay_device_t *dev)
 {
-  int i;
+  int i, rv;
   struct fine_delay_hw *hw;
   fdelay_time_t t_zero;
 
@@ -708,14 +842,21 @@ int fdelay_init(fdelay_device_t *dev)
   /* Read the Identification register and check if we are talking to a proper Fine Delay HDL Core */
   if(fd_readl(FD_REG_IDR) != FDELAY_MAGIC_ID)
     {
+      fail(TEST_FIRMWARE, "Core not responding. Firmware loaded incorrectly?");
       dbg("%s: invalid core signature. Are you sure you have loaded the FPGA with the Fine Delay firmware?\n", __FUNCTION__);
       return -1;
     }
 
-  if(read_calibration_eeprom(dev, &hw->calib) < 0)
+  rv = read_calibration_eeprom(dev, &hw->calib);
+  
+  if(rv < 0)
+  {
+    fail(TEST_SPI, "FMC EEPROM not detected.");
+    return -1;
+  } else if(!rv)
   {
     int i;
-    dbg("%s: Calibration EEPROM not found or unreadable. Using default calibration values\n", __FUNCTION__);
+    dbg("%s: Calibration EEPROM does not contain a valid calibration block. Using default calibration values\n", __FUNCTION__);
 
     hw->calib.frr_poly[0] = -165202LL;
     hw->calib.frr_poly[1] = -29825595LL;
@@ -734,15 +875,17 @@ int fdelay_init(fdelay_device_t *dev)
 
   /* Initialize the clock system - AD9516 PLL */
   oc_spi_init(dev);
-  sgpio_init(dev);
+  if(sgpio_init(dev) < 0)
+    return -1;
 
   if(ad9516_init(dev) < 0)
     return -1;
 
 	if(ds18x_init(dev) < 0)
 	{
+	    fail(TEST_SPI, "DS18x sensor not detected.");
 		dbg("DS18x sensor not detected. Bah!\n");
-	return -1;
+    	return -1;
 	}
 
 	int temp;
@@ -775,10 +918,13 @@ int fdelay_init(fdelay_device_t *dev)
      initialization and calibration */
   fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 
-  acam_test_bus(dev);
+  /* Test if ACAM addr/data lines are OK */
+  if(acam_test_bus(dev) < 0)
+    return -1;
 
 	/* Calibrate the output delay lines */
-  calibrate_outputs(dev);
+  if(calibrate_outputs(dev) < 0)
+    return -1;
 
   /* Switch to the R-MODE (more precise) */
   acam_configure(dev, ACAM_RMODE);
@@ -876,6 +1022,7 @@ static fdelay_time_t ts_sub(fdelay_time_t a, fdelay_time_t b)
 /* Add two timestamps */
 static fdelay_time_t ts_add(fdelay_time_t a, fdelay_time_t b)
 {
+
  	a.frac += b.frac;
  	if(a.frac >= (1<<FDELAY_FRAC_BITS))
  	{

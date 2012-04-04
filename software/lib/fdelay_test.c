@@ -11,7 +11,11 @@ main(int argc, char *argv[])
     fdelay_time_t t_cur, t_start;
 
     if(spec_fdelay_init(argc, argv, &dev) < 0)
+    {
+        fdelay_show_test_results();
+
         return -1;
+    }
 
  	fdelay_configure_trigger(&dev, 1,1);
 

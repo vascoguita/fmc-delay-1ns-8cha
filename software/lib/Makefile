@@ -1,4 +1,4 @@
-CFLAGS = -I../include -g -Imini_bone -Ispll
+CFLAGS = -I../include -g -Imini_bone -Ispll -DPERFORM_LONG_TESTS
 
 OBJS_LIB = fdelay_lib.o rr_io.o  i2c_master.o onewire.o mini_bone/minibone_lib.o mini_bone/ptpd_netif.o  spec_common.o
 
