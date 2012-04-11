@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2012-04-11
 -- Platform   : Xilinx Spartan-6 (XC6SLX45T)
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -144,6 +144,8 @@ entity spec_top is
       fd_pll_status_i : in  std_logic;
       fd_ext_rst_n_o  : out std_logic;
 
+      prsnt_m2c_l: in std_logic;
+
 
       fmc_scl_b : inout std_logic;
       fmc_sda_b : inout std_logic;
@@ -176,7 +178,7 @@ architecture rtl of spec_top is
       dac_sclk_o  : out std_logic;
       dac_din_o   : out std_logic);
   end component;
-  
+
   component gn4124_core
     generic(
       -- g_IS_SPARTAN6       : boolean := false;  -- This generic is used to instanciate spartan6 specific primitives
@@ -334,6 +336,7 @@ architecture rtl of spec_top is
       i2c_sda_o            : out std_logic;
       i2c_sda_oen_o        : out std_logic;
       i2c_sda_i            : in  std_logic;
+      fmc_present_n_i      : in  std_logic;
       wb_adr_i             : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
       wb_dat_i             : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
       wb_dat_o             : out std_logic_vector(c_wishbone_data_width-1 downto 0);
@@ -698,6 +701,7 @@ begin
       i2c_sda_i         => fmc_sda_b,
       i2c_sda_o         => sda_pad_out,
       i2c_sda_oen_o     => sda_pad_oen,
+      fmc_present_n_i => prsnt_m2c_l,
       owr_i             => onewire_b,
       owr_en_o          => onewire_en,
       wb_adr_i          => cnx_slave_in(0).adr,
