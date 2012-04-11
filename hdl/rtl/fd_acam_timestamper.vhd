@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2012-04-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -249,6 +249,8 @@ architecture behavioral of fd_acam_timestamper is
 
   signal tag_valid_int : std_logic;
   signal tag_coarse    : std_logic_vector(27 downto 0);
+
+  signal mask_stop : std_logic;
 begin  -- behave
 
 --Process: p_sync_trigger
@@ -341,7 +343,7 @@ begin  -- behave
 -- - we are not waiting for REARM command
 -- - we have generated at least one valid TDC start pulse (so the TDC has some
 --   meaningful reference
-          if(regs_i.gcr_input_en_o = '0' or tag_enable = '0' or start_ok = '0') then
+          if(regs_i.gcr_input_en_o = '0' or tag_enable = '0' or start_ok = '0' or mask_stop = '1') then
             acam_stop_dis_o <= '1';
           else
             acam_stop_dis_o <= '0';
@@ -562,6 +564,8 @@ begin  -- behave
         tag_enable <= '0';
 
         gcr_input_en_d0 <= '0';
+
+        mask_stop <= '0';
         
       else
 
@@ -594,13 +598,15 @@ begin  -- behave
               acam_rd_n_o <= '1';
               acam_wr_n_o <= '1';
 
-              if(tag_rearm_p1_i = '1' or gcr_input_en_d0 = '0') then
+              if(start_ok = '1' and trig_pulse = '0' and tag_rearm_p1_i = '1' and gcr_input_en_d0 = '1') then
                 tag_enable <= '1';
+                mask_stop <= '0';
               end if;
 
               -- Got a trigger pulse?
               if(trig_pulse = '1' and tag_enable = '1' and start_ok = '1') then
-
+                mask_stop <= '1';
+                
                 -- start checking its width 
                 afsm_state <= RMODE_MEASURE_WIDTH;
 
