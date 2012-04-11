@@ -146,6 +146,8 @@ static void oc_spi_txrx(fdelay_device_t *dev, int ss, int num_bits, uint32_t in,
 		scr |= FD_SCR_SEL_PLL;
 	else if(ss == CS_GPIO)
 		scr |= FD_SCR_SEL_GPIO;
+	else if(ss == CS_DAC)
+		scr |= FD_SCR_SEL_DAC;
 
 	fd_writel(scr, FD_REG_SCR);
 	fd_writel(scr | FD_SCR_START, FD_REG_SCR);
@@ -227,6 +229,38 @@ static int ad9516_init(fdelay_device_t *dev)
   dbg("%s: AD9516 locked.\n", __FUNCTION__);
 
   return 0;
+}
+
+
+static int test_pll_dac(fdelay_device_t *dev)
+{
+    fd_decl_private(dev);
+    int f_hi, f_lo;
+    double range;
+    int i=0;
+  
+    dbg("Testing DAC/VCXO... ");
+
+    oc_spi_txrx(dev,  CS_DAC, 24, 0, NULL); /* Drive the DAC to 0 */
+    
+    udelay(1000000);
+    f_lo = fd_readl(FD_REG_TDER1) & 0x7fffffff;
+
+    oc_spi_txrx(dev, CS_DAC, 24, 0xffff, NULL); /* Drive the DAC to +Vref */
+    udelay(1000000);
+    f_hi = fd_readl(FD_REG_TDER1) & 0x7fffffff;
+    
+    
+    range = (double)abs(f_hi - f_lo) / (double)f_lo * 1e6;
+    dbg("tuning range: %.1f ppm.\n",  range);
+    
+    if(range < 10.1)
+    {
+        fail(TEST_SPI, "Too little VCXO tuning range. Either a broken VCXO or (more likely) broken SPI connection to the DAC.");
+        return -1;
+    }
+    
+    return 0;
 }
 
 /*
@@ -847,6 +881,14 @@ int fdelay_init(fdelay_device_t *dev)
       return -1;
     }
 
+  if(! (fd_readl(FD_REG_GCR) & FD_GCR_FMC_PRESENT))
+  {
+      fail(TEST_PRESENCE, "FMC Card not detected in the slot. Maybe a fault on PRSNT_L line?");
+      dbg("%s: FMC Presence line not active. Is the FMC correctly inserted into the carrier?\n", __FUNCTION__);
+      return -1;
+  
+  }
+
   rv = read_calibration_eeprom(dev, &hw->calib);
   
   if(rv < 0)
@@ -880,6 +922,8 @@ int fdelay_init(fdelay_device_t *dev)
 
   if(ad9516_init(dev) < 0)
     return -1;
+
+
 
 	if(ds18x_init(dev) < 0)
 	{
@@ -917,6 +961,12 @@ int fdelay_init(fdelay_device_t *dev)
   /* Disable the delay generator core, so we can access the ACAM from the host, both for
      initialization and calibration */
   fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
+
+
+#ifdef PERFORM_LONG_TESTS
+  if(test_pll_dac(dev) < 0)
+    return -1;
+#endif
 
   /* Test if ACAM addr/data lines are OK */
   if(acam_test_bus(dev) < 0)
