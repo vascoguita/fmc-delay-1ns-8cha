@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-29
+-- Last update: 2012-04-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ entity fine_delay_core is
     owr_i    : in  std_logic;
 
     ---------------------------------------------------------------------------
-    -- I2C EEPROM
+    -- Misc signals: I2C EEPROM, FMC presence
     ---------------------------------------------------------------------------
 
     i2c_scl_o     : out std_logic;
@@ -204,6 +204,8 @@ entity fine_delay_core is
     i2c_sda_o     : out std_logic;
     i2c_sda_oen_o : out std_logic;
     i2c_sda_i     : in  std_logic;
+
+    fmc_present_n_i: in std_logic;
 
 
     ---------------------------------------------------------------------------
@@ -364,16 +366,16 @@ begin  -- rtl
     generic map (
       g_num_masters => 1,
       g_num_slaves  => 6,
-      g_registered  => true)
+      g_registered  => true,
+      g_address     => c_cnx_base_addr,
+      g_mask       => c_cnx_base_mask)
     port map (
       clk_sys_i     => clk_sys_i,
       rst_n_i       => rst_n_i,
       slave_i       => slave_in,
       slave_o       => slave_out,
       master_i      => cnx_in,
-      master_o      => cnx_out,
-      cfg_address_i => c_cnx_base_addr,
-      cfg_mask_i    => c_cnx_base_mask);
+      master_o      => cnx_out);
 
 
   U_Reset_Generator : fd_reset_generator
@@ -686,7 +688,9 @@ begin  -- rtl
   regs_towb_local.i2cr_scl_in_i <= i2c_scl_i;
 
   regs_towb_local.gcr_ddr_locked_i <= pll_status_i;
-
+  regs_towb_local.gcr_fmc_present_i <= not fmc_present_n_i;
+  
+  
   -- Debug PWM driver for adjusting Peltier temperature. Drivers SPI MOSI line
   -- with PWM waveform when none of the SPI peripherals is in use (we have no
   -- spare pins in the FMC connector left)
@@ -698,7 +702,7 @@ begin  -- rtl
         pwm_count <= (others => '0');
       else
         pwm_count <= pwm_count + 1;
-        if(pwm_count > unsigned(regs_fromwb.i2cr_dbgout_o)) then
+        if(pwm_count > unsigned(regs_fromwb.tder2_pelt_drive_o(15 downto 0))) then
           pwm_out <= '1';
         else
           pwm_out <= '0';
@@ -707,6 +711,21 @@ begin  -- rtl
     end if;
   end process;
 
+  -- VCXO Frequency measuremnt (for DAC testing purposes)
+
+  U_VCXO_Freq_Meter: gc_frequency_meter
+    generic map (
+      g_with_internal_timebase => true,
+      g_clk_sys_freq           => c_SYS_CLK_FREQ,
+      g_counter_bits           => 31)
+    port map (
+      clk_sys_i    => clk_sys_i,
+      clk_in_i     => clk_ref_0_i,
+      rst_n_i      => rst_n_sys,
+      pps_p1_i     => '0',
+      freq_o       => regs_towb_local.tder1_vcxo_freq_i(30 downto 0),
+      freq_valid_o => regs_towb_local.tder1_vcxo_freq_i(31));
+  
   spi_mosi_o      <= spi_mosi when (spi_cs_gpio_n and spi_cs_pll_n and spi_cs_dac_n) = '0' else pwm_out;
   spi_cs_gpio_n_o <= spi_cs_gpio_n;
   spi_cs_dac_n_o  <= spi_cs_dac_n;
