@@ -75,9 +75,9 @@ module acam_model
    task master_reset;
       int i;
       
-      q_start             = new(32);
-      q_stop1             = new(32);
-      q_hit               = new(32);
+      q_start             = new(16384);
+      q_stop1             = new(16384);
+      q_hit               = new(16384);
       EF1                <= 1;
       start_disabled_int <= 0;
 
