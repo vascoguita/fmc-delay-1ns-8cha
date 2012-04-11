@@ -132,6 +132,16 @@ peripheral {
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+
+      field {
+         name = "Mezzanice Present";
+         description = "read 1: FMC card is present (PRSNT_L == 0)\
+         read 0: no FMC card in the slot (PRSNT_L == 1)";
+         prefix = "FMC_PRESENT";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
    };
    
    reg {
@@ -886,25 +896,36 @@ write 0: DMTD pattern generation disabled.";
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+   };
 
+
+   reg {
+      name = "Test/Debug register 1";
+      prefix = "TDER1";
+      
       field {
-         name = "Debug in";
-         prefix = "DBG";
+         name = "VCXO Frequency";
+         prefix = "VCXO_FREQ";
+         size = 32;
          type = SLV;
-         size = 4;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+   };
+
+   reg {
+      name = "Test/Debug register 1";
+      prefix = "TDER2";
+      
       field {
-         name = "Debug out";
-         prefix = "DBGOUT";
+         name = "Peltier PWM drive";
+         prefix = "PELT_DRIVE";
+         size = 32;
          type = SLV;
-         size = 12;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
       };
    };
-
   
 
    irq {
