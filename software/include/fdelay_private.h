@@ -16,6 +16,8 @@
 #include <stdint.h>
 
 /* SPI Bus chip selects */
+
+#define CS_DAC 0   /* AD9516 PLL */
 #define CS_PLL 1  /* AD9516 PLL */
 #define CS_GPIO 2 /* MCP23S17 GPIO */
 
