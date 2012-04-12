@@ -661,11 +661,12 @@ static void measure_linearity(double *x, int n, double *inl, double *dnl)
    its linearity, performing an indirect check of the delay lines' and TDC signal connections. */
 
 #define MAX_DNL 20
-#define MAX_INL 50
+#define MAX_INL 60
 
 static int test_delay_transfer_function(fdelay_device_t *dev)
 {
     double inl, dnl;
+    int lin_fail = 0;
     
 	fd_decl_private(dev)
 
@@ -693,14 +694,17 @@ static int test_delay_transfer_function(fdelay_device_t *dev)
 	    dbg("Linearity: INL = %.1f ps, DNL = %.1f ps\n",  inl, dnl);
 	    
 	    if(inl > MAX_INL || dnl > MAX_DNL)
-	    {
-	        dbg("Linearity check failed.\n");
-	        fail(TEST_DELAY_LINE, "Maximum INL/DNL exceeded, indicating a wrong connection of the delay chip and/or the TDC calibration signals");
-	        return -1;
-	    }
-	    
+            lin_fail=1;	    
 	    
 	}
+
+    if(lin_fail)
+    {
+        dbg("Linearity check failed.\n");
+        fail(TEST_DELAY_LINE, "Maximum INL/DNL exceeded, indicating a wrong connection of the delay chip and/or the TDC calibration signals");
+        return -1;
+    }
+
 
     return 0;
 /*	FILE *f=fopen("t_func.dat","w");

@@ -39,7 +39,7 @@ return d;
 fdelay_device_t *fdelay_create_rawrabbit(uint32_t base_addr)
 {
 	fdelay_device_t *dev = malloc(sizeof(fdelay_device_t));
- 	rr_init(RR_DEVSEL_NONE, RR_DEVSEL_NONE);
+ 	rr_init(RR_DEVSEL_UNUSED, RR_DEVSEL_UNUSED);
  	dev->writel = my_rr_writel;
  	dev->readl = my_rr_readl;
  	dev->base_addr = base_addr;
