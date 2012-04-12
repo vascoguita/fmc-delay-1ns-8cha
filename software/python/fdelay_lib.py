@@ -61,9 +61,9 @@ class FineDelay:
 				 self.WR_READY : "WR core ready",
 				 self.WR_SYNCING : "Syncing local clock with WR",
 				 self.WR_SYNCED : "Synced with WR" }
-		status = c_int(self.fd.fdelay_get_sync_status(self.handle));
+#		status = c_int(self.fd.fdelay_get_sync_status(self.handle));
 #		print("GetSyncStatus %x" % status.value);
-		return htab[status.value]
+		return "none"; #htab[status.value]
 		
 	def read_ts(self):
 		buf = (fd_timestamp * 256)();
