@@ -51,7 +51,7 @@ PUBLIC API
 */
 
 
-fdelay_device_t *fdelay_create_rawrabbit(uint32_t base_addr);
+fdelay_device_t *fdelay_create_rawrabbit(int fd, uint32_t base_addr);
 fdelay_device_t *fdelay_create_minibone(char *iface, char *mac_addr, uint32_t base_addr);
 
 fdelay_time_t fdelay_from_picos(const uint64_t ps);

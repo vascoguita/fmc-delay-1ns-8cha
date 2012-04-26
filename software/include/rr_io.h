@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <rawrabbit.h>
 
+int rr_bind(int a_fd);
 int rr_init(int bus, int devfn);
 int rr_writel(uint32_t data, uint32_t addr);
 uint32_t rr_readl(uint32_t addr);

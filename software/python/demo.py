@@ -68,11 +68,16 @@ def on_chk_wr():
 
 
 if __name__ == "__main__":
-	import os
+	import os,sys
+	
+	if(os.getuid() != 0):
+	    print("Sorry, I must be run as root...");
+	    sys.exit(-1)
+	
 	fd = os.open("/dev/rawrabbit", os.O_SYNC)
 	if(fd < 0):
 	    print("Can't open the rawrabbit device. Is the rawrabbit driver installed?")
-	    os.exit(-1)
+	    sys.exit(-1)
 
 	card = FineDelay(fd)
 

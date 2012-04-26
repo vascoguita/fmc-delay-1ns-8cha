@@ -53,7 +53,7 @@ class FineDelay:
 		self.fdelay.fdelay_configure_trigger(self.handle, c_int(enable), c_int(termination))
 
 	def conf_output(self, channel, enable, delay, width):
-		self.fdelay.fdelay_configure_output(self.handle, c_int(channel), c_int(enable), c_ulonglong(delay), c_ulonglong(width))
+		self.fdelay.fdelay_configure_output(self.handle, c_int(channel), c_int(enable), c_ulonglong(delay), c_ulonglong(width), c_ulonglong(200000), c_int(1))
 
 	def conf_readout(self, enable):
 		self.fdelay.fdelay_configure_readout(self.handle, enable)

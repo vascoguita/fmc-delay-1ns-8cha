@@ -1170,11 +1170,11 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
 
  	delay_ps -= hw->calib.zero_offset[channel-1];
  	start = fdelay_from_picos(delay_ps);
- 	end = fdelay_from_picos(delay_ps + width_ps);
-        delta = fdelay_from_picos(delta_ps);
+ 	end = fdelay_from_picos(delay_ps + width_ps - 4000);
+    delta = fdelay_from_picos(delta_ps);
+ 
 
-
-// 	printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+ 	printf("Start: %lld: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
 
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
@@ -1192,7 +1192,7 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	chan_writel(delta.frac, FD_REG_F_DELTA);
 
 // 	chan_writel(0, FD_REG_RCR);
- 	chan_writel(FD_RCR_REP_CNT_W(rep_count) | (rep_count < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
+ 	chan_writel(FD_RCR_REP_CNT_W(rep_count-1) | (rep_count < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
 
         dcr = 0;
         
