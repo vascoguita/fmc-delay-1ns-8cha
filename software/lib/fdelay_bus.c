@@ -36,10 +36,10 @@ uint32_t d = mbn_readl(priv, addr >> 2);
 return d;
 }
 
-fdelay_device_t *fdelay_create_rawrabbit(uint32_t base_addr)
+fdelay_device_t *fdelay_create_rawrabbit(int fd, uint32_t base_addr)
 {
 	fdelay_device_t *dev = malloc(sizeof(fdelay_device_t));
- 	rr_init(RR_DEVSEL_UNUSED, RR_DEVSEL_UNUSED);
+ 	rr_bind(fd);
  	dev->writel = my_rr_writel;
  	dev->readl = my_rr_readl;
  	dev->base_addr = base_addr;
@@ -67,4 +67,15 @@ fdelay_device_t *fdelay_create_minibone(char *iface, char *mac_addr, uint32_t ba
  	dev->priv_io = handle;
  	return dev;
 
+}
+
+int fdelay_load_firmware(const char *path)
+{
+    fprintf(stderr,"Booting up the FPGA with %s.\n", path);
+    if(rr_load_bitstream_from_file(path) < 0)
+    {
+         fprintf(stderr,"Failed to load FPGA bitstream.\n");
+         return -1;
+     }
+    return 0;
 }

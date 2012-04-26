@@ -18,6 +18,12 @@
 
 static int fd;
 
+int rr_bind(int a_fd)
+{
+        fd = a_fd;
+        return 0;
+}
+
 int rr_init(int bus, int devfn)
 {
 	struct rr_devsel devsel;

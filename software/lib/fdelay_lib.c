@@ -1171,7 +1171,8 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	delay_ps -= hw->calib.zero_offset[channel-1];
  	start = fdelay_from_picos(delay_ps);
  	end = fdelay_from_picos(delay_ps + width_ps);
-    delta = fdelay_from_picos(delta_ps);
+        delta = fdelay_from_picos(delta_ps);
+
 
 // 	printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
 
@@ -1222,11 +1223,17 @@ int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fd
  	if(channel < 1 || channel > 4)
  		return -1;
 
- 	start = t_start;
- 	end = ts_add(start, fdelay_from_picos(width_ps));
-    delta = fdelay_from_picos(delta_ps);
 
-// 	printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+ 	start = t_start;
+ 	end = fdelay_from_picos(fdelay_to_picos(start) + width_ps - 4000);
+        delta = fdelay_from_picos(delta_ps);
+
+        //start = t_start;
+ 	//end = ts_add(start, fdelay_from_picos(width_ps));
+        //delta = fdelay_from_picos(delta_ps);
+
+ 	//printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+        //printf("width: %lld delta: %lld rep: %d\n", width_ps, delta_ps, rep_count);
 
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
