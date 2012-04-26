@@ -68,13 +68,20 @@ def on_chk_wr():
 
 
 if __name__ == "__main__":
+	import os
+	fd = os.open("/dev/rawrabbit", os.O_SYNC)
+	if(fd < 0):
+	    print("Can't open the rawrabbit device. Is the rawrabbit driver installed?")
+	    os.exit(-1)
+
+	card = FineDelay(fd)
+
 	app = QApplication(sys.argv)
-	location = "local/0x84000"
 	
 	m = MainWindow()
 	m.show()
-	m.setWindowTitle("Fine Delay Demo @ %s" % location)
-	card = FineDelay(location)
+	import os
+	m.setWindowTitle("Fine Delay Demo")
 	m.wr_status.setText("")
 	ch_enable = [m.en_ch1, m.en_ch2, m.en_ch3, m.en_ch4];
 	ch_nsec = [m.nsec_ch1, m.nsec_ch2, m.nsec_ch3, m.nsec_ch4];
