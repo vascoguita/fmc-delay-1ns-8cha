@@ -306,7 +306,7 @@ begin  -- behavioral
     begin
       if rising_edge(clk_sys_i) then
         if rst_n_sys_i = '0' then
-          regs_o.tcr_dmtd_stat_i <= '0';
+          dmtd_stat <= '0';
           dmtd_locked_d0         <= '0';
         else
           dmtd_locked_d0 <= wr_clk_dmtd_locked_i;
