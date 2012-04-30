@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2012-04-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -93,6 +93,7 @@ begin  -- behavioral
       if rst_n_i = '0' then
         delay_len_reg <= (others => '1');
         delay_val_reg <= (others => '0');
+        delay_len_o <= (others => '1');
         -- done_reg      <= (others => '0');
         done_o        <= (others => '0');
         arb_sreg      <= std_logic_vector(to_unsigned(1, arb_sreg'length));
