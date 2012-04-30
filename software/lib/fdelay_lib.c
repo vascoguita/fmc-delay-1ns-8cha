@@ -883,7 +883,7 @@ int fdelay_init(fdelay_device_t *dev)
 
 	if(ds18x_init(dev) < 0)
 	{
-	    fail(TEST_SPI, "DS18x sensor not detected.");
+   fail(TEST_SPI, "DS18x sensor not detected.");
 		dbg("DS18x sensor not detected. Bah!\n");
     	return -1;
 	}

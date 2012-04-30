@@ -8,7 +8,5 @@ modelsim.ini
 *.vstf
 work
 *.bak
-syn/spec_1_1/*
-syn/spec_wr_demo/*
-syn/tests
+syn/*
 transcript

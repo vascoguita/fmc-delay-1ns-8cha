@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-20
+-- Last update: 2012-05-01
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -191,7 +191,7 @@ begin  -- behavioral
       g_dual_clock => false)
     port map (
       rst_n_i => rst_n_sys_i,
-      clka_i  => clk_ref_i,
+      clka_i  => clk_sys_i,
       bwea_i  => (others => '1'),
       wea_i   => buf_write,
       aa_i    => std_logic_vector(buf_wr_ptr),

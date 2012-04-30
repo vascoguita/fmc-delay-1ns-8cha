@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import sys
 import PyQt4
@@ -70,9 +70,9 @@ def on_chk_wr():
 if __name__ == "__main__":
 	app = QApplication(sys.argv)
 	if(sys.argv[1] == "1"):
-		location = "minibone/eth8/00:50:0c:de:bc:f8/0x100000"
+		location = "minibone/eth0/00:50:0c:de:bc:f8/0x100000"
 	else:
-		location = "minibone/eth8/00:50:e4:95:36:f8/0x100000"
+		location = "minibone/eth0/00:50:e4:95:36:f8/0x100000"
 	
 	m = MainWindow()
 	m.show()
