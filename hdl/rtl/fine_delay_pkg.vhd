@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-28
+-- Last update: 2012-04-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -78,6 +78,22 @@ package fine_delay_pkg is
   -- Calibration pulse width
   constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 3;
 
+
+  constant c_fine_delay_core_sdwb : t_sdwb_device := (
+    wbd_begin     => x"0000000000000000",
+    wbd_end       => x"00000000000003ff",
+    sdwb_child    => x"0000000000000000",
+    wbd_flags     => x"01",             -- big-endian, no-child, present
+    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    abi_class     => x"00000000",       -- undocumented device
+    dev_vendor    => x"0000CE42",       -- CERN
+    dev_device    => x"f19ede1a",
+    dev_version   => x"00000001",
+    dev_date      => x"20120425",
+    description   => "Fine Delay Core ");
+  
   type t_fd_timestamp is record
     u     : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
     c     : std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
@@ -360,6 +376,79 @@ package fine_delay_pkg is
       q_o    : out std_logic);
   end component;
 
+component fine_delay_core
+    generic (
+      g_with_wr_core        : boolean;
+      g_simulation          : boolean;
+      g_interface_mode      : t_wishbone_interface_mode;
+      g_address_granularity : t_wishbone_address_granularity);
+    port (
+      clk_ref_0_i          : in  std_logic;
+      clk_ref_180_i        : in  std_logic;
+      clk_sys_i            : in  std_logic;
+      clk_dmtd_i           : in  std_logic;
+      rst_n_i              : in  std_logic;
+      dcm_reset_o          : out std_logic;
+      dcm_locked_i         : in  std_logic;
+      trig_a_i             : in  std_logic;
+      tdc_cal_pulse_o      : out std_logic;
+      tdc_start_i          : in  std_logic;
+      dmtd_fb_in_i         : in  std_logic;
+      dmtd_fb_out_i        : in  std_logic;
+      dmtd_samp_o          : out std_logic;
+      led_trig_o           : out std_logic;
+      ext_rst_n_o          : out std_logic;
+      pll_status_i         : in  std_logic;
+      acam_d_o             : out std_logic_vector(27 downto 0);
+      acam_d_i             : in  std_logic_vector(27 downto 0);
+      acam_d_oen_o         : out std_logic;
+      acam_emptyf_i        : in  std_logic;
+      acam_alutrigger_o    : out std_logic;
+      acam_wr_n_o          : out std_logic;
+      acam_rd_n_o          : out std_logic;
+      acam_start_dis_o     : out std_logic;
+      acam_stop_dis_o      : out std_logic;
+      spi_cs_dac_n_o       : out std_logic;
+      spi_cs_pll_n_o       : out std_logic;
+      spi_cs_gpio_n_o      : out std_logic;
+      spi_sclk_o           : out std_logic;
+      spi_mosi_o           : out std_logic;
+      spi_miso_i           : in  std_logic;
+      delay_len_o          : out std_logic_vector(3 downto 0);
+      delay_val_o          : out std_logic_vector(9 downto 0);
+      delay_pulse_o        : out std_logic_vector(3 downto 0);
+      tm_link_up_i         : in  std_logic;
+      tm_time_valid_i      : in  std_logic;
+      tm_cycles_i          : in  std_logic_vector(27 downto 0);
+      tm_utc_i             : in  std_logic_vector(39 downto 0);
+      tm_clk_aux_lock_en_o : out std_logic;
+      tm_clk_aux_locked_i  : in  std_logic;
+      tm_clk_dmtd_locked_i : in  std_logic;
+      tm_dac_value_i       : in  std_logic_vector(23 downto 0);
+      tm_dac_wr_i          : in  std_logic;
+      dmtd_dac_value_o     : out std_logic_vector(23 downto 0);
+      dmtd_dac_wr_o        : out std_logic;
+      owr_en_o             : out std_logic;
+      owr_i                : in  std_logic;
+      i2c_scl_o            : out std_logic;
+      i2c_scl_oen_o        : out std_logic;
+      i2c_scl_i            : in  std_logic;
+      i2c_sda_o            : out std_logic;
+      i2c_sda_oen_o        : out std_logic;
+      i2c_sda_i            : in  std_logic;
+      fmc_present_n_i      : in  std_logic;
+      wb_adr_i             : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
+      wb_dat_i             : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_dat_o             : out std_logic_vector(c_wishbone_data_width-1 downto 0);
+      wb_sel_i             : in  std_logic_vector((c_wishbone_data_width+7)/8-1 downto 0);
+      wb_cyc_i             : in  std_logic;
+      wb_stb_i             : in  std_logic;
+      wb_we_i              : in  std_logic;
+      wb_ack_o             : out std_logic;
+      wb_stall_o           : out std_logic;
+      wb_irq_o             : out std_logic);
+  end component;
+  
   function f_to_internal_time (
     t_u : std_logic_vector;
     t_c : std_logic_vector;
