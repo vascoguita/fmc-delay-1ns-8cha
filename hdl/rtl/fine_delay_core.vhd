@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-04-11
+-- Last update: 2012-04-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -255,11 +255,6 @@ architecture rtl of fine_delay_core is
   signal tag_utc    : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
   signal tag_valid  : std_logic;
 
-  signal chx_pstart_frac   : std_logic_vector(4 * c_TIMESTAMP_FRAC_BITS-1 downto 0);
-  signal chx_pstart_coarse : std_logic_vector(4 * c_TIMESTAMP_COARSE_BITS-1 downto 0);
-  signal chx_pstart_utc    : std_logic_vector(4 * c_TIMESTAMP_UTC_BITS-1 downto 0);
-  signal chx_pstart_valid  : std_logic_vector(3 downto 0);
-
   signal rbuf_mux_ts                           : t_timestamp_array(0 to 4);
   signal rbuf_mux_valid, rbuf_mux_valid_masked : std_logic_vector(4 downto 0);
   signal rbuf_in_ts                            : t_fd_timestamp;
@@ -279,11 +274,6 @@ architecture rtl of fine_delay_core is
   signal advance_rbuf                 : std_logic;
   signal irq_rbuf, irq_spll, irq_sync : std_logic;
 
-
-
-
-  signal dcr_enable_vec : std_logic_vector(3 downto 0);
-  signal dcr_mode_vec   : std_logic_vector(3 downto 0);
 
   signal chx_delay_idle                       : std_logic_vector(3 downto 0);
   signal chx_delay_pulse0, chx_delay_pulse1   : std_logic_vector(3 downto 0);
@@ -306,7 +296,6 @@ architecture rtl of fine_delay_core is
   signal regs_towb_dmtd  : t_fd_main_in_registers;
   signal regs_towb       : t_fd_main_in_registers;
 
-  signal spi_cs_vec : std_logic_vector(7 downto 0);
 
   signal owr_en_int : std_logic_vector(0 downto 0);
   signal owr_int    : std_logic_vector(0 downto 0);
@@ -319,7 +308,6 @@ architecture rtl of fine_delay_core is
   signal tm_dac_val_int : std_logic_vector(31 downto 0);
   signal tcr_rd_ack     : std_logic;
 
-  signal delay_tag_mask   : std_logic;
   signal tag_valid_masked : std_logic;
 
   signal dmtd_pattern              : std_logic;
@@ -465,7 +453,8 @@ begin  -- rtl
       wb_we_i    => cnx_out(0).we,
       wb_ack_o   => cnx_in(0).ack,
       wb_stall_o => cnx_in(0).stall,
-
+      wb_int_o => wb_irq_o,
+      
       clk_ref_i => clk_ref_0_i,
 
       tcr_rd_ack_o          => tcr_rd_ack,
