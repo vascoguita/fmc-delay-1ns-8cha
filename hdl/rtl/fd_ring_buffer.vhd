@@ -125,7 +125,7 @@ architecture behavioral of fd_ring_buffer is
 
   signal buf_wr_ptr               : unsigned(g_size_log2-1 downto 0);
   signal buf_rd_ptr               : unsigned(g_size_log2-1 downto 0);
-  signal buf_count                : unsigned(g_size_log2-1 downto 0);
+  signal buf_count                : unsigned(g_size_log2 downto 0);
   signal buf_full, buf_empty      : std_logic;
   signal buf_wr_data, buf_rd_data : std_logic_vector(c_PACKED_TS_SIZE-1 downto 0);
   signal buf_write, buf_read      : std_logic;
@@ -141,6 +141,7 @@ architecture behavioral of fd_ring_buffer is
   signal tmr_tick    : std_logic;
   signal tmr_timeout : unsigned(9 downto 0);
   signal buf_irq_int : std_logic;
+  signal buf_read_d0, buf_read_d1 : std_logic;       
   
   
 begin  -- behavioral
@@ -225,9 +226,13 @@ begin  -- behavioral
         buf_wr_ptr   <= (others => '0');
         buf_count    <= (others => '0');
         fifo_read_d0 <= '0';
+        buf_read_d0  <= '0';
+        buf_read_d1  <= '0';
       else
 
         fifo_read_d0 <= fifo_read;
+        buf_read_d0  <= buf_read;
+        buf_read_d1  <= buf_read_d0;
 
         if(buf_write = '1') then
           buf_wr_ptr <= buf_wr_ptr + 1;
@@ -251,16 +256,9 @@ begin  -- behavioral
   p_output_register : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      
       if(buf_write = '1' and buf_empty = '1') then
-        update_oreg <= '1';
-      elsif(advance_rbuf_i = '1') then
-        update_oreg <= '1';
-      else
-        update_oreg <= '0';
-      end if;
-
-      if(update_oreg = '1') then
+        buf_out_reg <= f_unpack_timestamp(buf_wr_data);
+      elsif(buf_read_d1 = '1') then
         buf_out_reg <= buf_ram_out;
       end if;
     end if;
