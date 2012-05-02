@@ -986,6 +986,9 @@ int fdelay_init(fdelay_device_t *dev)
   /* Switch the ACAM to be driven by the delay core instead of the host */
   fd_writel( 0, FD_REG_GCR);
 
+  /* Disable external synchronization (i.e. WR) */
+  fd_writel( 0, FD_REG_TCR);
+
   /* Clear and disable the timestamp readout buffer */
   fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
 
@@ -1102,8 +1105,11 @@ int64_t fdelay_to_picos(const fdelay_time_t t)
 static int poll_rbuf(fdelay_device_t *dev)
 {
  	fd_decl_private(dev)
+ 	uint32_t tsbcr = fd_readl(FD_REG_TSBCR);
 
- 	if((fd_readl(FD_REG_TSBCR) & FD_TSBCR_EMPTY) == 0)
+//	fprintf(stderr,"Count %d empty %d\n", FD_TSBCR_COUNT_R(tsbcr), tsbcr & FD_TSBCR_EMPTY ? 1 : 0);
+
+ 	if((tsbcr & FD_TSBCR_EMPTY) == 0)
 		return 1;
 	return 0;
 }
@@ -1308,8 +1314,6 @@ int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t)
     return 0;
 }
 
-#if 0
-
 /* To be rewritten to use interrupts and new WR FSM (see TCR register description).
    Use the API provided in fdelay_lib.h */
 
@@ -1320,58 +1324,29 @@ int fdelay_configure_sync(fdelay_device_t *dev, int mode)
 	if(mode == FDELAY_SYNC_LOCAL)
 	{
 	 	fd_writel(0, FD_REG_GCR);
-//	 	fd_writel(FD_GCR_CSYNC_INT, FD_REG_GCR);
+	 	fd_writel(0, FD_REG_TCR);
 	 	hw->wr_enabled = 0;
 	} else {
 	 	fd_writel(0, FD_REG_GCR);
+	 	fd_writel(FD_TCR_WR_ENABLE, FD_REG_TCR);
 	 	hw->wr_enabled = 1;
-	 	hw->wr_state = FDELAY_WR_OFFLINE;
 	}
 }
 
-int fdelay_get_sync_status(fdelay_device_t *dev)
-{
+int fdelay_check_sync(fdelay_device_t *dev)
+{   
 	fd_decl_private(dev)
 
-	if(!hw->wr_enabled) return FDELAY_FREE_RUNNING;
+	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
 
-	switch(hw->wr_state)
-	{
-	 	case FDELAY_WR_OFFLINE:
-	 		if(fd_readl(FD_REG_GCR) & FD_GCR_WR_READY)
-	 			{
-	 			 	dbg("-> WR Core synced\n");
-	 			 	hw->wr_state = FDELAY_WR_READY;
-	 			}
- 			break;
-
- 		case FDELAY_WR_READY:
- 		 	fd_writel(FD_GCR_WR_LOCK_EN, FD_REG_GCR);
- 		 	hw->wr_state = FDELAY_WR_SYNCING;
- 		  	break;
-
- 		case FDELAY_WR_SYNCING:
- 			if(fd_readl(FD_REG_GCR) & FD_GCR_WR_LOCKED)
- 			{
-	 			fd_writel(FD_GCR_WR_LOCK_EN | FD_GCR_CSYNC_WR, FD_REG_GCR);
-	 			fd_writel(FD_GCR_WR_LOCK_EN , FD_REG_GCR);
-	 			fd_writel(FD_GCR_WR_LOCK_EN | FD_GCR_INPUT_EN, FD_REG_GCR);
-
-				hw->wr_state = FDELAY_WR_SYNCED;
-			}
- 			break;
-
- 		case FDELAY_WR_SYNCED:
- 			if((fd_readl(FD_REG_GCR) & FD_GCR_WR_LOCKED) == 0)
- 				hw->wr_state = FDELAY_WR_OFFLINE;
- 			break;
-	}
-
-	return hw->wr_state;
+    if(hw->wr_enabled && (fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED))
+    	return 1;
+    else if (!hw->wr_enabled)
+    	return 1;
+    
+    return 0;
 }
 
-
-#endif
 
 # if 0
 
