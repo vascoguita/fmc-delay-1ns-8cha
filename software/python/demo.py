@@ -68,16 +68,25 @@ def on_chk_wr():
 
 
 if __name__ == "__main__":
+	import os,sys
+	
+	if(os.getuid() != 0):
+	    print("Sorry, I must be run as root...");
+	    sys.exit(-1)
+	
+	fd = os.open("/dev/rawrabbit", os.O_SYNC)
+	if(fd < 0):
+	    print("Can't open the rawrabbit device. Is the rawrabbit driver installed?")
+	    sys.exit(-1)
+
+	card = FineDelay(fd)
+
 	app = QApplication(sys.argv)
-	if(sys.argv[1] == "1"):
-		location = "minibone/eth0/00:50:0c:de:bc:f8/0x100000"
-	else:
-		location = "minibone/eth0/00:50:e4:95:36:f8/0x100000"
 	
 	m = MainWindow()
 	m.show()
-	m.setWindowTitle("Fine Delay Demo @ %s" % location)
-	card = FineDelay(location)
+	import os
+	m.setWindowTitle("Fine Delay Demo")
 	m.wr_status.setText("")
 	ch_enable = [m.en_ch1, m.en_ch2, m.en_ch3, m.en_ch4];
 	ch_nsec = [m.nsec_ch1, m.nsec_ch2, m.nsec_ch3, m.nsec_ch4];

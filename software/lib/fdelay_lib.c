@@ -146,6 +146,8 @@ static void oc_spi_txrx(fdelay_device_t *dev, int ss, int num_bits, uint32_t in,
 		scr |= FD_SCR_SEL_PLL;
 	else if(ss == CS_GPIO)
 		scr |= FD_SCR_SEL_GPIO;
+	else if(ss == CS_DAC)
+		scr |= FD_SCR_SEL_DAC;
 
 	fd_writel(scr, FD_REG_SCR);
 	fd_writel(scr | FD_SCR_START, FD_REG_SCR);
@@ -227,6 +229,38 @@ static int ad9516_init(fdelay_device_t *dev)
   dbg("%s: AD9516 locked.\n", __FUNCTION__);
 
   return 0;
+}
+
+
+static int test_pll_dac(fdelay_device_t *dev)
+{
+    fd_decl_private(dev);
+    int f_hi, f_lo;
+    double range;
+    int i=0;
+  
+    dbg("Testing DAC/VCXO... ");
+
+    oc_spi_txrx(dev,  CS_DAC, 24, 0, NULL); /* Drive the DAC to 0 */
+    
+    udelay(1000000);
+    f_lo = fd_readl(FD_REG_TDER1) & 0x7fffffff;
+
+    oc_spi_txrx(dev, CS_DAC, 24, 0xffff, NULL); /* Drive the DAC to +Vref */
+    udelay(1000000);
+    f_hi = fd_readl(FD_REG_TDER1) & 0x7fffffff;
+    
+    
+    range = (double)abs(f_hi - f_lo) / (double)f_lo * 1e6;
+    dbg("tuning range: %.1f ppm.\n",  range);
+    
+    if(range < 10.1)
+    {
+        fail(TEST_SPI, "Too little VCXO tuning range. Either a broken VCXO or (more likely) broken SPI connection to the DAC.");
+        return -1;
+    }
+    
+    return 0;
 }
 
 /*
@@ -627,11 +661,12 @@ static void measure_linearity(double *x, int n, double *inl, double *dnl)
    its linearity, performing an indirect check of the delay lines' and TDC signal connections. */
 
 #define MAX_DNL 20
-#define MAX_INL 50
+#define MAX_INL 60
 
 static int test_delay_transfer_function(fdelay_device_t *dev)
 {
     double inl, dnl;
+    int lin_fail = 0;
     
 	fd_decl_private(dev)
 
@@ -659,14 +694,17 @@ static int test_delay_transfer_function(fdelay_device_t *dev)
 	    dbg("Linearity: INL = %.1f ps, DNL = %.1f ps\n",  inl, dnl);
 	    
 	    if(inl > MAX_INL || dnl > MAX_DNL)
-	    {
-	        dbg("Linearity check failed.\n");
-	        fail(TEST_DELAY_LINE, "Maximum INL/DNL exceeded, indicating a wrong connection of the delay chip and/or the TDC calibration signals");
-	        return -1;
-	    }
-	    
+            lin_fail=1;	    
 	    
 	}
+
+    if(lin_fail)
+    {
+        dbg("Linearity check failed.\n");
+        fail(TEST_DELAY_LINE, "Maximum INL/DNL exceeded, indicating a wrong connection of the delay chip and/or the TDC calibration signals");
+        return -1;
+    }
+
 
     return 0;
 /*	FILE *f=fopen("t_func.dat","w");
@@ -847,6 +885,14 @@ int fdelay_init(fdelay_device_t *dev)
       return -1;
     }
 
+  if(! (fd_readl(FD_REG_GCR) & FD_GCR_FMC_PRESENT))
+  {
+      fail(TEST_PRESENCE, "FMC Card not detected in the slot. Maybe a fault on PRSNT_L line?");
+      dbg("%s: FMC Presence line not active. Is the FMC correctly inserted into the carrier?\n", __FUNCTION__);
+      return -1;
+  
+  }
+
   rv = read_calibration_eeprom(dev, &hw->calib);
   
   if(rv < 0)
@@ -880,6 +926,8 @@ int fdelay_init(fdelay_device_t *dev)
 
   if(ad9516_init(dev) < 0)
     return -1;
+
+
 
 	if(ds18x_init(dev) < 0)
 	{
@@ -918,6 +966,12 @@ int fdelay_init(fdelay_device_t *dev)
      initialization and calibration */
   fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 
+
+#ifdef PERFORM_LONG_TESTS
+  if(test_pll_dac(dev) < 0)
+    return -1;
+#endif
+
   /* Test if ACAM addr/data lines are OK */
   if(acam_test_bus(dev) < 0)
     return -1;
@@ -931,6 +985,9 @@ int fdelay_init(fdelay_device_t *dev)
 
   /* Switch the ACAM to be driven by the delay core instead of the host */
   fd_writel( 0, FD_REG_GCR);
+
+  /* Disable external synchronization (i.e. WR) */
+  fd_writel( 0, FD_REG_TCR);
 
   /* Clear and disable the timestamp readout buffer */
   fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
@@ -1048,8 +1105,11 @@ int64_t fdelay_to_picos(const fdelay_time_t t)
 static int poll_rbuf(fdelay_device_t *dev)
 {
  	fd_decl_private(dev)
+ 	uint32_t tsbcr = fd_readl(FD_REG_TSBCR);
 
- 	if((fd_readl(FD_REG_TSBCR) & FD_TSBCR_EMPTY) == 0)
+//	fprintf(stderr,"Count %d empty %d\n", FD_TSBCR_COUNT_R(tsbcr), tsbcr & FD_TSBCR_EMPTY ? 1 : 0);
+
+ 	if((tsbcr & FD_TSBCR_EMPTY) == 0)
 		return 1;
 	return 0;
 }
@@ -1116,10 +1176,11 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
 
  	delay_ps -= hw->calib.zero_offset[channel-1];
  	start = fdelay_from_picos(delay_ps);
- 	end = fdelay_from_picos(delay_ps + width_ps);
+ 	end = fdelay_from_picos(delay_ps + width_ps - 4000);
     delta = fdelay_from_picos(delta_ps);
+ 
 
-// 	printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+ 	printf("Start: %lld: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
 
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
@@ -1137,7 +1198,7 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	chan_writel(delta.frac, FD_REG_F_DELTA);
 
 // 	chan_writel(0, FD_REG_RCR);
- 	chan_writel(FD_RCR_REP_CNT_W(rep_count) | (rep_count < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
+ 	chan_writel(FD_RCR_REP_CNT_W(rep_count-1) | (rep_count < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
 
         dcr = 0;
         
@@ -1168,11 +1229,17 @@ int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fd
  	if(channel < 1 || channel > 4)
  		return -1;
 
- 	start = t_start;
- 	end = ts_add(start, fdelay_from_picos(width_ps));
-    delta = fdelay_from_picos(delta_ps);
 
-// 	printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+ 	start = t_start;
+ 	end = fdelay_from_picos(fdelay_to_picos(start) + width_ps - 4000);
+        delta = fdelay_from_picos(delta_ps);
+
+        //start = t_start;
+ 	//end = ts_add(start, fdelay_from_picos(width_ps));
+        //delta = fdelay_from_picos(delta_ps);
+
+ 	//printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
+        //printf("width: %lld delta: %lld rep: %d\n", width_ps, delta_ps, rep_count);
 
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
@@ -1247,8 +1314,6 @@ int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t)
     return 0;
 }
 
-#if 0
-
 /* To be rewritten to use interrupts and new WR FSM (see TCR register description).
    Use the API provided in fdelay_lib.h */
 
@@ -1259,58 +1324,29 @@ int fdelay_configure_sync(fdelay_device_t *dev, int mode)
 	if(mode == FDELAY_SYNC_LOCAL)
 	{
 	 	fd_writel(0, FD_REG_GCR);
-//	 	fd_writel(FD_GCR_CSYNC_INT, FD_REG_GCR);
+	 	fd_writel(0, FD_REG_TCR);
 	 	hw->wr_enabled = 0;
 	} else {
 	 	fd_writel(0, FD_REG_GCR);
+	 	fd_writel(FD_TCR_WR_ENABLE, FD_REG_TCR);
 	 	hw->wr_enabled = 1;
-	 	hw->wr_state = FDELAY_WR_OFFLINE;
 	}
 }
 
-int fdelay_get_sync_status(fdelay_device_t *dev)
-{
+int fdelay_check_sync(fdelay_device_t *dev)
+{   
 	fd_decl_private(dev)
 
-	if(!hw->wr_enabled) return FDELAY_FREE_RUNNING;
+	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
 
-	switch(hw->wr_state)
-	{
-	 	case FDELAY_WR_OFFLINE:
-	 		if(fd_readl(FD_REG_GCR) & FD_GCR_WR_READY)
-	 			{
-	 			 	dbg("-> WR Core synced\n");
-	 			 	hw->wr_state = FDELAY_WR_READY;
-	 			}
- 			break;
-
- 		case FDELAY_WR_READY:
- 		 	fd_writel(FD_GCR_WR_LOCK_EN, FD_REG_GCR);
- 		 	hw->wr_state = FDELAY_WR_SYNCING;
- 		  	break;
-
- 		case FDELAY_WR_SYNCING:
- 			if(fd_readl(FD_REG_GCR) & FD_GCR_WR_LOCKED)
- 			{
-	 			fd_writel(FD_GCR_WR_LOCK_EN | FD_GCR_CSYNC_WR, FD_REG_GCR);
-	 			fd_writel(FD_GCR_WR_LOCK_EN , FD_REG_GCR);
-	 			fd_writel(FD_GCR_WR_LOCK_EN | FD_GCR_INPUT_EN, FD_REG_GCR);
-
-				hw->wr_state = FDELAY_WR_SYNCED;
-			}
- 			break;
-
- 		case FDELAY_WR_SYNCED:
- 			if((fd_readl(FD_REG_GCR) & FD_GCR_WR_LOCKED) == 0)
- 				hw->wr_state = FDELAY_WR_OFFLINE;
- 			break;
-	}
-
-	return hw->wr_state;
+    if(hw->wr_enabled && (fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED))
+    	return 1;
+    else if (!hw->wr_enabled)
+    	return 1;
+    
+    return 0;
 }
 
-
-#endif
 
 # if 0
 

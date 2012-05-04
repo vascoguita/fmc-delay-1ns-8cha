@@ -71,7 +71,7 @@ main()
 {
 	fdelay_device_t *dev = malloc(sizeof(fdelay_device_t));
 
-	rr_init();
+	rr_init(RR_DEVSEL_UNUSED, RR_DEVSEL_UNUSED);
 
 	dev->writel = my_writel;
 	dev->readl = my_readl;

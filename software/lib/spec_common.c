@@ -50,13 +50,13 @@ int spec_fdelay_init(int argc, char *argv[], fdelay_device_t *dev)
 
 	dev->writel = spec_writel;
 	dev->readl = spec_readl;
-	dev->base_addr = 0x84000;
+	dev->base_addr = 0x80000;
 
-    if(rr_load_bitstream_from_file(fw_name) < 0)
+/*    if(rr_load_bitstream_from_file(fw_name) < 0)
     {
         fprintf(stderr,"Failed to load FPGA bitstream.\n");
         return -1;
-    }
+    }*/
 
 	if(fdelay_init(dev) < 0)
 		return -1;
