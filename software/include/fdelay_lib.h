@@ -38,7 +38,7 @@ typedef struct fdelay_device
 
 typedef struct 
 {
-  int32_t utc; /* TAI seconds */ /* FIXME: replace all UTCs with TAIs or seconds for clarity */
+  int64_t utc; /* TAI seconds */ /* FIXME: replace all UTCs with TAIs or seconds for clarity */
   int32_t coarse; /* 125 MHz counter cycles */
   int32_t frac; /* Fractional part (<8ns) */
   uint16_t seq_id; /* Sequence ID to detect missed timestamps */
@@ -113,5 +113,9 @@ int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel_mask, int enabl
 /* (pulse mode only) Returns non-0 when all of the channels in channel mask have produced their programmed pulses */
 int fdelay_outputs_triggered(fdelay_device_t *dev, int channel_mask, int blocking);
 
+void fdelay_set_user_offset(fdelay_device_t *dev,int input, int64_t offset);
+
+int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t);
+int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t);
 
 #endif

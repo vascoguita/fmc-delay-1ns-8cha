@@ -3,24 +3,16 @@ CFLAGS = -I../include -g -Imini_bone -Ispll
 #uncomment for extra tests (DAC, output stage INL/DNL)
 #CFLAGS += -DPERFORM_LONG_TESTS
 
-OBJS_LIB = fdelay_lib.o fdelay_bus.o rr_io.o  i2c_master.o onewire.o mini_bone/minibone_lib.o mini_bone/ptpd_netif.o  spec_common.o
+OBJS_LIB = fdelay_lib.o i2c_master.o onewire.o mini_bone/minibone_lib.o mini_bone/ptpd_netif.o  spec_common.o 
 
-all:    testprog lib testprog3 testprog4
+all:    testprog lib gs
 
 lib:	$(OBJS_LIB)
 		gcc -shared -o libfinedelay.so $(OBJS_LIB)
 
-testprog:	lib fdelay_test.o
-		gcc -o fdelay_test $(OBJS_LIB) fdelay_test.o -lm
-
-#testprog2:	lib fdelay_cal.o
-#		gcc -o fdelay_cal $(OBJS_LIB) fdelay_cal.o -lm
-
-testprog3:	lib fdelay_pps_demo.o
+testprog:	lib fdelay_pps_demo.o
 		gcc -o fdelay_pps_demo $(OBJS_LIB) fdelay_pps_demo.o -lm
 
-testprog4:	lib fdelay_eeprom.o
-		gcc -o fdelay_eeprom $(OBJS_LIB) fdelay_eeprom.o -lm
+gs:		lib fdelay-gs.o
+		gcc -o fdelay-gs $(OBJS_LIB) fdelay-gs.o -lm
 
-clean:	
-		rm -f libfinedelay.so $(OBJS_LIB)

@@ -3,7 +3,7 @@
 #include "fdelay_lib.h"
 #include "rr_io.h"
 
-extern int spec_fdelay_init(int argc, char *argv[], fdelay_device_t *dev);
+extern int spec_fdelay_init(fdelay_device_t *dev, int pbus, int pdev);
 
 main(int argc, char *argv[])
 {
@@ -11,12 +11,14 @@ main(int argc, char *argv[])
     fdelay_time_t t;
 
     /* Initialize the fine delay generator */
-    if(spec_fdelay_init(argc, argv, &dev) < 0)
+    if(spec_fdelay_init(&dev, 0x05, 0x00) < 0)
     {
-        fdelay_show_test_results();
+//        fdelay_show_test_results();
         return -1;
     }
 
+
+	return 0;
     /* Enable trigger input and 50 ohm termination */
 
     /* Enable all outputs and set them to 500 ns delay, 100 ns pulse width, single output pulse per trigger */

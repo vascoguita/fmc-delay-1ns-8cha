@@ -1,4 +1,4 @@
-/*
+/*                             \
 	FmcDelay1ns4Cha (a.k.a. The Fine Delay Card)
 	User-space driver/library
 
@@ -874,7 +874,8 @@ int fdelay_init(fdelay_device_t *dev)
   hw->wr_enabled = 0;
   hw->wr_state = FDELAY_FREE_RUNNING;
   hw->acam_addr = 0xff;
-
+  hw->input_user_offset = 0;
+  hw->output_user_offset= 0;
   dbg("%s: Initializing the Fine Delay Card\n", __FUNCTION__);
 
   /* Read the Identification register and check if we are talking to a proper Fine Delay HDL Core */
@@ -893,8 +894,9 @@ int fdelay_init(fdelay_device_t *dev)
   
   }
 
-  rv = read_calibration_eeprom(dev, &hw->calib);
-  
+//  rv = read_calibration_eeprom(dev, &hw->calib);
+	rv = 0;
+	  
   if(rv < 0)
   {
     fail(TEST_SPI, "FMC EEPROM not detected.");
@@ -1087,7 +1089,7 @@ static fdelay_time_t ts_add(fdelay_time_t a, fdelay_time_t b)
  	 	a.coarse++;
  	}
  	a.coarse += b.coarse;
- 	if(b.coarse >= 125000000)
+ 	if(a.coarse >= 125000000)
  	{
  	 	a.coarse -= 125000000;
  	 	a.utc ++;
@@ -1095,11 +1097,21 @@ static fdelay_time_t ts_add(fdelay_time_t a, fdelay_time_t b)
  	return a;
 }
 
+
+
 /* Converts a Fine Delay time stamp to plain picoseconds */
 int64_t fdelay_to_picos(const fdelay_time_t t)
 {
 	int64_t tp = (((int64_t)t.frac * 8000LL) >> FDELAY_FRAC_BITS) + ((int64_t) t.coarse * 8000LL) + ((int64_t)t.utc * 1000000000000LL);
 	return tp;
+}
+
+static fdelay_time_t ts_add_ps(fdelay_time_t a, int64_t b)
+{
+	if(b < 0)
+		return ts_sub(a, fdelay_from_picos(-b));
+	else
+		return ts_add(a, fdelay_from_picos(b));
 }
 
 static int poll_rbuf(fdelay_device_t *dev)
@@ -1150,9 +1162,9 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 		seq_frac =  fd_readl(FD_REG_TSBR_FID);
 		ts.frac = FD_TSBR_FID_FINE_R(seq_frac);
 		ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
-		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
+//		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
 
-		*timestamps++ = ts_sub(ts, fdelay_from_picos(hw->calib.tdc_zero_offset));
+		*timestamps++ = ts_add_ps(ts, hw->input_user_offset);
 
 		how_many--;
 		n_read++;
@@ -1222,32 +1234,29 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
 int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fdelay_time_t t_start, int64_t width_ps, int64_t delta_ps, int rep_count)
 {
 	fd_decl_private(dev)
- 	uint32_t base = (channel-1) * 0x20;
  	uint32_t dcr;
  	fdelay_time_t start, end, delta;
 
  	if(channel < 1 || channel > 4)
  		return -1;
 
+ 	start = ts_add_ps(t_start, hw->output_user_offset);
+ 	end = ts_add_ps(t_start, hw->output_user_offset + width_ps - 4000);
+    delta = fdelay_from_picos(delta_ps);
 
- 	start = t_start;
- 	end = fdelay_from_picos(fdelay_to_picos(start) + width_ps - 4000);
-        delta = fdelay_from_picos(delta_ps);
-
-        //start = t_start;
- 	//end = ts_add(start, fdelay_from_picos(width_ps));
-        //delta = fdelay_from_picos(delta_ps);
-
- 	//printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
-        //printf("width: %lld delta: %lld rep: %d\n", width_ps, delta_ps, rep_count);
-
+ 	printf("Channel: %d\n",channel);
+ 	printf("TStart: %d: %d:%d rep %d\n", t_start.utc, t_start.coarse, t_start.frac, rep_count);
+ 	printf("Start: %d: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
+ 	printf("End: %d: %d:%d rep %d\n", end.utc, end.coarse, end.frac, rep_count);
+ 	printf("Delta: %d: %d:%d rep %d\n", delta.utc, delta.coarse, delta.frac, rep_count);
+	
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
- 	chan_writel(start.utc >> 32, FD_REG_U_STARTH);
+ 	chan_writel(0, FD_REG_U_STARTH);
  	chan_writel(start.utc & 0xffffffff, FD_REG_U_STARTL);
  	chan_writel(start.coarse, FD_REG_C_START);
  	chan_writel(start.frac, FD_REG_F_START);
- 	chan_writel(end.utc >> 32,  FD_REG_U_ENDH);
+ 	chan_writel(0,  FD_REG_U_ENDH);
  	chan_writel(end.utc & 0xffffffff,  FD_REG_U_ENDL);
  	chan_writel(end.coarse, FD_REG_C_END);
  	chan_writel(end.frac, FD_REG_F_END);
@@ -1279,7 +1288,7 @@ int fdelay_channel_triggered(fdelay_device_t *dev, int channel)
 {
 	fd_decl_private(dev)
 	uint32_t dcr= chan_readl(FD_REG_DCR);
-	printf("DCR%d %x\n", channel, dcr);
+//	printf("DCR%d %x\n", channel, dcr);
     return dcr & FD_DCR_PG_TRIG ? 1: 0;
 }
 
@@ -1292,7 +1301,7 @@ int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t)
 
 	fd_writel(0, FD_REG_GCR);
 
-    fd_writel(t.utc >> 32, FD_REG_TM_SECH);
+    fd_writel(0, FD_REG_TM_SECH);
     fd_writel(t.utc & 0xffffffff, FD_REG_TM_SECL);
     fd_writel(t.coarse, FD_REG_TM_CYCLES);
 
@@ -1313,7 +1322,23 @@ int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t)
     fd_writel(tcr | FD_TCR_CAP_TIME, FD_REG_TCR);
     t->utc = fd_readl(FD_REG_TM_SECL);
     t->coarse = fd_readl(FD_REG_TM_CYCLES);
+//    printf("GetTime: %d %d\n", t->utc, t->coarse);
     return 0;
+}
+
+void fdelay_set_user_offset(fdelay_device_t *dev,int input, int64_t offset)
+{
+	fd_decl_private(dev)
+ 	if(input)
+ 	{
+ 		dbg("SetUserInputOffset %lld ps \n", offset);
+ 		hw->input_user_offset=  offset;
+ 	}
+ 	else
+ 	{
+ 		dbg("SetUserOutputOffset %lld ps \n", offset);
+ 		hw->output_user_offset=  offset;
+	}
 }
 
 /* To be rewritten to use interrupts and new WR FSM (see TCR register description).
@@ -1325,11 +1350,11 @@ int fdelay_configure_sync(fdelay_device_t *dev, int mode)
 
 	if(mode == FDELAY_SYNC_LOCAL)
 	{
-	 	fd_writel(0, FD_REG_GCR);
+//	 	fd_writel(0, FD_REG_GCR);
 	 	fd_writel(0, FD_REG_TCR);
 	 	hw->wr_enabled = 0;
 	} else {
-	 	fd_writel(0, FD_REG_GCR);
+//	 	fd_writel(0, FD_REG_GCR);
 	 	fd_writel(FD_TCR_WR_ENABLE, FD_REG_TCR);
 	 	hw->wr_enabled = 1;
 	}
@@ -1339,7 +1364,7 @@ int fdelay_check_sync(fdelay_device_t *dev)
 {   
 	fd_decl_private(dev)
 
-	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
+//	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
 
     if(hw->wr_enabled && (fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED))
     	return 1;
