@@ -1388,13 +1388,21 @@ int fdelay_check_sync(fdelay_device_t *dev)
 //	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
 
     if(hw->wr_enabled && (fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED))
+    {
+		fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_ISR);
+		fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_IER);
     	return 1;
-    else if (!hw->wr_enabled)
+    } else if (!hw->wr_enabled)
     	return 1;
     
     return 0;
 }
 
+int fdelay_dbg_sync_lost(fdelay_device_t *dev)
+{   
+	fd_decl_private(dev)
+ 	return (fd_readl(FD_REG_EIC_ISR) & FD_EIC_ISR_SYNC_STATUS) ? 1 : 0;
+}
 
 # if 0
 

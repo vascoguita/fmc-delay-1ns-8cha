@@ -266,7 +266,7 @@ void enable_termination(fdelay_device_t *b, int enable)
 
 void enable_wr(fdelay_device_t *b, int index)
 {
-	int lock_retries = 10;
+	int lock_retries = 50;
 	printf("Locking to WR network [board=%d]...", index);
 	fflush(stdout);
 	fdelay_configure_sync(b, FDELAY_SYNC_LOCAL);
@@ -424,6 +424,9 @@ void sighandler(int sig)
     }
 }
 
+
+int fdelay_dbg_sync_lost(fdelay_device_t *dev);
+
 int main(int argc, char *argv[])
 {
 	int i, maxfd = -1;
@@ -457,8 +460,20 @@ int main(int argc, char *argv[])
 				continue;
 //			printf(".");
 			handle_readout(&boards[i]);
+		
+			if(fdelay_dbg_sync_lost(boards[i].b))
+			{
+			 	printf("Weird, sync lost @ board %x. Reconfiguring...\n", boards[i].b);
+			 	configure_board(&boards[i]);
+
+			}
+
 		}
 		usleep(100);
+
+		
 	}
+	
+	
 }
 
