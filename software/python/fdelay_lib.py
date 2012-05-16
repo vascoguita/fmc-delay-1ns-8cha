@@ -23,7 +23,7 @@ class fd_timestamp(Structure):
 
 class FineDelay:
 
-        BASE_ADDR = 0x84000
+        BASE_ADDR = 0x80000
 
 	FREE_RUNNING = 0x10
 	WR_OFFLINE =  0x8
@@ -39,7 +39,7 @@ class FineDelay:
                 self.handle = c_voidp(self.fdelay.fdelay_create_rawrabbit(c_int(fd), c_ulong(self.BASE_ADDR)));
 
 
-		if(c_int(self.fdelay.fdelay_load_firmware("spec_top.bin")) < 0):
+		if(c_int(self.fdelay.fdelay_load_firmware("../spec_top_wr.bin")) < 0):
 			print ("Firmware loader failed...");
 			sys.exit(-1)
 

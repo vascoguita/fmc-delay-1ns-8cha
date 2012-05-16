@@ -1278,7 +1278,9 @@ int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fd
 int fdelay_channel_triggered(fdelay_device_t *dev, int channel)
 {
 	fd_decl_private(dev)
-    return chan_readl(FD_REG_DCR) & FD_DCR_PG_TRIG ? 1: 0;
+	uint32_t dcr= chan_readl(FD_REG_DCR);
+	printf("DCR%d %x\n", channel, dcr);
+    return dcr & FD_DCR_PG_TRIG ? 1: 0;
 }
 
 /* Todo: write get_time() */
