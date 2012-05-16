@@ -273,6 +273,7 @@ MCP23S17 SPI I/O Port Driver
 static inline void mcp_write(fdelay_device_t *dev, uint8_t reg, uint8_t val)
 {
   oc_spi_txrx(dev, CS_GPIO, 24, 0x4e0000 | (((uint32_t)reg)<<8) | (uint32_t)val, NULL);
+  oc_spi_txrx(dev, CS_NONE, 24, 0, NULL);
 }
 
 /* Reads MCP23S17 register */
@@ -280,6 +281,8 @@ static uint8_t mcp_read(fdelay_device_t *dev, uint8_t reg)
 {
   uint32_t rval;
   oc_spi_txrx(dev, CS_GPIO, 24, 0x4f0000 | (((uint32_t)reg)<<8), &rval);
+  oc_spi_txrx(dev, CS_NONE, 24, 0, NULL);
+
   return rval & 0xff;
 }
 
@@ -1141,6 +1144,24 @@ int fdelay_configure_readout(fdelay_device_t *dev, int enable)
 	return 0;
 }
 
+fdelay_time_t ts_normalize(fdelay_time_t denorm)
+{
+ 	if(denorm.coarse & (1<<27))
+ 	{
+ 	 	denorm.coarse += 125000000;
+	    denorm.coarse &= 0xfffffff; 
+ 	 	denorm.utc--;
+ 	}
+ 	
+ 	if(denorm.coarse >= 125000000)
+ 	{
+ 	 	denorm.coarse -= 125000000;
+ 	 	denorm.utc++;
+ 	}
+ 	
+ 	return denorm;
+}
+
 /* Reads up to (how_many) timestamps from the FD ring buffer and stores them in (timestamps).
    Returns the number of read timestamps. */
 int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
@@ -1164,7 +1185,7 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 		ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
 //		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
 
-		*timestamps++ = ts_add_ps(ts, hw->input_user_offset);
+		*timestamps++ = ts_add_ps(ts_normalize(ts), hw->input_user_offset);
 
 		how_many--;
 		n_read++;

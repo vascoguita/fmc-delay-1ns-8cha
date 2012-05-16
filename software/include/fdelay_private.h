@@ -20,6 +20,7 @@
 #define CS_DAC 0   /* AD9516 PLL */
 #define CS_PLL 1  /* AD9516 PLL */
 #define CS_GPIO 2 /* MCP23S17 GPIO */
+#define CS_NONE 3 
 
 /* MCP23S17 GPIO expander pin locations: bit 8 = select bank 2, bits 7..0 = mask of the pin in the selected bank */
 #define SGPIO_TERM_EN  (1<<0)	 	/* Input termination enable (1 = on) */
