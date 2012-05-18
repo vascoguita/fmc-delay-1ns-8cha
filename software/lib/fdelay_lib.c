@@ -871,6 +871,7 @@ int fdelay_init(fdelay_device_t *dev)
 
   dev->priv_fd = (void *) hw;
 
+	hw->raw_mode= 0;
   hw->base_addr = dev->base_addr;
   hw->base_i2c = 0x100;
   hw->base_onewire = dev->base_addr + 0x500;
@@ -913,7 +914,8 @@ int fdelay_init(fdelay_device_t *dev)
     hw->calib.frr_poly[1] = -29825595LL;
     hw->calib.frr_poly[2] = 3801939743082LL;
     hw->calib.tdc_zero_offset = 35600;
-    hw->calib.atmcr_val =  2 | (1000 << 4);
+    hw->calib.atmcr_val =  4 | (1500 << 4);
+//    hw->calib.atmcr_val =  2 | (1000 << 4);
     hw->calib.adsfr_val = 56648;
     hw->calib.acam_start_offset = 10000;
     for(i=0;i<4;i++)
@@ -1137,7 +1139,7 @@ int fdelay_configure_readout(fdelay_device_t *dev, int enable)
 	if(enable)
 	{
 		fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
-		fd_writel( FD_TSBCR_CHAN_MASK_W(1) | FD_TSBCR_ENABLE, FD_REG_TSBCR);
+		fd_writel( (hw->raw_mode ? FD_TSBCR_RAW : 0) | FD_TSBCR_CHAN_MASK_W(1) | FD_TSBCR_ENABLE, FD_REG_TSBCR);
     } else
 		fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
 
@@ -1162,6 +1164,29 @@ fdelay_time_t ts_normalize(fdelay_time_t denorm)
  	return denorm;
 }
 
+/* as in VHDL */                   
+void ts_postprocess(fdelay_device_t *dev, fdelay_time_t *t)
+{
+	fd_decl_private(dev)
+	int32_t post_frac_start_adj = t->raw.frac - 3*hw->calib.acam_start_offset;
+
+	t->utc = t->raw.utc;
+
+    if (t->raw.start_offset <= FD_ATMCR_C_THR_R(hw->calib.atmcr_val)
+    && (post_frac_start_adj > FD_ATMCR_F_THR_R(hw->calib.atmcr_val)))
+    	t->coarse = (t->raw.coarse-1) * 16;
+	else
+    	t->coarse = (t->raw.coarse) * 16;
+
+   int64_t post_frac_multiplied = post_frac_start_adj * (int64_t)hw->calib.adsfr_val;
+
+	t->coarse += t->raw.subcycle_offset
+	+ (post_frac_multiplied >> 24);
+	
+	t->frac = (post_frac_multiplied >> 12) & 0xfff;
+
+}
+
 /* Reads up to (how_many) timestamps from the FD ring buffer and stores them in (timestamps).
    Returns the number of read timestamps. */
 int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
@@ -1177,14 +1202,40 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 		uint32_t seq_frac;
 		if(!how_many) break;
 
-		ts.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
-		ts.coarse = fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
-//		dbg("Coarse %d\n", ts.coarse);
-		seq_frac =  fd_readl(FD_REG_TSBR_FID);
-		ts.frac = FD_TSBR_FID_FINE_R(seq_frac);
-		ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
-//		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
+		if(hw->raw_mode)
+		{
+			uint32_t cyc, dbg;
+			ts.raw.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
+			cyc =  fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
+			ts.raw.coarse = cyc >> 4;
+			ts.raw.start_offset = cyc & 0xf;
 
+			dbg = fd_readl(FD_REG_TSBR_DEBUG);
+
+			seq_frac =  fd_readl(FD_REG_TSBR_FID);
+			
+			ts.raw.frac = FD_TSBR_FID_FINE_R(seq_frac);
+			ts.raw.frac |= (dbg & 0x7ff) << 12;
+			ts.raw.subcycle_offset = (dbg >> 11) & 0x1f;
+		
+			
+//            tag_dbg_raw_o(23 downto 16) <= raw_coarse_shifted_i(7 downto 0);
+//            tag_dbg_raw_o(31 downto 24) <= raw_utc_shifted_i(7 downto 0);
+
+			ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
+		    ts_postprocess(dev, &ts);
+		    
+		
+		} else {
+			ts.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
+			ts.coarse = fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
+	//		dbg("Coarse %d\n", ts.coarse);
+			seq_frac =  fd_readl(FD_REG_TSBR_FID);
+			ts.frac = FD_TSBR_FID_FINE_R(seq_frac);
+			ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
+//		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
+    	}
+    	
 		*timestamps++ = ts_add_ps(ts_normalize(ts), hw->input_user_offset);
 
 		how_many--;
