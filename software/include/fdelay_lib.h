@@ -36,8 +36,18 @@ typedef struct fdelay_device
   void *priv_io; /* pointer to the I/O routines private data */
 } fdelay_device_t;
 
+typedef struct {
+  int64_t utc, utc_sh;
+  int32_t coarse, coarse_sh;
+  int32_t start_offset;
+  int32_t subcycle_offset;
+  int32_t frac;
+} fdelay_raw_time_t;
+
 typedef struct 
 {
+  fdelay_raw_time_t raw;
+
   int64_t utc; /* TAI seconds */ /* FIXME: replace all UTCs with TAIs or seconds for clarity */
   int32_t coarse; /* 125 MHz counter cycles */
   int32_t frac; /* Fractional part (<8ns) */

@@ -85,6 +85,7 @@ struct fine_delay_hw
 	int32_t board_temp;			/* Current temperature of the board, unit = 1/16 degC */
 	int wr_enabled;
 	int wr_state;
+	int raw_mode;
 	struct fine_delay_calibration calib;
 	int64_t input_user_offset, output_user_offset;
 };
