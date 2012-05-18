@@ -258,11 +258,6 @@ void load_config(const char *config_file)
 
 #undef CUR
 
-void enable_termination(fdelay_device_t *b, int enable)
-{
-    int i;
-	fdelay_configure_trigger(b, 1, enable);
-}
 
 void enable_wr(fdelay_device_t *b, int index)
 {
@@ -388,8 +383,6 @@ int configure_board(struct board_def *bdef)
 		  	while(!fdelay_channel_triggered(bdef->b, i+1)) usleep(100000);
 
 
-	fdelay_configure_trigger(bdef->b, 1, bdef->term_on);	
-	fdelay_configure_readout(bdef->b, 1);
 	
 	printf("Configuration complete\n");
 	fflush(stdout);
@@ -408,7 +401,8 @@ void handle_readout(struct board_def *bdef)
     {	    
 
 		t_ps = (t.coarse * 8000LL) + ((t.frac * 8000LL) >> 12);
-		printf("card 0x%04x, seq %5i: time %lli s, %lli.%03lli ns [%x]\n",  bdef->hw_index, t.seq_id, t.utc, t_ps / 1000LL, t_ps % 1000LL, t.coarse);
+		printf("card 0x%04x, seq %5i: time %lli s, %lli.%03lli ns [%x] ",  bdef->hw_index, t.seq_id, t.utc, t_ps / 1000LL, t_ps % 1000LL, t.coarse);
+		printf("raw utc=%lld coarse=%d startoffs=%d suboffs=%d frac=%d [%x]\n", t.raw.utc, t.raw.coarse, t.raw.start_offset, t.raw.subcycle_offset, t.raw.frac- 30000, t.raw.frac);
 		log_write(&t, bdef->hw_index);
     }
 }
@@ -452,6 +446,18 @@ int main(int argc, char *argv[])
 			configure_board(&boards[i]);
 
 		}
+
+	for(i=0;i<MAX_BOARDS;i++)
+		if(boards[i].in_use) {
+			int fd;
+
+			fdelay_configure_readout(boards[i].b, 1);
+			fdelay_configure_trigger(boards[i].b, 1, boards[i].term_on);	
+
+
+		}
+
+
 
 	for(;;)
 	{
