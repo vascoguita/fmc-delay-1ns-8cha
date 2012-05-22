@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-05-01
+-- Last update: 2012-05-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -66,16 +66,18 @@ entity fd_ring_buffer is
     ---------------------------------------------------------------------------
     -- Input tags (clk_ref_i domain)
     ---------------------------------------------------------------------------
-    tag_valid_i  : in std_logic;
+    tag_valid_i   : in std_logic;
     -- Tag source : 0 = TDC, 1..4 = output channels
-    tag_source_i : in std_logic_vector(3 downto 0);
-    tag_utc_i    : in std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
-    tag_coarse_i : in std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
-    tag_frac_i   : in std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
+    tag_source_i  : in std_logic_vector(3 downto 0);
+    tag_utc_i     : in std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
+    tag_coarse_i  : in std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
+    tag_frac_i    : in std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
+    tag_dbg_raw_i : in std_logic_vector(31 downto 0);
 
-    -- Advances buffer readout by 1 timestamp. Asserted upon read of TSBR_FID register.
-    advance_rbuf_i : in std_logic;
-
+    -- Flushes the latest timestamp to the output registers
+   tsbcr_read_ack_i:  in std_logic;
+   fid_read_ack_i:  in std_logic;
+    
     -- Buffer interrupt (level-sensitive)
     buf_irq_o : out std_logic;
 
@@ -88,7 +90,7 @@ end fd_ring_buffer;
 
 architecture behavioral of fd_ring_buffer is
 
-  constant c_PACKED_TS_SIZE : integer := 4 + c_TIMESTAMP_UTC_BITS + c_TIMESTAMP_COARSE_BITS + c_TIMESTAMP_FRAC_BITS + 16;
+  constant c_PACKED_TS_SIZE : integer := 32 + 4 + c_TIMESTAMP_UTC_BITS + c_TIMESTAMP_COARSE_BITS + c_TIMESTAMP_FRAC_BITS + 16;
   constant c_FIFO_SIZE      : integer := 8;
 
   type t_internal_timestamp is record
@@ -97,19 +99,21 @@ architecture behavioral of fd_ring_buffer is
     coarse : std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
     frac   : std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
     seq_id : std_logic_vector(15 downto 0);
+    dbg    : std_logic_vector(31 downto 0);
   end record;
 
   function f_pack_timestamp(ts : t_internal_timestamp) return std_logic_vector is
   begin
-    return ts.utc & ts.coarse & ts.frac & ts.seq_id & ts.src;
+    return ts.dbg & ts.utc & ts.coarse & ts.frac & ts.seq_id & ts.src;
   end f_pack_timestamp;
 
 
   function f_unpack_timestamp(ts : std_logic_vector)return t_internal_timestamp is
     variable tmp : t_internal_timestamp;
   begin
-    tmp.utc    := ts(c_PACKED_TS_SIZE-1 downto c_PACKED_TS_SIZE-c_TIMESTAMP_UTC_BITS);
-    tmp.coarse := ts(c_PACKED_TS_SIZE-c_TIMESTAMP_UTC_BITS-1 downto c_PACKED_TS_SIZE-c_TIMESTAMP_UTC_BITS-c_TIMESTAMP_COARSE_BITS);
+    tmp.dbg    := ts(c_PACKED_TS_SIZE-1 downto c_PACKED_TS_SIZE-32);
+    tmp.utc    := ts(-32 + c_PACKED_TS_SIZE-1 downto -32 + c_PACKED_TS_SIZE-c_TIMESTAMP_UTC_BITS);
+    tmp.coarse := ts(-32 + c_PACKED_TS_SIZE-c_TIMESTAMP_UTC_BITS-1 downto -32 + c_PACKED_TS_SIZE-c_TIMESTAMP_UTC_BITS-c_TIMESTAMP_COARSE_BITS);
     tmp.frac   := ts(16+4+c_TIMESTAMP_FRAC_BITS-1 downto 16+4);
     tmp.seq_id := ts(16+4-1 downto 4);
     tmp.src    := ts(3 downto 0);
@@ -128,7 +132,7 @@ architecture behavioral of fd_ring_buffer is
   signal buf_count                : unsigned(g_size_log2 downto 0);
   signal buf_full, buf_empty      : std_logic;
   signal buf_wr_data, buf_rd_data : std_logic_vector(c_PACKED_TS_SIZE-1 downto 0);
-  signal buf_write, buf_read      : std_logic;
+  signal buf_write, buf_read, buf_overflow      : std_logic;
 
   signal buf_ram_out, buf_out_reg : t_internal_timestamp;
 
@@ -137,12 +141,15 @@ architecture behavioral of fd_ring_buffer is
 
 
 
-  signal tmr_div     : unsigned(f_log2_size(c_REF_CLK_FREQ/1000+1)-1 downto 0);
-  signal tmr_tick    : std_logic;
-  signal tmr_timeout : unsigned(9 downto 0);
-  signal buf_irq_int : std_logic;
-  signal buf_read_d0, buf_read_d1 : std_logic;       
-  
+  signal tmr_div                  : unsigned(f_log2_size(c_REF_CLK_FREQ/1000+1)-1 downto 0);
+  signal tmr_tick                 : std_logic;
+  signal tmr_timeout              : unsigned(9 downto 0);
+  signal buf_irq_int              : std_logic;
+  signal buf_read_d0, buf_read_d1 : std_logic;
+
+  signal empty_d : std_logic_vector(4 downto 0);
+
+  signal read_ack, read_ack_d, read_ack_p : std_logic;
   
 begin  -- behavioral
 
@@ -160,6 +167,7 @@ begin  -- behavioral
 
   fifo_in <= f_pack_timestamp(ts_fifo_in);
 
+  ts_fifo_in.dbg    <= tag_dbg_raw_i;
   ts_fifo_in.utc    <= tag_utc_i;
   ts_fifo_in.coarse <= tag_coarse_i;
   ts_fifo_in.frac   <= tag_frac_i;
@@ -211,12 +219,13 @@ begin  -- behavioral
   buf_full    <= '1' when (buf_wr_ptr + 1 = buf_rd_ptr)                                                      else '0';
   buf_empty   <= '1' when (buf_wr_ptr = buf_rd_ptr)                                                          else '0';
   buf_write   <= regs_i.tsbcr_enable_o and fifo_read_d0;
-  buf_read    <= '1' when (advance_rbuf_i = '1' and buf_empty = '0') or (buf_write = '1' and buf_full = '1') else '0';
+  buf_overflow <= '1' when (buf_write = '1' and buf_full = '1') else '0';
+  buf_read    <= '1' when (regs_i.tsbr_advance_adv_o = '1' and buf_empty = '0') or buf_overflow = '1' else '0';
   buf_ram_out <= f_unpack_timestamp(buf_rd_data);
 
   -- drive WB registers
-  regs_o.tsbcr_empty_i <= buf_empty;
   regs_o.tsbcr_full_i  <= buf_full;
+  regs_o.tsbcr_empty_i <= buf_empty;
 
   p_buffer_control : process(clk_sys_i)
   begin
@@ -226,14 +235,12 @@ begin  -- behavioral
         buf_wr_ptr   <= (others => '0');
         buf_count    <= (others => '0');
         fifo_read_d0 <= '0';
-        buf_read_d0  <= '0';
-        buf_read_d1  <= '0';
+   
       else
 
-        fifo_read_d0 <= fifo_read;
-        buf_read_d0  <= buf_read;
-        buf_read_d1  <= buf_read_d0;
 
+        fifo_read_d0 <= fifo_read;
+    
         if(buf_write = '1') then
           buf_wr_ptr <= buf_wr_ptr + 1;
         end if;
@@ -256,9 +263,7 @@ begin  -- behavioral
   p_output_register : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if(buf_write = '1' and buf_empty = '1') then
-        buf_out_reg <= f_unpack_timestamp(buf_wr_data);
-      elsif(buf_read_d1 = '1') then
+      if(buf_read  = '1' and buf_overflow = '0') then
         buf_out_reg <= buf_ram_out;
       end if;
     end if;
@@ -317,12 +322,15 @@ begin  -- behavioral
     end if;
   end process;
 
+
+ 
   regs_o.tsbr_sech_i        <= buf_out_reg.utc(39 downto 32);
   regs_o.tsbr_secl_i        <= buf_out_reg.utc(31 downto 0);
   regs_o.tsbr_cycles_i      <= buf_out_reg.coarse;
   regs_o.tsbr_fid_fine_i    <= buf_out_reg.frac;
   regs_o.tsbr_fid_seqid_i   <= buf_out_reg.seq_id;
   regs_o.tsbr_fid_channel_i <= buf_out_reg.src;
+  regs_o.tsbr_debug_i       <= buf_out_reg.dbg;
   regs_o.tsbcr_count_i      <= std_logic_vector(resize(buf_count, regs_o.tsbcr_count_i'length));
 
   buf_irq_o <= buf_irq_int;
