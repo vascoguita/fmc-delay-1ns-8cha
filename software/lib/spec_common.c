@@ -1,62 +1,68 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "fdelay_lib.h"
-#include "rr_io.h"
 
 void spec_writel(void *priv, uint32_t data, uint32_t addr)
 {
- 	rr_writel(data, addr);
+	*(volatile uint32_t *)(priv + addr) = data;	
 }
 
 uint32_t spec_readl(void *priv, uint32_t addr)
 {
-	uint32_t d = rr_readl(addr);
-	return d;
+	return *(volatile uint32_t *)(priv + addr);
 }
 
-int spec_fdelay_init(int argc, char *argv[], fdelay_device_t *dev)
+
+void *map_spec(int bus, int dev)
 {
-    int bus = RR_DEVSEL_UNUSED, devfn = RR_DEVSEL_UNUSED;
-    int opt = 0;
-    char fw_name[1024];
+    char path[1024];
+    int fd;
+    void *ptr;
+    uint64_t base;
     
-    strcpy(fw_name, "spec_top.bin");
-    while ((opt = getopt(argc, argv, "hb:d:f:")) != -1) {
-        switch (opt) {
-            case 'h':
-                printf("Usage: %s [-b PCI_bus] [-d PCI dev/func] [-f firmware file]\n", argv[0]);
-                printf("By default, the first detected SPEC is initialized with 'spec_top.bin' firmware\n");
-                return 0;
-            case 'b':
-                sscanf(optarg, "%x", &bus);
-                break;
-            case 'd':
-                sscanf(optarg, "%x", &devfn);
-                break;
-            case 'f':
-                strcpy(fw_name, optarg);
-                break;
-       }
-     }
+    snprintf(path, sizeof(path), "/sys/bus/pci/drivers/spec/0000:%02x:%02x.0/resource", bus, dev);
+	FILE *f = fopen(path, "r");
+	fscanf(f, "0x%llx", &base);
+	printf("raw base addr: %llx\n", base);
+    
+    fd = open("/dev/mem", O_SYNC | O_RDWR);
+    if(fd <= 0)
+    {
+    	perror("open");
+		return NULL;
+    }
+    ptr = mmap(NULL, 0x100000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (void*)base);
+    
+    if((int)ptr == -1)
+    {
+    	perror("mmap");
+	close(fd);
+	return NULL;
+    }
 
-	if(rr_init(bus, devfn) < 0)
+    return ptr;
+}
+
+
+
+int spec_fdelay_init(fdelay_device_t *dev, int pbus, int pdev)
+{
+	dev->priv_io = map_spec(pbus, pdev);
+
+	if(!dev->priv_io)
 	{
-	    fprintf(stderr, "Failed to initialize rawrabbit.\n");
-	    return -1;
+	 	fprintf(stderr,"Can't map the SPEC @ %x:%x\n", pbus, pdev);
+	 	return -1;
 	}
-
 
 	dev->writel = spec_writel;
 	dev->readl = spec_readl;
 	dev->base_addr = 0x80000;
-
-/*    if(rr_load_bitstream_from_file(fw_name) < 0)
-    {
-        fprintf(stderr,"Failed to load FPGA bitstream.\n");
-        return -1;
-    }*/
 
 	if(fdelay_init(dev) < 0)
 		return -1;

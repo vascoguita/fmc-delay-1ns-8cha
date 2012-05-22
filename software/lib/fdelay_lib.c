@@ -1,4 +1,4 @@
-/*
+/*                             \
 	FmcDelay1ns4Cha (a.k.a. The Fine Delay Card)
 	User-space driver/library
 
@@ -273,6 +273,7 @@ MCP23S17 SPI I/O Port Driver
 static inline void mcp_write(fdelay_device_t *dev, uint8_t reg, uint8_t val)
 {
   oc_spi_txrx(dev, CS_GPIO, 24, 0x4e0000 | (((uint32_t)reg)<<8) | (uint32_t)val, NULL);
+  oc_spi_txrx(dev, CS_NONE, 24, 0, NULL);
 }
 
 /* Reads MCP23S17 register */
@@ -280,6 +281,8 @@ static uint8_t mcp_read(fdelay_device_t *dev, uint8_t reg)
 {
   uint32_t rval;
   oc_spi_txrx(dev, CS_GPIO, 24, 0x4f0000 | (((uint32_t)reg)<<8), &rval);
+  oc_spi_txrx(dev, CS_NONE, 24, 0, NULL);
+
   return rval & 0xff;
 }
 
@@ -868,13 +871,15 @@ int fdelay_init(fdelay_device_t *dev)
 
   dev->priv_fd = (void *) hw;
 
+	hw->raw_mode= 0;
   hw->base_addr = dev->base_addr;
   hw->base_i2c = 0x100;
   hw->base_onewire = dev->base_addr + 0x500;
   hw->wr_enabled = 0;
   hw->wr_state = FDELAY_FREE_RUNNING;
   hw->acam_addr = 0xff;
-
+  hw->input_user_offset = 0;
+  hw->output_user_offset= 0;
   dbg("%s: Initializing the Fine Delay Card\n", __FUNCTION__);
 
   /* Read the Identification register and check if we are talking to a proper Fine Delay HDL Core */
@@ -893,8 +898,9 @@ int fdelay_init(fdelay_device_t *dev)
   
   }
 
-  rv = read_calibration_eeprom(dev, &hw->calib);
-  
+//  rv = read_calibration_eeprom(dev, &hw->calib);
+	rv = 0;
+	  
   if(rv < 0)
   {
     fail(TEST_SPI, "FMC EEPROM not detected.");
@@ -908,7 +914,8 @@ int fdelay_init(fdelay_device_t *dev)
     hw->calib.frr_poly[1] = -29825595LL;
     hw->calib.frr_poly[2] = 3801939743082LL;
     hw->calib.tdc_zero_offset = 35600;
-    hw->calib.atmcr_val =  2 | (1000 << 4);
+    hw->calib.atmcr_val =  4 | (1500 << 4);
+//    hw->calib.atmcr_val =  2 | (1000 << 4);
     hw->calib.adsfr_val = 56648;
     hw->calib.acam_start_offset = 10000;
     for(i=0;i<4;i++)
@@ -1087,7 +1094,7 @@ static fdelay_time_t ts_add(fdelay_time_t a, fdelay_time_t b)
  	 	a.coarse++;
  	}
  	a.coarse += b.coarse;
- 	if(b.coarse >= 125000000)
+ 	if(a.coarse >= 125000000)
  	{
  	 	a.coarse -= 125000000;
  	 	a.utc ++;
@@ -1095,11 +1102,21 @@ static fdelay_time_t ts_add(fdelay_time_t a, fdelay_time_t b)
  	return a;
 }
 
+
+
 /* Converts a Fine Delay time stamp to plain picoseconds */
 int64_t fdelay_to_picos(const fdelay_time_t t)
 {
 	int64_t tp = (((int64_t)t.frac * 8000LL) >> FDELAY_FRAC_BITS) + ((int64_t) t.coarse * 8000LL) + ((int64_t)t.utc * 1000000000000LL);
 	return tp;
+}
+
+static fdelay_time_t ts_add_ps(fdelay_time_t a, int64_t b)
+{
+	if(b < 0)
+		return ts_sub(a, fdelay_from_picos(-b));
+	else
+		return ts_add(a, fdelay_from_picos(b));
 }
 
 static int poll_rbuf(fdelay_device_t *dev)
@@ -1122,11 +1139,52 @@ int fdelay_configure_readout(fdelay_device_t *dev, int enable)
 	if(enable)
 	{
 		fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
-		fd_writel( FD_TSBCR_CHAN_MASK_W(1) | FD_TSBCR_ENABLE, FD_REG_TSBCR);
+		fd_writel( (hw->raw_mode ? FD_TSBCR_RAW : 0) | FD_TSBCR_CHAN_MASK_W(1) | FD_TSBCR_ENABLE, FD_REG_TSBCR);
     } else
 		fd_writel( FD_TSBCR_PURGE | FD_TSBCR_RST_SEQ, FD_REG_TSBCR);
 
 	return 0;
+}
+
+fdelay_time_t ts_normalize(fdelay_time_t denorm)
+{
+ 	if(denorm.coarse & (1<<27))
+ 	{
+ 	 	denorm.coarse += 125000000;
+	    denorm.coarse &= 0xfffffff; 
+ 	 	denorm.utc--;
+ 	}
+ 	
+ 	if(denorm.coarse >= 125000000)
+ 	{
+ 	 	denorm.coarse -= 125000000;
+ 	 	denorm.utc++;
+ 	}
+ 	
+ 	return denorm;
+}
+
+/* as in VHDL */                   
+void ts_postprocess(fdelay_device_t *dev, fdelay_time_t *t)
+{
+	fd_decl_private(dev)
+	int32_t post_frac_start_adj = t->raw.frac - 3*hw->calib.acam_start_offset;
+
+	t->utc = t->raw.utc;
+
+    if (t->raw.start_offset <= FD_ATMCR_C_THR_R(hw->calib.atmcr_val)
+    && (post_frac_start_adj > FD_ATMCR_F_THR_R(hw->calib.atmcr_val)))
+    	t->coarse = (t->raw.coarse-1) * 16;
+	else
+    	t->coarse = (t->raw.coarse) * 16;
+
+   int64_t post_frac_multiplied = post_frac_start_adj * (int64_t)hw->calib.adsfr_val;
+
+	t->coarse += t->raw.subcycle_offset
+	+ (post_frac_multiplied >> 24);
+	
+	t->frac = (post_frac_multiplied >> 12) & 0xfff;
+
 }
 
 /* Reads up to (how_many) timestamps from the FD ring buffer and stores them in (timestamps).
@@ -1144,15 +1202,41 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 		uint32_t seq_frac;
 		if(!how_many) break;
 
-		ts.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
-		ts.coarse = fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
-//		dbg("Coarse %d\n", ts.coarse);
-		seq_frac =  fd_readl(FD_REG_TSBR_FID);
-		ts.frac = FD_TSBR_FID_FINE_R(seq_frac);
-		ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
-		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
+		if(hw->raw_mode)
+		{
+			uint32_t cyc, dbg;
+			ts.raw.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
+			cyc =  fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
+			ts.raw.coarse = cyc >> 4;
+			ts.raw.start_offset = cyc & 0xf;
 
-		*timestamps++ = ts_sub(ts, fdelay_from_picos(hw->calib.tdc_zero_offset));
+			dbg = fd_readl(FD_REG_TSBR_DEBUG);
+
+			seq_frac =  fd_readl(FD_REG_TSBR_FID);
+			
+			ts.raw.frac = FD_TSBR_FID_FINE_R(seq_frac);
+			ts.raw.frac |= (dbg & 0x7ff) << 12;
+			ts.raw.subcycle_offset = (dbg >> 11) & 0x1f;
+		
+			
+//            tag_dbg_raw_o(23 downto 16) <= raw_coarse_shifted_i(7 downto 0);
+//            tag_dbg_raw_o(31 downto 24) <= raw_utc_shifted_i(7 downto 0);
+
+			ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
+		    ts_postprocess(dev, &ts);
+		    
+		
+		} else {
+			ts.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
+			ts.coarse = fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
+	//		dbg("Coarse %d\n", ts.coarse);
+			seq_frac =  fd_readl(FD_REG_TSBR_FID);
+			ts.frac = FD_TSBR_FID_FINE_R(seq_frac);
+			ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
+//		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
+    	}
+    	
+		*timestamps++ = ts_add_ps(ts_normalize(ts), hw->input_user_offset);
 
 		how_many--;
 		n_read++;
@@ -1222,32 +1306,29 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
 int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fdelay_time_t t_start, int64_t width_ps, int64_t delta_ps, int rep_count)
 {
 	fd_decl_private(dev)
- 	uint32_t base = (channel-1) * 0x20;
  	uint32_t dcr;
  	fdelay_time_t start, end, delta;
 
  	if(channel < 1 || channel > 4)
  		return -1;
 
+ 	start = ts_add_ps(t_start, hw->output_user_offset);
+ 	end = ts_add_ps(t_start, hw->output_user_offset + width_ps - 4000);
+    delta = fdelay_from_picos(delta_ps);
 
- 	start = t_start;
- 	end = fdelay_from_picos(fdelay_to_picos(start) + width_ps - 4000);
-        delta = fdelay_from_picos(delta_ps);
-
-        //start = t_start;
- 	//end = ts_add(start, fdelay_from_picos(width_ps));
-        //delta = fdelay_from_picos(delta_ps);
-
- 	//printf("Start: %lld: %d:%d\n", start.utc, start.coarse, start.frac);
-        //printf("width: %lld delta: %lld rep: %d\n", width_ps, delta_ps, rep_count);
-
+ 	printf("Channel: %d\n",channel);
+ 	printf("TStart: %d: %d:%d rep %d\n", t_start.utc, t_start.coarse, t_start.frac, rep_count);
+ 	printf("Start: %d: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
+ 	printf("End: %d: %d:%d rep %d\n", end.utc, end.coarse, end.frac, rep_count);
+ 	printf("Delta: %d: %d:%d rep %d\n", delta.utc, delta.coarse, delta.frac, rep_count);
+	
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
- 	chan_writel(start.utc >> 32, FD_REG_U_STARTH);
+ 	chan_writel(0, FD_REG_U_STARTH);
  	chan_writel(start.utc & 0xffffffff, FD_REG_U_STARTL);
  	chan_writel(start.coarse, FD_REG_C_START);
  	chan_writel(start.frac, FD_REG_F_START);
- 	chan_writel(end.utc >> 32,  FD_REG_U_ENDH);
+ 	chan_writel(0,  FD_REG_U_ENDH);
  	chan_writel(end.utc & 0xffffffff,  FD_REG_U_ENDL);
  	chan_writel(end.coarse, FD_REG_C_END);
  	chan_writel(end.frac, FD_REG_F_END);
@@ -1278,7 +1359,9 @@ int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fd
 int fdelay_channel_triggered(fdelay_device_t *dev, int channel)
 {
 	fd_decl_private(dev)
-    return chan_readl(FD_REG_DCR) & FD_DCR_PG_TRIG ? 1: 0;
+	uint32_t dcr= chan_readl(FD_REG_DCR);
+//	printf("DCR%d %x\n", channel, dcr);
+    return dcr & FD_DCR_PG_TRIG ? 1: 0;
 }
 
 /* Todo: write get_time() */
@@ -1290,7 +1373,7 @@ int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t)
 
 	fd_writel(0, FD_REG_GCR);
 
-    fd_writel(t.utc >> 32, FD_REG_TM_SECH);
+    fd_writel(0, FD_REG_TM_SECH);
     fd_writel(t.utc & 0xffffffff, FD_REG_TM_SECL);
     fd_writel(t.coarse, FD_REG_TM_CYCLES);
 
@@ -1311,7 +1394,23 @@ int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t)
     fd_writel(tcr | FD_TCR_CAP_TIME, FD_REG_TCR);
     t->utc = fd_readl(FD_REG_TM_SECL);
     t->coarse = fd_readl(FD_REG_TM_CYCLES);
+//    printf("GetTime: %d %d\n", t->utc, t->coarse);
     return 0;
+}
+
+void fdelay_set_user_offset(fdelay_device_t *dev,int input, int64_t offset)
+{
+	fd_decl_private(dev)
+ 	if(input)
+ 	{
+ 		dbg("SetUserInputOffset %lld ps \n", offset);
+ 		hw->input_user_offset=  offset;
+ 	}
+ 	else
+ 	{
+ 		dbg("SetUserOutputOffset %lld ps \n", offset);
+ 		hw->output_user_offset=  offset;
+	}
 }
 
 /* To be rewritten to use interrupts and new WR FSM (see TCR register description).
@@ -1323,11 +1422,11 @@ int fdelay_configure_sync(fdelay_device_t *dev, int mode)
 
 	if(mode == FDELAY_SYNC_LOCAL)
 	{
-	 	fd_writel(0, FD_REG_GCR);
+//	 	fd_writel(0, FD_REG_GCR);
 	 	fd_writel(0, FD_REG_TCR);
 	 	hw->wr_enabled = 0;
 	} else {
-	 	fd_writel(0, FD_REG_GCR);
+//	 	fd_writel(0, FD_REG_GCR);
 	 	fd_writel(FD_TCR_WR_ENABLE, FD_REG_TCR);
 	 	hw->wr_enabled = 1;
 	}
@@ -1337,16 +1436,24 @@ int fdelay_check_sync(fdelay_device_t *dev)
 {   
 	fd_decl_private(dev)
 
-	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
+//	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
 
     if(hw->wr_enabled && (fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED))
+    {
+		fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_ISR);
+		fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_IER);
     	return 1;
-    else if (!hw->wr_enabled)
+    } else if (!hw->wr_enabled)
     	return 1;
     
     return 0;
 }
 
+int fdelay_dbg_sync_lost(fdelay_device_t *dev)
+{   
+	fd_decl_private(dev)
+ 	return (fd_readl(FD_REG_EIC_ISR) & FD_EIC_ISR_SYNC_STATUS) ? 1 : 0;
+}
 
 # if 0
 
