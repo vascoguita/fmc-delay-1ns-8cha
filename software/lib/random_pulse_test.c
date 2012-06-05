@@ -24,7 +24,6 @@ struct pulse_queue {
 	int head, tail, count, size;
 };
 
-
 void pqueue_clear(struct pulse_queue *p)
 {
  	p->head = p->tail = p->count = 0;
@@ -190,6 +189,7 @@ int configure_board(fdelay_device_t *b)
 	fdelay_set_user_offset(b, 1, INPUT_OFFSET);
 	fdelay_set_user_offset(b, 0, OUTPUT_OFFSET);
 
+	fdelay_raw_readout(b, 1);	
 	fdelay_configure_readout(b, 0);	
 	fdelay_configure_readout(b, 1);	
 	fdelay_configure_trigger(b, 1, 1);	
