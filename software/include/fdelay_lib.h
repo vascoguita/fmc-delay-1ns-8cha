@@ -76,6 +76,10 @@ fdelay_device_t *fdelay_create_minibone(char *iface, char *mac_addr, uint32_t ba
 fdelay_time_t fdelay_from_picos(const uint64_t ps);
 int64_t fdelay_to_picos(const fdelay_time_t t);
 
+
+/* Enables/disables raw timestamp readout mode (debugging only) */
+int fdelay_raw_readout(fdelay_device_t *dev, int raw_moide);
+
 /* Initializes and calibrates the device. 0 = success, negative = error */
 int fdelay_init(fdelay_device_t *dev);
 

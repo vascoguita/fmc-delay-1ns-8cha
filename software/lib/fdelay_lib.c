@@ -869,7 +869,7 @@ int fdelay_init(fdelay_device_t *dev)
 
   dev->priv_fd = (void *) hw;
 
-  hw->raw_mode = 1;
+  hw->raw_mode = 0;
   hw->base_addr = dev->base_addr;
   hw->base_i2c = 0x100;
   hw->base_onewire = dev->base_addr + 0x500;
@@ -1126,6 +1126,13 @@ static int poll_rbuf(fdelay_device_t *dev, uint32_t *o_tsbcr)
 
  	if((tsbcr & FD_TSBCR_EMPTY) == 0)
 		return 1;
+	return 0;
+}
+
+int fdelay_raw_readout(fdelay_device_t *dev, int raw_mode)
+{
+	fd_decl_private(dev)
+	hw->raw_mode = raw_mode;
 	return 0;
 }
 
