@@ -26,9 +26,6 @@
 #include "fdelay_lib.h"
 #include "fdelay_private.h"
 
-#include "spll_defs.h"
-#include "spll_common.h"
-#include "spll_helper.h"
 
 #include "onewire.h"
 
@@ -299,13 +296,14 @@ static int sgpio_init(fdelay_device_t *dev)
   if(mcp_read(dev, MCP_IPOL) != 0)
     failed = 1;
   
-  fail(TEST_SPI, "Failed to access MCP23S17. Broken SPI connection?");
+  if(failed)
+  	fail(TEST_SPI, "Failed to access MCP23S17. Broken SPI connection?");
   return failed ? - 1: 0;
 }
 
 
 /* Sets the direction (0 = input, non-zero = output) of a particular MCP23S17 GPIO pin */
-static void sgpio_set_dir(fdelay_device_t *dev, int pin, int dir)
+void sgpio_set_dir(fdelay_device_t *dev, int pin, int dir)
 {
   uint8_t iodir = (MCP_IODIR) + (pin & 0x100 ? 1 : 0);
   uint8_t x;
@@ -318,7 +316,7 @@ static void sgpio_set_dir(fdelay_device_t *dev, int pin, int dir)
 }
 
 /* Sets the value on a given MCP23S17 GPIO pin */
-static void sgpio_set_pin(fdelay_device_t *dev, int pin, int val)
+void sgpio_set_pin(fdelay_device_t *dev, int pin, int val)
 {
   uint8_t gpio = (MCP_OLAT) + (pin & 0x100 ? 1 : 0);
   uint8_t x;
@@ -871,7 +869,7 @@ int fdelay_init(fdelay_device_t *dev)
 
   dev->priv_fd = (void *) hw;
 
-	hw->raw_mode= 0;
+  hw->raw_mode = 1;
   hw->base_addr = dev->base_addr;
   hw->base_i2c = 0x100;
   hw->base_onewire = dev->base_addr + 0x500;
@@ -914,8 +912,8 @@ int fdelay_init(fdelay_device_t *dev)
     hw->calib.frr_poly[1] = -29825595LL;
     hw->calib.frr_poly[2] = 3801939743082LL;
     hw->calib.tdc_zero_offset = 35600;
-    hw->calib.atmcr_val =  4 | (1500 << 4);
-//    hw->calib.atmcr_val =  2 | (1000 << 4);
+//    hw->calib.atmcr_val =  4 | (1500 << 4);
+    hw->calib.atmcr_val =  2 | (1000 << 4);
     hw->calib.adsfr_val = 56648;
     hw->calib.acam_start_offset = 10000;
     for(i=0;i<4;i++)
@@ -933,8 +931,6 @@ int fdelay_init(fdelay_device_t *dev)
 
   if(ad9516_init(dev) < 0)
     return -1;
-
-
 
 	if(ds18x_init(dev) < 0)
 	{
@@ -1053,6 +1049,7 @@ fdelay_time_t fdelay_from_picos(const uint64_t ps)
 	fdelay_time_t t;
 	uint64_t tmp = ps;
 
+	
 	t.frac = (tmp % 8000ULL) * (uint64_t)(1<<FDELAY_FRAC_BITS) / 8000ULL;
 	tmp -= (tmp % 8000ULL);
 	tmp /= 8000ULL;
@@ -1119,11 +1116,12 @@ static fdelay_time_t ts_add_ps(fdelay_time_t a, int64_t b)
 		return ts_add(a, fdelay_from_picos(b));
 }
 
-static int poll_rbuf(fdelay_device_t *dev)
+static int poll_rbuf(fdelay_device_t *dev, uint32_t *o_tsbcr)
 {
  	fd_decl_private(dev)
  	uint32_t tsbcr = fd_readl(FD_REG_TSBCR);
-
+	if(o_tsbcr)
+		*o_tsbcr= tsbcr;
 //	fprintf(stderr,"Count %d empty %d\n", FD_TSBCR_COUNT_R(tsbcr), tsbcr & FD_TSBCR_EMPTY ? 1 : 0);
 
  	if((tsbcr & FD_TSBCR_EMPTY) == 0)
@@ -1164,6 +1162,14 @@ fdelay_time_t ts_normalize(fdelay_time_t denorm)
  	return denorm;
 }
 
+static int sign_extend(int n, int nbits)
+{
+ 	if(n & (1<<(nbits-1)))
+ 		return n | (~((1<<nbits)-1));
+ 	else
+ 		return n;
+}
+
 /* as in VHDL */                   
 void ts_postprocess(fdelay_device_t *dev, fdelay_time_t *t)
 {
@@ -1172,15 +1178,19 @@ void ts_postprocess(fdelay_device_t *dev, fdelay_time_t *t)
 
 	t->utc = t->raw.utc;
 
-    if (t->raw.start_offset <= FD_ATMCR_C_THR_R(hw->calib.atmcr_val)
-    && (post_frac_start_adj > FD_ATMCR_F_THR_R(hw->calib.atmcr_val)))
+	int c_thr = FD_ATMCR_C_THR_R(hw->calib.atmcr_val);
+	int f_thr = FD_ATMCR_F_THR_R(hw->calib.atmcr_val);
+//	printf("CThr: %d FThr: %d\n", c_thr, f_thr);
+
+    if (t->raw.start_offset <= c_thr
+    && (post_frac_start_adj > f_thr))
     	t->coarse = (t->raw.coarse-1) * 16;
 	else
     	t->coarse = (t->raw.coarse) * 16;
 
    int64_t post_frac_multiplied = post_frac_start_adj * (int64_t)hw->calib.adsfr_val;
 
-	t->coarse += t->raw.subcycle_offset
+	t->coarse += sign_extend(t->raw.subcycle_offset, 5) 
 	+ (post_frac_multiplied >> 24);
 	
 	t->frac = (post_frac_multiplied >> 12) & 0xfff;
@@ -1192,11 +1202,11 @@ void ts_postprocess(fdelay_device_t *dev, fdelay_time_t *t)
 int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 {
 	fd_decl_private(dev)
-
+	uint32_t tsbcr;
 	int n_read = 0;
 
 //	dbg("tsbcr %x\n", fd_readl(FD_REG_TSBCR));
-	while(poll_rbuf(dev))
+	while(poll_rbuf(dev, &tsbcr))
 	{
 		fdelay_time_t ts;
 		uint32_t seq_frac;
@@ -1204,11 +1214,14 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 
 		if(hw->raw_mode)
 		{
+			fd_writel(FD_TSBR_ADVANCE_ADV, FD_REG_TSBR_ADVANCE);
+
 			uint32_t cyc, dbg;
 			ts.raw.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
 			cyc =  fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
 			ts.raw.coarse = cyc >> 4;
 			ts.raw.start_offset = cyc & 0xf;
+
 
 			dbg = fd_readl(FD_REG_TSBR_DEBUG);
 
@@ -1227,12 +1240,15 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 		    
 		
 		} else {
+			fd_writel(FD_TSBR_ADVANCE_ADV, FD_REG_TSBR_ADVANCE);
+
 			ts.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
 			ts.coarse = fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
 	//		dbg("Coarse %d\n", ts.coarse);
 			seq_frac =  fd_readl(FD_REG_TSBR_FID);
 			ts.frac = FD_TSBR_FID_FINE_R(seq_frac);
 			ts.seq_id = FD_TSBR_FID_SEQID_R(seq_frac);
+			ts.raw.tsbcr = tsbcr;
 //		ts.channel = FD_TSBR_FID_CHANNEL_R(seq_frac);
     	}
     	
@@ -1264,7 +1280,7 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
     delta = fdelay_from_picos(delta_ps);
  
 
- 	printf("Start: %lld: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
+// 	printf("Start: %lld: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
 
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
@@ -1316,11 +1332,14 @@ int fdelay_configure_pulse_gen(fdelay_device_t *dev, int channel, int enable, fd
  	end = ts_add_ps(t_start, hw->output_user_offset + width_ps - 4000);
     delta = fdelay_from_picos(delta_ps);
 
+
+#if 0
  	printf("Channel: %d\n",channel);
  	printf("TStart: %d: %d:%d rep %d\n", t_start.utc, t_start.coarse, t_start.frac, rep_count);
  	printf("Start: %d: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
  	printf("End: %d: %d:%d rep %d\n", end.utc, end.coarse, end.frac, rep_count);
  	printf("Delta: %d: %d:%d rep %d\n", delta.utc, delta.coarse, delta.frac, rep_count);
+#endif
 	
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
@@ -1455,28 +1474,3 @@ int fdelay_dbg_sync_lost(fdelay_device_t *dev)
  	return (fd_readl(FD_REG_EIC_ISR) & FD_EIC_ISR_SYNC_STATUS) ? 1 : 0;
 }
 
-# if 0
-
-/* We might implement SPLL-based DMTD calibration, but not now  - don't include in the driver */
-
-int fd_update_spll(fdelay_device_t *dev)
-{
-	struct spll_helper_state pll;
-	fd_decl_private(dev)
-
-    int i =0;
-
-    helper_start(dev, &pll);
-
-	fd_writel(FD_CALR_CAL_DMTD, FD_REG_CALR);
-	sgpio_set_pin(dev, SGPIO_TRIG_SEL, 0);
-
-    for(;;)
-    {
-		helper_update(&pll);
-		//if(pll.prelock.ld.locked)
-		//	dbg("LOCK!");
-    }
-}
-
-#endif

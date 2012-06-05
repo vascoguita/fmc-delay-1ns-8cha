@@ -57,6 +57,9 @@
 /* definitions for field: Disable Fine Part update in reg: Delay Control Register */
 #define FD_DCR_NO_FINE                        WBGEN2_GEN_MASK(7, 1)
 
+/* definitions for field: Disable Fine Part update in reg: Delay Control Register */
+#define FD_DCR_FORCE_HI                        WBGEN2_GEN_MASK(8, 1)
+
 /* definitions for register: Fine Range Register */
 
 /* definitions for register: Pulse start time / offset (MSB TAI seconds) */

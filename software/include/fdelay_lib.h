@@ -42,6 +42,7 @@ typedef struct {
   int32_t start_offset;
   int32_t subcycle_offset;
   int32_t frac;
+  uint32_t tsbcr;
 } fdelay_raw_time_t;
 
 typedef struct 
@@ -127,5 +128,7 @@ void fdelay_set_user_offset(fdelay_device_t *dev,int input, int64_t offset);
 
 int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t);
 int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t);
+
+int fdelay_dmtd_calibration(fdelay_device_t *dev);
 
 #endif

@@ -1,71 +1,72 @@
 #include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <sys/mman.h>
+#include <stdint.h>
+#include <getopt.h>
 
+#include "spec/speclib.h"
 #include "fdelay_lib.h"
 
-void spec_writel(void *priv, uint32_t data, uint32_t addr)
+void loader_low_level(){}; /* fixme: include the kernel file */
+
+static void fd_spec_writel(void *priv, uint32_t data, uint32_t addr)
 {
-	*(volatile uint32_t *)(priv + addr) = data;	
+	spec_writel(priv, data, addr);
 }
 
-uint32_t spec_readl(void *priv, uint32_t addr)
+static uint32_t fd_spec_readl(void *priv, uint32_t addr)
 {
-	return *(volatile uint32_t *)(priv + addr);
+	return spec_readl(priv, addr);
 }
 
-
-void *map_spec(int bus, int dev)
+int spec_fdelay_init_bd(fdelay_device_t *dev, int bus, int dev_fn, uint32_t base)
 {
-    char path[1024];
-    int fd;
-    void *ptr;
-    uint64_t base;
-    
-    snprintf(path, sizeof(path), "/sys/bus/pci/drivers/spec/0000:%02x:%02x.0/resource", bus, dev);
-	FILE *f = fopen(path, "r");
-	fscanf(f, "0x%llx", &base);
-	printf("raw base addr: %llx\n", base);
-    
-    fd = open("/dev/mem", O_SYNC | O_RDWR);
-    if(fd <= 0)
-    {
-    	perror("open");
-		return NULL;
-    }
-    ptr = mmap(NULL, 0x100000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (void*)base);
-    
-    if((int)ptr == -1)
-    {
-    	perror("mmap");
-	close(fd);
-	return NULL;
-    }
-
-    return ptr;
-}
-
-
-
-int spec_fdelay_init(fdelay_device_t *dev, int pbus, int pdev)
-{
-	dev->priv_io = map_spec(pbus, pdev);
+	dev->priv_io = spec_open(bus, dev_fn);
 
 	if(!dev->priv_io)
 	{
-	 	fprintf(stderr,"Can't map the SPEC @ %x:%x\n", pbus, pdev);
+	 	fprintf(stderr,"Can't map the SPEC @ %x:%x\n", bus, dev_fn);
 	 	return -1;
 	}
 
-	dev->writel = spec_writel;
-	dev->readl = spec_readl;
-	dev->base_addr = 0x80000;
+	dev->writel = fd_spec_writel;
+	dev->readl = fd_spec_readl;
+	dev->base_addr = base;
+
+	spec_vuart_init(dev->priv_io, 0xe0500); /* for communication with WRCore during DMTD calibration */
 
 	if(fdelay_init(dev) < 0)
 		return -1;
 
     return 0;
 }
+
+int spec_fdelay_init(fdelay_device_t *dev, int argc, char *argv[])
+{
+	int bus = -1, dev_fn = -1, c;
+	uint32_t base = 0x80000;
+
+	while ((c = getopt (argc, argv, "b:d:f:")) != -1)
+	{
+		switch(c)
+		{
+		case 'b':
+			sscanf(optarg, "%i", &bus);
+			break;
+		case 'd':
+			sscanf(optarg, "%i", &dev_fn);
+			break;
+		case 'u':
+			sscanf(optarg, "%i", &base);
+			break;
+		default:
+			fprintf(stderr,
+				"Use: \"%s [-b bus] [-d devfn] [-u Fine Delay base] [-k]\"\n", argv[0]);
+			fprintf(stderr,
+				"By default, the first available SPEC is used and the FD is assumed at 0x%x.\n", base);
+			return -1;
+		}
+	}
+
+	return spec_fdelay_init_bd(dev, bus, dev_fn, base);
+}
+
+
