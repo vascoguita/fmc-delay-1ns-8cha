@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-04-25
+-- Last update: 2012-05-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -53,24 +53,24 @@ package fine_delay_pkg is
   -----------------------------------------------------------------------------
 
   -- Timestamp field bits (if you change them, you must also change the WB files)
-  constant c_TIMESTAMP_UTC_BITS         : integer := 40;
-  constant c_TIMESTAMP_COARSE_BITS      : integer := 28;
-  constant c_TIMESTAMP_FRAC_BITS        : integer := 12;
+  constant c_TIMESTAMP_UTC_BITS    : integer := 40;
+  constant c_TIMESTAMP_COARSE_BITS : integer := 28;
+  constant c_TIMESTAMP_FRAC_BITS   : integer := 12;
 
   -- log2(Number of entries in the timestamp buffer)
-  constant c_RING_BUFFER_SIZE_LOG2      : integer := 10;
+  constant c_RING_BUFFER_SIZE_LOG2 : integer := 10;
 
   -- Reference clock frequency in Hz
-  constant c_REF_CLK_FREQ               : integer := 125000000;
+  constant c_REF_CLK_FREQ : integer := 125000000;
 
   -- System clock frequency in Hz
-  constant c_SYS_CLK_FREQ               : integer := 62500000;
+  constant c_SYS_CLK_FREQ : integer := 62500000;
 
   -- Reference clock period in picoseconds
-  constant c_REF_CLK_PERIOD_PS          : integer := 8000;
+  constant c_REF_CLK_PERIOD_PS : integer := 8000;
 
   -- Number of card outputs 
-  constant c_FD_NUM_OUTPUTS             : integer := 4;
+  constant c_FD_NUM_OUTPUTS : integer := 4;
 
   -- Number of reference clock cycles per one DDMTD calibration period
   constant c_FD_DMTD_CALIBRATION_PERIOD : integer := 125;
@@ -93,7 +93,7 @@ package fine_delay_pkg is
     dev_version   => x"00000001",
     dev_date      => x"20120425",
     description   => "Fine Delay Core ");
-  
+
   type t_fd_timestamp is record
     u     : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
     c     : std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
@@ -183,6 +183,7 @@ package fine_delay_pkg is
       tag_coarse_o      : out std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
       tag_utc_o         : out std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
       tag_rearm_p1_i    : in  std_logic;
+      tag_dbg_raw_o     : out std_logic_vector(31 downto 0);
       tag_valid_o       : out std_logic;
       csync_coarse_i    : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
       csync_utc_i       : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
@@ -214,7 +215,7 @@ package fine_delay_pkg is
       regs_i               : in  t_fd_main_out_registers;
       regs_o               : out t_fd_main_in_registers;
       tcr_rd_ack_i         : in  std_logic;
-      csync_pps_o: out std_logic;
+      csync_pps_o          : out std_logic;
       irq_sync_o           : out std_logic);
   end component;
 
@@ -254,7 +255,8 @@ package fine_delay_pkg is
       tcr_rd_ack_o          : out std_logic;
       calr_rd_ack_o         : out std_logic;
       spllr_rd_ack_o        : out std_logic;
-      advance_rbuf_o        : out std_logic;
+      tsbcr_read_ack_o        : out std_logic;
+      fid_read_ack_o: out std_logic;
       irq_ts_buf_notempty_i : in  std_logic;
       irq_dmtd_spll_i       : in  std_logic;
       irq_sync_status_i     : in  std_logic;
@@ -329,24 +331,25 @@ package fine_delay_pkg is
       dmtd_dac_wr_o        : out std_logic);
   end component;
 
-
   component fd_ring_buffer
     generic (
       g_size_log2 : integer);
     port (
-      rst_n_sys_i    : in  std_logic;
-      rst_n_ref_i    : in  std_logic;
-      clk_ref_i      : in  std_logic;
-      clk_sys_i      : in  std_logic;
-      tag_valid_i    : in  std_logic;
-      tag_source_i   : in  std_logic_vector(3 downto 0);
-      tag_utc_i      : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
-      tag_coarse_i   : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
-      tag_frac_i     : in  std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
-      advance_rbuf_i : in  std_logic;
-      buf_irq_o      : out std_logic;
-      regs_i         : in  t_fd_main_out_registers;
-      regs_o         : out t_fd_main_in_registers);
+      rst_n_sys_i      : in  std_logic;
+      rst_n_ref_i      : in  std_logic;
+      clk_ref_i        : in  std_logic;
+      clk_sys_i        : in  std_logic;
+      tag_valid_i      : in  std_logic;
+      tag_source_i     : in  std_logic_vector(3 downto 0);
+      tag_utc_i        : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
+      tag_coarse_i     : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
+      tag_frac_i       : in  std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
+      tag_dbg_raw_i    : in  std_logic_vector(31 downto 0);
+      tsbcr_read_ack_i : in  std_logic;
+      fid_read_ack_i   : in  std_logic;
+      buf_irq_o        : out std_logic;
+      regs_i           : in  t_fd_main_out_registers;
+      regs_o           : out t_fd_main_in_registers);
   end component;
 
   component fd_spi_dac_arbiter
@@ -376,7 +379,7 @@ package fine_delay_pkg is
       q_o    : out std_logic);
   end component;
 
-component fine_delay_core
+  component fine_delay_core
     generic (
       g_with_wr_core        : boolean;
       g_simulation          : boolean;

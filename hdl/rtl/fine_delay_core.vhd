@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-04-25
+-- Last update: 2012-05-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -253,6 +253,7 @@ architecture rtl of fine_delay_core is
   signal tag_frac   : std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
   signal tag_coarse : std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
   signal tag_utc    : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
+  signal tag_dbg    : std_logic_vector(31 downto 0);
   signal tag_valid  : std_logic;
 
   signal rbuf_mux_ts                           : t_timestamp_array(0 to 4);
@@ -271,7 +272,7 @@ architecture rtl of fine_delay_core is
 
   signal rst_n_sys, rst_n_ref : std_logic;
 
-  signal advance_rbuf                 : std_logic;
+  signal tsbcr_read_ack, fid_read_ack : std_logic;
   signal irq_rbuf, irq_spll, irq_sync : std_logic;
 
 
@@ -463,7 +464,8 @@ begin  -- rtl
       irq_ts_buf_notempty_i => irq_rbuf,
       irq_dmtd_spll_i       => irq_spll,
       irq_sync_status_i     => irq_sync,
-      advance_rbuf_o        => advance_rbuf,
+      tsbcr_read_ack_o => tsbcr_read_ack,
+      fid_read_ack_o => fid_read_ack,
       spllr_rd_ack_o        => spllr_rd_ack,
       calr_rd_ack_o         => calr_rd_ack
       );
@@ -496,6 +498,7 @@ begin  -- rtl
       tag_coarse_o => tag_coarse,
       tag_utc_o    => tag_utc,
       tag_valid_o  => tag_valid,
+      tag_dbg_raw_o => tag_dbg,
 
       tag_rearm_p1_i => '1',
 
@@ -549,8 +552,10 @@ begin  -- rtl
       tag_utc_i    => rbuf_in_ts.u,
       tag_coarse_i => rbuf_in_ts.c,
       tag_frac_i   => rbuf_in_ts.f,
+      tag_dbg_raw_i => tag_dbg,
 
-      advance_rbuf_i => advance_rbuf,
+      tsbcr_read_ack_i => tsbcr_read_ack,
+      fid_read_ack_i => fid_read_ack,
       buf_irq_o      => irq_rbuf,
       regs_i         => regs_fromwb,
       regs_o         => regs_towb_rbuf);

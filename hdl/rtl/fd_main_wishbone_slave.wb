@@ -753,7 +753,9 @@ write 0: DMTD pattern generation disabled.";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
+         ack_read = "tsbcr_read_ack_o";
       };
+
       field {
          name = "Buffer entries count";
          prefix = "COUNT";
@@ -761,6 +763,14 @@ write 0: DMTD pattern generation disabled.";
          size = 12;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "RAW readout mode enable";
+         prefix = "RAW";
+         type = BIT;
+         access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
       };
    };
 
@@ -861,7 +871,7 @@ write 0: DMTD pattern generation disabled.";
          type = SLV;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY; 
-         ack_read = "advance_rbuf_o";
+         ack_read = "fid_read_ack_o";
       };
    };
 
@@ -927,6 +937,32 @@ write 0: DMTD pattern generation disabled.";
       };
    };
   
+  reg {
+      name = "Timestamp Buffer Debug Values Register";
+      prefix = "TSBR_DEBUG";
+
+      field {
+         name = "Debug value";
+         size = 32;
+         type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY; 
+      };
+   };
+
+  reg {
+      name = "Timestamp Buffer Advance Register";
+      prefix = "TSBR_ADVANCE";
+
+      field {
+         name = "Advance buffer readout";
+         descriptor = "write 1: transfer the latest sample from the ring buffer to TSBR_SEC/CYCLES/FID registers,\
+         write 0: no effect";
+         type = MONOSTABLE;
+         prefix = "ADV";
+      };
+   };
+
 
    irq {
       name = "TS Buffer not empty.";
