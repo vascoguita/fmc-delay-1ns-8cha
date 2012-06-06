@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-29
+-- Last update: 2012-06-01
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -481,8 +481,8 @@ begin
         delay_load_o         <= '0';
         first_pulse          <= '1';
         first_pulse_till_hit <= '0';
-        delay_pulse1_o       <= '0';
-        delay_pulse0_o       <= '0';
+        delay_pulse1_o       <= regs_in.dcr_force_hi_o;
+        delay_pulse0_o       <= regs_in.dcr_force_hi_o;
         delay_idle_o         <= '1';
         
 
