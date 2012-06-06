@@ -763,10 +763,8 @@ int calibrate_outputs(fdelay_device_t *dev)
 	fd_decl_private(dev)
 	int i, channel, temp;
 
-#ifdef PERFORM_LONG_TESTS
-    if(test_delay_transfer_function(dev) < 0)
+    if(hw->do_long_tests && test_delay_transfer_function(dev) < 0)
         return -1;
-#endif
 
     fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 	acam_configure(dev, ACAM_IMODE);
@@ -856,7 +854,7 @@ static int read_calibration_eeprom(fdelay_device_t *dev, struct fine_delay_calib
 */
 
 /* Initialize & self-calibrate the Fine Delay card */
-int fdelay_init(fdelay_device_t *dev)
+int fdelay_init(fdelay_device_t *dev, int init_flags)
 {
   int i, rv;
   struct fine_delay_hw *hw;
@@ -869,7 +867,8 @@ int fdelay_init(fdelay_device_t *dev)
 
   dev->priv_fd = (void *) hw;
 
-  hw->raw_mode = 0;
+  hw->raw_mode = init_flags & FDELAY_RAW_READOUT ? 1 : 0;
+  hw->do_long_tests = init_flags & FDELAY_PERFORM_LONG_TESTS ? 1 : 0;
   hw->base_addr = dev->base_addr;
   hw->base_i2c = 0x100;
   hw->base_onewire = dev->base_addr + 0x500;
@@ -970,10 +969,8 @@ int fdelay_init(fdelay_device_t *dev)
   fd_writel( FD_GCR_BYPASS, FD_REG_GCR);
 
 
-#ifdef PERFORM_LONG_TESTS
-  if(test_pll_dac(dev) < 0)
+  if(hw->do_long_tests && test_pll_dac(dev) < 0)
     return -1;
-#endif
 
   /* Test if ACAM addr/data lines are OK */
   if(acam_test_bus(dev) < 0)
@@ -1026,10 +1023,10 @@ int fdelay_configure_trigger(fdelay_device_t *dev, int enable, int termination)
 
 	if(termination)
 	{
-		dbg("%s: 50-ohm terminated mode\n", __FUNCTION__);
+//		dbg("%s: 50-ohm terminated mode\n", __FUNCTION__);
 		  sgpio_set_pin(dev,SGPIO_TERM_EN,1);
 	} else {
-			dbg("%s: high impedance mode\n", __FUNCTION__);
+//			dbg("%s: high impedance mode\n", __FUNCTION__);
 		  sgpio_set_pin(dev,SGPIO_TERM_EN,0);
 
 	};

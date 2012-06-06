@@ -86,6 +86,7 @@ struct fine_delay_hw
 	int wr_enabled;
 	int wr_state;
 	int raw_mode;
+	int do_long_tests;
 	struct fine_delay_calibration calib;
 	int64_t input_user_offset, output_user_offset;
 };

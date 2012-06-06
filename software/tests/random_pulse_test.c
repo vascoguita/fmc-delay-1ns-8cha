@@ -173,10 +173,16 @@ void enable_wr(fdelay_device_t *b, int index)
 }
 
 
-int configure_board(fdelay_device_t *b)
+int configure_board(fdelay_device_t *b, int argc, char *argv[])
 {
 	
-	if(spec_fdelay_init(b,1,0) < 0)
+	if(spec_fdelay_create(b, 1, NULL) < 0)
+	{
+		printf("Probe failed\n");
+		exit(-1);
+	}
+
+	if(fdelay_init(b, 0) < 0)
 	{
 		printf("Init failed\n");
 		exit(-1);
@@ -274,7 +280,7 @@ int main(int argc, char *argv[])
 {
 	fdelay_device_t b;
 
-	configure_board(&b);
+	configure_board(&b, argc, argv);
 	pqueue_clear(&incoming);
 	pqueue_clear(&outgoing);
 	

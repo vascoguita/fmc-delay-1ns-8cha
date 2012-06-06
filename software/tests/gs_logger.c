@@ -1,4 +1,5 @@
-/* Simple demo that reads samples using the read call */
+/* Fine Delay Logger/Pulse Generator program as used in Gran Sasso. 
+   Treat as an example */
 
 #define _GNU_SOURCE
 
@@ -46,6 +47,7 @@ struct board_def {
 	int hw_index;
 	int in_use;
 	int fd;
+	int prev_seq;
 	
 	struct {
 		int64_t offset_pps, width, period;
@@ -265,7 +267,7 @@ void enable_wr(fdelay_device_t *b, int index)
 	printf("Locking to WR network [board=%d]...", index);
 	fflush(stdout);
 	fdelay_configure_sync(b, FDELAY_SYNC_LOCAL);
-	sleep(2);
+/*	sleep(2);
 	fdelay_configure_sync(b, FDELAY_SYNC_WR);
 
 	while(fdelay_check_sync(b) <= 0)
@@ -281,7 +283,7 @@ void enable_wr(fdelay_device_t *b, int index)
 	}
 
 	printf("\n");
-	fflush(stdout);
+	fflush(stdout);*/
 }
 
 /* Add two timestamps */
@@ -311,9 +313,15 @@ int configure_board(struct board_def *bdef)
 	
 
 	
-	if(spec_fdelay_init(b, bdef->hw_index >>8, bdef->hw_index & 0xff) < 0)
+	if(spec_fdelay_create_bd(b, bdef->hw_index >>8, bdef->hw_index & 0xff, 0x80000) < 0)
 	{
 		fprintf(stderr,"Can't open fdelay board @ hw_index %x\n", bdef->hw_index);
+		exit(-1);
+	}
+
+	if(fdelay_init(b, 0) < 0)
+	{
+		fprintf(stderr,"Can't initialize fdelay board @ hw_index %x\n", bdef->hw_index);
 		exit(-1);
 	}
 	
@@ -390,20 +398,52 @@ int configure_board(struct board_def *bdef)
     return 0;
 }
 
+/* Substract two timestamps */
+static fdelay_time_t ts_sub(fdelay_time_t a, fdelay_time_t b)
+{
+ 	a.frac -= b.frac;
+ 	if(a.frac < 0)
+ 	{
+ 	 	a.frac += 4096;
+ 	 	a.coarse--;
+ 	}
+ 	a.coarse -= b.coarse;
+ 	if(a.coarse < 0)
+ 	{
+ 	 	a.coarse += 125000000;
+ 	 	a.utc --;
+ 	}
+ 	a.utc -= b.utc;
+ 	return a;
+}
+
+
 void handle_readout(struct board_def *bdef)
 {
     int64_t t_ps;
     fdelay_time_t t;
+   static fdelay_time_t t_prev;
     static time_t start;
+   
     int done;
 
     while(fdelay_read(bdef->b, &t, 1) == 1)
     {	    
 
 		t_ps = (t.coarse * 8000LL) + ((t.frac * 8000LL) >> 12);
-		printf("card 0x%04x, seq %5i: time %lli s, %lli.%03lli ns [%x] ",  bdef->hw_index, t.seq_id, t.utc, t_ps / 1000LL, t_ps % 1000LL, t.coarse);
-		printf("raw utc=%lld coarse=%d startoffs=%d suboffs=%d frac=%d [%x]\n", t.raw.utc, t.raw.coarse, t.raw.start_offset, t.raw.subcycle_offset, t.raw.frac- 30000, t.raw.frac);
+		printf("card 0x%04x, seq %5i: time %lli s, %lli.%03lli ns [count %d] ",  bdef->hw_index, t.seq_id, t.utc, t_ps / 1000LL, t_ps % 1000LL, (t.raw.tsbcr >> 10) & 0x3ff);
+	//	printf("raw utc=%lld coarse=%d startoffs=%d suboffs=%d frac=%d [%x]\n", t.raw.utc, t.raw.coarse, t.raw.start_offset, t.raw.subcycle_offset, t.raw.frac- 30000, t.raw.frac);
 		log_write(&t, bdef->hw_index);
+	
+		if(((bdef->prev_seq + 1) & 0xffff) != (t.seq_id & 0xffff))
+		{
+			printf("MISMATCH\n");
+		} else printf("\n");
+		
+//		printf("raw %d %d\n", t.raw.start_offset, t.raw.frac-30000);
+//		printf("delta %lld\n", fdelay_to_picos(ts_sub(t,t_prev)));
+		bdef->prev_seq = t.seq_id;
+		t_prev = t;
     }
 }
 
@@ -453,6 +493,7 @@ int main(int argc, char *argv[])
 
 			fdelay_configure_readout(boards[i].b, 1);
 			fdelay_configure_trigger(boards[i].b, 1, boards[i].term_on);	
+			boards[i].prev_seq = -1;
 
 
 		}
@@ -469,7 +510,7 @@ int main(int argc, char *argv[])
 		
 			if(fdelay_dbg_sync_lost(boards[i].b))
 			{
-			 	printf("Weird, sync lost @ board %x. Reconfiguring...\n", boards[i].b);
+			 	printf("Weird, sync lost @ board %p. Reconfiguring...\n", boards[i].b);
 			 	configure_board(&boards[i]);
 
 			}
@@ -482,4 +523,3 @@ int main(int argc, char *argv[])
 	
 	
 }
-

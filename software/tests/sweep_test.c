@@ -19,7 +19,13 @@ int configure_board(fdelay_device_t *b, int argc, char *argv[])
 {
 	fdelay_time_t t;
 	
-	if(spec_fdelay_init(b,argc,argv) < 0)
+	if(spec_fdelay_create(b, argc, argv) < 0)
+	{
+		printf("Probe failed\n");
+		exit(-1);
+	}
+	
+	if(fdelay_init(b, 0) < 0)
 	{
 		printf("Init failed\n");
 		exit(-1);
@@ -82,6 +88,5 @@ int main(int argc, char *argv[])
 	fdelay_device_t b;
 
 	configure_board(&b, argc, argv);
-
 	handle_readout(&b, 40000);
 }

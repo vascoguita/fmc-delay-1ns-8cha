@@ -1,12 +1,16 @@
+/* Temperature calibration test program. 
+
+	Requires a PWM-driven peltier cooler placed over the delay line chips, PWM drive connected to MOSI pin */
+
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 
 #include "fdelay_lib.h"
 #include "fdelay_private.h"
 #include "fd_main_regs.h"
 
 #include "onewire.h"
-#include "rr_io.h"
 
 typedef struct {
    float kp, ki, err, pwm, setpoint, i, bias;
@@ -25,7 +29,7 @@ void pi_update(fdelay_device_t *dev, float temp)
     
     dbg("t %.1f err:%.1f DRIVE: %d\n", temp, pi_state.err, (int)pi_state.pwm);
     
-    fd_writel(FD_I2CR_DBGOUT_W((int)pi_state.pwm), FD_REG_I2CR);
+    fd_writel((int)pi_state.pwm, FD_REG_TDER2);
 }
 
 extern int64_t get_tics();
@@ -56,41 +60,34 @@ int pi_set_temp(fdelay_device_t *dev, float new_temp)
     return fabs(pi_state.err) < 0.1 ? 1: 0;
 }
 
-void my_writel(void *priv, uint32_t data, uint32_t addr)
+main(int argc, char *argv[])
 {
- 	rr_writel(data, addr);
-}
+	fdelay_device_t dev;
 
-uint32_t my_readl(void *priv, uint32_t addr)
-{
-	uint32_t d = rr_readl(addr);
-	return d;
-}
-
-main()
-{
-	fdelay_device_t *dev = malloc(sizeof(fdelay_device_t));
-
-	rr_init(RR_DEVSEL_UNUSED, RR_DEVSEL_UNUSED);
-
-	dev->writel = my_writel;
-	dev->readl = my_readl;
-	dev->base_addr = 0x80000;
-
-	if(fdelay_init(dev) < 0)
+	if(spec_fdelay_create(&dev, argc, argv) < 0)
+	{
+		fprintf(stderr,"Card probe failed.\n");
 		return -1;
-
+	}	
+	
+	if(fdelay_init(&dev, 0) < 0)
+	{
+		fprintf(stderr,"Card init failed.\n");
+		return -1;
+    }
+    
     float t_min = 40.0, t_max = 80.0, t_cur;
     
     t_cur = t_min;
 
     for(;;)
     {
-        if(pi_set_temp(dev, t_cur))
+        if(pi_set_temp(&dev, t_cur))
         {
-            fd_decl_private(dev);
+			fdelay_device_t *b = &dev;
+            fd_decl_private(b);
 
-            calibrate_outputs(dev);
+            calibrate_outputs(&dev);
             fprintf(stderr, "> %.1f %d %d %d %d\n", t_cur, hw->frr_cur[0],
              hw->frr_cur[1], hw->frr_cur[2], hw->frr_cur[3]);
              t_cur += 1.0;

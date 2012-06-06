@@ -1,27 +1,21 @@
-CFLAGS = -I../include -g -Imini_bone -Ispll 
 
-#uncomment for extra tests (DAC, output stage INL/DNL)
-#CFLAGS += -DPERFORM_LONG_TESTS
+OBJS = fdelay_lib.o i2c_master.o onewire.o spec_common.o spec/speclib.o fdelay_dmtd_calibration.o
 
-OBJS_LIB = fdelay_lib.o i2c_master.o onewire.o mini_bone/minibone_lib.o mini_bone/ptpd_netif.o  spec_common.o spec/speclib.o fdelay_dmtd_calibration.o
+CFLAGS = -I../include -g -Imini_bone 
 
-all:    testprog lib gs rp-test sweep-test
+ifeq ($(SPEC_SW),)
+throw_error:
+	@echo "SPEC software package location environment variable is not set. Can't compile :("
+endif
 
-lib:	$(OBJS_LIB)
-		gcc -shared -o libfinedelay.so $(OBJS_LIB)
+all:	spec lib
 
-testprog:		lib fdelay_test.o
-		gcc -o fdelay_test $(OBJS_LIB) fdelay_test.o -lm
+spec:	
+		ln -s $(SPEC_SW)/tools spec
 
-gs:		lib fdelay-gs.o
-		gcc -o fdelay-gs $(OBJS_LIB) fdelay-gs.o -lm
-
-rp-test: lib random_pulse_test.o
-		gcc -o fdelay-random-test $(OBJS_LIB) random_pulse_test.o -lm
-
-
-sweep-test: lib sweep_test.o
-		gcc -o fdelay-sweep-test $(OBJS_LIB) sweep_test.o -lm
+lib:	$(OBJS)
+		gcc -shared -o libfinedelay.so $(OBJS)
+		ar rc libfinedelay.a $(OBJS)
 
 clean:	
-		rm -f *.o fdelay-random-test fdelay-gs fdelay_pps_demo fdelay_test
+		rm -f *.o libfinedelay.so

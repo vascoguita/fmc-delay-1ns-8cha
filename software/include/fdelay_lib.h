@@ -21,6 +21,10 @@
 #define FDELAY_SYNC_LOCAL 	 0x1  	 	/* use local oscillator */
 #define FDELAY_SYNC_WR	 	 0x2		/* use White Rabbit */
 
+/* fdelay_init() flags */
+#define FDELAY_RAW_READOUT 	0x1
+#define FDELAY_PERFORM_LONG_TESTS 0x2
+
 /* Hardware "handle" structure */
 typedef struct fdelay_device
 {
@@ -62,26 +66,22 @@ PUBLIC API
 */
 
 
-/* Creates a local instance of Fine Delay Core at address base_addr. Returns a non-null fdelay_device_t
-   card context on success or null if an error occured */
-fdelay_device_t *fdelay_create(const char *device);
 
-/* Does the same as above, but for a card accessible via EtherBone/MiniBone. 
-   iface = network interface to which the carrier is connected
-   mac_addr = MAC address of the EtherBone/MiniBone core
-   base_addr = base address of the FD core (relative to EB/MB address space) */
-fdelay_device_t *fdelay_create_minibone(char *iface, char *mac_addr, uint32_t base_addr);
+/* Creates a local instance of Fine Delay Core at address base_addr on the SPEC at bus/devfn. Returns 0 on success, negative on error. */
+int spec_fdelay_create_bd(fdelay_device_t *dev, int bus, int dev_fn, uint32_t base);
+
+/* A shortcut for test program, parsing the card base/location from command line args */
+int spec_fdelay_create(fdelay_device_t *dev, int argc, char *argv[]);
 
 /* Helper functions - converting FD timestamp format from/to plain picoseconds */
 fdelay_time_t fdelay_from_picos(const uint64_t ps);
 int64_t fdelay_to_picos(const fdelay_time_t t);
 
-
 /* Enables/disables raw timestamp readout mode (debugging only) */
 int fdelay_raw_readout(fdelay_device_t *dev, int raw_moide);
 
 /* Initializes and calibrates the device. 0 = success, negative = error */
-int fdelay_init(fdelay_device_t *dev);
+int fdelay_init(fdelay_device_t *dev, int init_flags);
 
 /* Disables and releases the resources for a given FD Card */
 int fdelay_release(fdelay_device_t *dev);
@@ -133,6 +133,6 @@ void fdelay_set_user_offset(fdelay_device_t *dev,int input, int64_t offset);
 int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t);
 int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t);
 
-int fdelay_dmtd_calibration(fdelay_device_t *dev);
+int fdelay_dmtd_calibration(fdelay_device_t *dev, double *offsets);
 
 #endif

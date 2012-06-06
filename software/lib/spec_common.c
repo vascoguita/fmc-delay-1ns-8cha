@@ -17,7 +17,7 @@ static uint32_t fd_spec_readl(void *priv, uint32_t addr)
 	return spec_readl(priv, addr);
 }
 
-int spec_fdelay_init_bd(fdelay_device_t *dev, int bus, int dev_fn, uint32_t base)
+int spec_fdelay_create_bd(fdelay_device_t *dev, int bus, int dev_fn, uint32_t base)
 {
 	dev->priv_io = spec_open(bus, dev_fn);
 
@@ -33,13 +33,10 @@ int spec_fdelay_init_bd(fdelay_device_t *dev, int bus, int dev_fn, uint32_t base
 
 	spec_vuart_init(dev->priv_io, 0xe0500); /* for communication with WRCore during DMTD calibration */
 
-	if(fdelay_init(dev) < 0)
-		return -1;
-
     return 0;
 }
 
-int spec_fdelay_init(fdelay_device_t *dev, int argc, char *argv[])
+int spec_fdelay_create(fdelay_device_t *dev, int argc, char *argv[])
 {
 	int bus = -1, dev_fn = -1, c;
 	uint32_t base = 0x80000;
@@ -66,7 +63,7 @@ int spec_fdelay_init(fdelay_device_t *dev, int argc, char *argv[])
 		}
 	}
 
-	return spec_fdelay_init_bd(dev, bus, dev_fn, base);
+	return spec_fdelay_create_bd(dev, bus, dev_fn, base);
 }
 
 
