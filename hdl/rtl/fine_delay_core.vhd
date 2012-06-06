@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-05-21
+-- Last update: 2012-06-06
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -180,14 +180,6 @@ entity fine_delay_core is
     tm_dac_wr_i          : in  std_logic;
 
     ---------------------------------------------------------------------------
-    -- DMTD DAC drive, used for calibration purposes only when not associated
-    -- with a WR Core
-    ---------------------------------------------------------------------------
-
-    dmtd_dac_value_o : out std_logic_vector(23 downto 0);
-    dmtd_dac_wr_o    : out std_logic;
-
-    ---------------------------------------------------------------------------
     -- Temeperature sensor (1-wire)
     ---------------------------------------------------------------------------
 
@@ -205,7 +197,7 @@ entity fine_delay_core is
     i2c_sda_oen_o : out std_logic;
     i2c_sda_i     : in  std_logic;
 
-    fmc_present_n_i: in std_logic;
+    fmc_present_n_i : in std_logic;
 
 
     ---------------------------------------------------------------------------
@@ -311,17 +303,18 @@ architecture rtl of fine_delay_core is
 
   signal tag_valid_masked : std_logic;
 
-  signal dmtd_pattern              : std_logic;
-  signal calr_rd_ack, spllr_rd_ack : std_logic;
-  signal csync_pps                 : std_logic;
-  signal tdc_cal_pulse             : std_logic;
+  signal dmtd_pattern                    : std_logic;
+  signal csync_pps                       : std_logic;
+  signal tdc_cal_pulse                   : std_logic;
+  signal dmtr_in_rd_ack, dmtr_out_rd_ack : std_logic;
 
 
   signal pwm_count : unsigned(11 downto 0);
   signal pwm_out   : std_logic;
 
   signal spi_cs_dac_n, spi_cs_pll_n, spi_cs_gpio_n, spi_mosi : std_logic;
-  
+
+  signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
   
 begin  -- rtl
 
@@ -462,15 +455,12 @@ begin  -- rtl
       regs_o                => regs_fromwb,
       regs_i                => regs_towb,
       irq_ts_buf_notempty_i => irq_rbuf,
-      irq_dmtd_spll_i       => irq_spll,
+      irq_dmtd_spll_i       => '0',
       irq_sync_status_i     => irq_sync,
-      tsbcr_read_ack_o => tsbcr_read_ack,
-      fid_read_ack_o => fid_read_ack,
-      spllr_rd_ack_o        => spllr_rd_ack,
-      calr_rd_ack_o         => calr_rd_ack
+      dmtr_out_rd_ack_o     => dmtr_out_rd_ack,
+      dmtr_in_rd_ack_o      => dmtr_in_rd_ack
       );
 
-  irq_spll <= '0';
 
   U_Acam_TSU : fd_acam_timestamper
     generic map (
@@ -626,26 +616,23 @@ begin  -- rtl
       delay_len_o  => delay_len_o);
 
   U_DMTD_Calibrator : fd_dmtd_insertion_calibrator
-    generic map (
-      g_with_wr_core => g_with_wr_core)
     port map (
-      clk_ref_i            => clk_ref_0_i,
-      clk_dmtd_i           => clk_dmtd_i,
-      clk_sys_i            => clk_sys_i,
-      rst_n_sys_i          => rst_n_sys,
-      rst_n_ref_i          => rst_n_ref,
-      regs_i               => regs_fromwb,
-      regs_o               => regs_towb_dmtd,
-      dmtd_fb_in_i         => dmtd_fb_in_i,
-      dmtd_fb_out_i        => dmtd_fb_out_i,
-      dmtd_samp_o          => dmtd_samp_o,
-      dmtd_pattern_o       => dmtd_pattern,
-      calr_rd_ack_i        => calr_rd_ack,
-      spllr_rd_ack_i       => spllr_rd_ack,
-      wr_clk_dmtd_locked_i => tm_clk_dmtd_locked_i,
-      dmtd_dac_wr_o        => dmtd_dac_wr_o,
-      dmtd_dac_value_o     => dmtd_dac_value_o);
-
+      clk_ref_i         => clk_ref_0_i,
+      clk_dmtd_i        => clk_dmtd_i,
+      clk_sys_i         => clk_sys_i,
+      rst_n_sys_i       => rst_n_sys,
+      rst_n_ref_i       => rst_n_ref,
+      regs_i            => regs_fromwb,
+      regs_o            => regs_towb_dmtd,
+      dmtd_fb_in_i      => dmtd_fb_in_i,
+      dmtd_fb_out_i     => dmtd_fb_out_i,
+      dmtd_samp_o       => dmtd_samp_o,
+      dmtd_pattern_o    => dmtd_pattern,
+      dmtr_in_rd_ack_i  => dmtr_in_rd_ack,
+      dmtr_out_rd_ack_i => dmtr_out_rd_ack,
+      dbg_tag_in_o => dbg_tag_in,
+      dbg_tag_out_o => dbg_tag_out
+      );
   
   tag_valid_masked <= tag_valid when unsigned(not chx_delay_idle) = 0 else '0';
 
