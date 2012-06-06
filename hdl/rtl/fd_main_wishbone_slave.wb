@@ -374,7 +374,6 @@ peripheral {
    reg {
       prefix = "CALR";
       name = "Calibration register";
-
       
       field {
          clock = "clk_ref_i";
@@ -397,8 +396,8 @@ peripheral {
       };
 
       field {
-         clock = "clk_ref_i";
-         name = "Triggers calibration pulses";
+--         clock = "clk_ref_i";
+         name = "Produce DDMTD calibration pattern";
          description = "write 1: Enables DMTD test pattern generation on Delay chain input and output selected in PSEL.\
 write 0: DMTD pattern generation disabled.";
          prefix = "CAL_DMTD";
@@ -418,23 +417,18 @@ write 0: DMTD pattern generation disabled.";
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
       };
+   };
 
+   reg {
+      prefix = "DMTR_IN";
+      name = "DMTD Input Tag Register";
+      
       field {
-         name = "DMTD Feedback Channel Select";
-         prefix = "DMTD_FBSEL";
-         type = BIT;
-         description = "0: samples DDMTD pattern on the delay input\
-         1: samples DDMTD pattern on the delay output";
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-      };
-
-      field {
-         ack_read = "calr_rd_ack_o";
+         ack_read = "dmtr_in_rd_ack_o";
 
          name = "DMTD Tag";
-         prefix = "DMTD_TAG";
-         size = 23;
+         prefix = "TAG";
+         size = 31;
          type = SLV;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
@@ -442,63 +436,36 @@ write 0: DMTD pattern generation disabled.";
 
       field {
          name = "DMTD Tag Ready";
-         prefix = "DMTD_TAG_RDY";
+         prefix = "RDY";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
-      };
-   };
-
-   reg {
-      name = "Softpll Register";
-      prefix = "SPLLR";
-      description = "Minimal SoftPLL register required to calibrate the card if it there's no WR core in the design";
-
-      
-      field {
-         ack_read = "spllr_rd_ack_o";
-
-         name = "Frequency/Phase tag";
-         prefix = "TAG";
-         type = SLV;
-         size = 20;
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      };
-
-      field {
-         name = "Tag Ready";
-         prefix = "TAG_RDY";
-         type = BIT;
-         access_bus = READ_ONLY;
-         access_dev = WRITE_ONLY;
-      };
-
-      field {
-         name = "Freq/Phase mode select";
-         description = "0: sample frequency (pre-locking)\
-                        1: sample phase";
-         prefix = "MODE";
-         type = BIT;
-         access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
       };
    };
 
   reg {
-      name = "Softpll DAC Register";
-      prefix = "SDACR";
-      description = "DMTD Dac Control register, used for calibration when there's no associated WR core";
-
+      prefix = "DMTR_OUT";
+      name = "DMTD Output Tag Register";
       
       field {
-         name = "DAC Value";
-         prefix = "DAC_VAL";
-         type = PASS_THROUGH;
-         size = 16;
+         ack_read = "dmtr_out_rd_ack_o";
+
+         name = "DMTD Tag";
+         prefix = "TAG";
+         size = 31;
+         type = SLV;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
+      };
+
+      field {
+         name = "DMTD Tag Ready";
+         prefix = "RDY";
+         type = BIT;
+         access_bus = READ_ONLY;
+         access_dev = WRITE_ONLY;
       };
    };
-
 
    reg {
       prefix = "ADSFR";
