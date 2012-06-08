@@ -22,41 +22,51 @@ class fd_timestamp(Structure):
 		return "%d:%d" % (self.utc, self.nsecs())
 
 class FineDelay:
+    BASE_ADDR = 0x80000
 
-        BASE_ADDR = 0x80000
+    def __init__(self, bus = -1):
+        self.fdelay = CDLL('../lib/libfinedelay.so')
 
-	FREE_RUNNING = 0x10
-	WR_OFFLINE =  0x8
-	WR_READY  =  0x1
-	WR_SYNCING =  0x2
-	WR_SYNCED = 0x4
-	SYNC_LOCAL = 0x1
-	SYNC_WR = 0x2
+        # load the firmware for the SPEC:
+		
+        self.card = self.fdelay.spec_open(c_int(bus), c_int(-1));
 
-	def __init__(self, fd):
-                cwd = os.path.dirname(__file__)
-                self.fdelay = CDLL(cwd+'/../lib/libfinedelay.so')
-                self.handle = c_voidp(self.fdelay.fdelay_create_rawrabbit(c_int(fd), c_ulong(self.BASE_ADDR)));
-
-
-		if(c_int(self.fdelay.fdelay_load_firmware("../spec_top_wr.bin")) < 0):
-			print ("Firmware loader failed...");
+        if(self.card == 0):
+			print ("SPEC enumeration failed");
 			sys.exit(-1)
 
-                print "Initialising Fine Delay board..."
-		if(self.fdelay.fdelay_init(self.handle) < 0):
-			print ("Init failed..");
-			sys.exit(-1)
+        if ~os.path.isfile("spec_top_fd.bin"):
+            print ("No firmware file found. Attempting to download one from OHWR")
+            import urllib
+            urllib.urlretrieve ("http://www.ohwr.org/attachments/download/1350/spec_top.bin", "spec_top_fd.bin")
 
+        cwd = os.getcwd();
+			
+        if(self.fdelay.spec_load_bitstream(c_voidp(self.card), c_char_p(cwd + "/spec_top_fd.bin")) < 0):
+            print ("Firmware loader failure");
+            sys.exit(-1)
+            
+        self.fdelay.spec_close(c_voidp(self.card))
 
-	def conf_trigger(self, enable, termination):
-		self.fdelay.fdelay_configure_trigger(self.handle, c_int(enable), c_int(termination))
+        self.handle = pointer(create_string_buffer('\000' * 16384)) #allocate some memory for the fdelay_device_t
 
-	def conf_output(self, channel, enable, delay, width):
-		self.fdelay.fdelay_configure_output(self.handle, c_int(channel), c_int(enable), c_ulonglong(delay), c_ulonglong(width), c_ulonglong(200000), c_int(1))
+        if(self.fdelay.spec_fdelay_create_bd(self.handle, c_int(bus), c_int(-1), c_ulong(self.BASE_ADDR)) < 0):
+            print ("FD enumeration failed")
+            sys.exit(-1)
 
-	def conf_readout(self, enable):
-		self.fdelay.fdelay_configure_readout(self.handle, enable)
+        print "Initializing Fine Delay board..."
+        if(self.fdelay.fdelay_init(self.handle) < 0):
+            print ("Init failed..");
+            sys.exit(-1)
+
+    def conf_trigger(self, enable, termination):
+        self.fdelay.fdelay_configure_trigger(self.handle, c_int(enable), c_int(termination))
+
+    def conf_output(self, channel, enable, delay, width):
+        self.fdelay.fdelay_configure_output(self.handle, c_int(channel), c_int(enable), c_ulonglong(delay), c_ulonglong(width), c_ulonglong(200000), c_int(1))
+
+    def conf_readout(self, enable):
+        self.fdelay.fdelay_configure_readout(self.handle, enable)
 
 #	def conf_sync(self, mode):
 #		self.fdelay.fdelay_configure_sync(self.handle, mode)
@@ -76,21 +86,14 @@ class FineDelay:
                 self.fdelay.fdelay_get_time(self.handle, byref(t))
                 return t
 
-	def get_sync_status(self):
-		htab = { self.FREE_RUNNING : "oscillator free-running",
-				 self.WR_OFFLINE : "WR core offline",
-				 self.WR_READY : "WR core ready",
-				 self.WR_SYNCING : "Syncing local clock with WR",
-				 self.WR_SYNCED : "Synced with WR" }
-#		status = c_int(self.fdelay.fdelay_get_sync_status(self.handle));
-#		print("GetSyncStatus %x" % status.value);
-		return "none"; #htab[status.value]
+    def get_sync_status(self):
+    	return "none"; #fixme: new WR state machine
 
-	def read_ts(self):
-		buf = (fd_timestamp * 256)();
-		ptr = pointer(buf)
-		n = self.fdelay.fdelay_read(self.handle, ptr, 256)
-		arr = [];
-		for i in range(0,n):
-			arr.append(buf[i])
-		return arr
+    def read_ts(self):
+    	buf = (fd_timestamp * 256)();
+    	ptr = pointer(buf)
+    	n = self.fdelay.fdelay_read(self.handle, ptr, 256)
+    	arr = [];
+    	for i in range(0,n):
+    		arr.append(buf[i])
+    	return arr

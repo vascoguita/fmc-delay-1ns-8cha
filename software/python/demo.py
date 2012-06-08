@@ -74,12 +74,7 @@ if __name__ == "__main__":
 	    print("Sorry, I must be run as root...");
 	    sys.exit(-1)
 	
-	fd = os.open("/dev/rawrabbit", os.O_SYNC)
-	if(fd < 0):
-	    print("Can't open the rawrabbit device. Is the rawrabbit driver installed?")
-	    sys.exit(-1)
-
-	card = FineDelay(fd)
+	card = FineDelay()
 
 	app = QApplication(sys.argv)
 	
