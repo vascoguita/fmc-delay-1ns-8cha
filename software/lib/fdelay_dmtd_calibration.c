@@ -33,8 +33,6 @@
 #include "fdelay_lib.h"
 #include "fdelay_private.h"
 
-#include "spec/speclib.h"
-
 
 extern void dbg(const char *fmt, ...);
 extern int64_t get_tics();

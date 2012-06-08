@@ -2,10 +2,8 @@
 #include <stdint.h>
 #include <getopt.h>
 
-#include "spec/speclib.h"
+#include "spec/tools/speclib.h"
 #include "fdelay_lib.h"
-
-void loader_low_level(){}; /* fixme: include the kernel file */
 
 static void fd_spec_writel(void *priv, uint32_t data, uint32_t addr)
 {
