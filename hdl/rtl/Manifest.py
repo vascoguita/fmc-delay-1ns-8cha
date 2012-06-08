@@ -16,8 +16,7 @@ files = ["fd_acam_timestamper.vhd",
          "fd_channel_wbgen2_pkg.vhd",
          "fd_main_wbgen2_pkg.vhd",
          "fd_dmtd_insertion_calibrator.vhd",
-         "timing/fd_dmtd_with_deglitcher.vhd",
-				 "timing/fd_hpll_period_detect.vhd"
+         "fd_dmtd_with_deglitcher.vhd"
     ];
 
 fetchto = "../ip_cores"

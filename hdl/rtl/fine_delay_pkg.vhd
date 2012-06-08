@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-05-21
+-- Last update: 2012-06-06
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -73,10 +73,10 @@ package fine_delay_pkg is
   constant c_FD_NUM_OUTPUTS : integer := 4;
 
   -- Number of reference clock cycles per one DDMTD calibration period
-  constant c_FD_DMTD_CALIBRATION_PERIOD : integer := 125;
+  constant c_FD_DMTD_CALIBRATION_PERIOD : integer := 144;
 
   -- Calibration pulse width
-  constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 3;
+  constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 10;
 
 
   constant c_fine_delay_core_sdwb : t_sdwb_device := (
@@ -253,10 +253,10 @@ package fine_delay_pkg is
       wb_int_o              : out std_logic;
       clk_ref_i             : in  std_logic;
       tcr_rd_ack_o          : out std_logic;
-      calr_rd_ack_o         : out std_logic;
-      spllr_rd_ack_o        : out std_logic;
-      tsbcr_read_ack_o        : out std_logic;
-      fid_read_ack_o: out std_logic;
+      dmtr_in_rd_ack_o      : out std_logic;
+      dmtr_out_rd_ack_o     : out std_logic;
+      tsbcr_read_ack_o      : out std_logic;
+      fid_read_ack_o        : out std_logic;
       irq_ts_buf_notempty_i : in  std_logic;
       irq_dmtd_spll_i       : in  std_logic;
       irq_sync_status_i     : in  std_logic;
@@ -308,29 +308,25 @@ package fine_delay_pkg is
       wb_o              : out t_wishbone_slave_out);
   end component;
 
-
   component fd_dmtd_insertion_calibrator
-    generic (
-      g_with_wr_core : boolean);
     port (
-      clk_ref_i            : in  std_logic;
-      clk_dmtd_i           : in  std_logic;
-      clk_sys_i            : in  std_logic;
-      rst_n_sys_i          : in  std_logic;
-      rst_n_ref_i          : in  std_logic;
-      regs_i               : in  t_fd_main_out_registers;
-      regs_o               : out t_fd_main_in_registers;
-      dmtd_fb_in_i         : in  std_logic;
-      dmtd_fb_out_i        : in  std_logic;
-      dmtd_samp_o          : out std_logic;
-      dmtd_pattern_o       : out std_logic;
-      calr_rd_ack_i        : in  std_logic;
-      spllr_rd_ack_i       : in  std_logic;
-      wr_clk_dmtd_locked_i : in  std_logic;
-      dmtd_dac_value_o     : out std_logic_vector(23 downto 0);
-      dmtd_dac_wr_o        : out std_logic);
+      clk_ref_i         : in  std_logic;
+      clk_dmtd_i        : in  std_logic;
+      clk_sys_i         : in  std_logic;
+      rst_n_sys_i       : in  std_logic;
+      rst_n_ref_i       : in  std_logic;
+      regs_i            : in  t_fd_main_out_registers;
+      regs_o            : out t_fd_main_in_registers;
+      dmtd_fb_in_i      : in  std_logic;
+      dmtd_fb_out_i     : in  std_logic;
+      dmtd_samp_o       : out std_logic;
+      dmtd_pattern_o    : out std_logic;
+      dmtr_in_rd_ack_i  : in  std_logic;
+      dmtr_out_rd_ack_i : in  std_logic;
+      dbg_tag_in_o      : out std_logic;
+      dbg_tag_out_o     : out std_logic);
   end component;
-
+  
   component fd_ring_buffer
     generic (
       g_size_log2 : integer);
@@ -429,8 +425,6 @@ package fine_delay_pkg is
       tm_clk_dmtd_locked_i : in  std_logic;
       tm_dac_value_i       : in  std_logic_vector(23 downto 0);
       tm_dac_wr_i          : in  std_logic;
-      dmtd_dac_value_o     : out std_logic_vector(23 downto 0);
-      dmtd_dac_wr_o        : out std_logic;
       owr_en_o             : out std_logic;
       owr_i                : in  std_logic;
       i2c_scl_o            : out std_logic;

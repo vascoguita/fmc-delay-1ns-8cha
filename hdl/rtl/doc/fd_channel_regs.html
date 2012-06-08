@@ -470,6 +470,23 @@ fd_channel_dcr_no_fine_o
 wb_ack_o
 </td>
 <td  class="td_sym_center">
+
+</td>
+<td  class="td_pblock_right">
+fd_channel_dcr_force_hi_o
+</td>
+<td  class="td_arrow_right">
+&rarr;
+</td>
+</tr>
+<tr>
+<td  class="td_arrow_left">
+&larr;
+</td>
+<td  class="td_pblock_left">
+wb_stall_o
+</td>
+<td  class="td_sym_center">
 &nbsp;
 </td>
 <td  class="td_pblock_right">
@@ -481,10 +498,10 @@ wb_ack_o
 </tr>
 <tr>
 <td  class="td_arrow_left">
-&larr;
+
 </td>
 <td  class="td_pblock_left">
-wb_stall_o
+
 </td>
 <td  class="td_sym_center">
 
@@ -1338,8 +1355,8 @@ DCR
 <td  class="td_unused">
 -
 </td>
-<td  class="td_unused">
--
+<td style="border: solid 1px black;" colspan=1  class="td_field">
+FORCE_HI
 </td>
 </tr>
 </table>
@@ -1430,6 +1447,10 @@ FORCE_DLY
 NO_FINE
 </b>[<i>read/write</i>]: Disable Fine Part update
 <br>write 1: disables updating of the fine part of the pulse delay to allow for producing faster signals (i.e. pulse width/spacing < 200 ns), at the cost of less accurate width/spacing control (multiple of 4 ms). <br>write 0: normal operation. Pulse width/spacing must be at least 200 ns.
+<li><b>
+FORCE_HI
+</b>[<i>read/write</i>]: Force Output High
+<br>write 1: Forces constant 1 on the output when the channel is disabled<br>         write 0: Forces constant 0 on the output when the channel is disabled<br>         Used for testing/calibration purposes.
 </ul>
 <a name="FRR"></a>
 <h3><a name="sect_3_2">3.2. Fine Range Register</a></h3>
