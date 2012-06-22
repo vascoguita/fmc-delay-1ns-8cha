@@ -79,20 +79,20 @@ package fine_delay_pkg is
   constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 10;
 
 
-  constant c_fine_delay_core_sdwb : t_sdwb_device := (
-    wbd_begin     => x"0000000000000000",
-    wbd_end       => x"00000000000003ff",
-    sdwb_child    => x"0000000000000000",
-    wbd_flags     => x"01",             -- big-endian, no-child, present
-    wbd_width     => x"07",             -- 8/16/32-bit port granularity
-    abi_ver_major => x"01",
-    abi_ver_minor => x"01",
-    abi_class     => x"00000000",       -- undocumented device
-    dev_vendor    => x"0000CE42",       -- CERN
-    dev_device    => x"f19ede1a",
-    dev_version   => x"00000001",
-    dev_date      => x"20120425",
-    description   => "Fine Delay Core ");
+--  constant c_fine_delay_core_sdb : t_sdb_device := (
+--    wbd_begin     => x"0000000000000000",
+--    wbd_end       => x"00000000000003ff",
+--    sdwb_child    => x"0000000000000000",
+--    wbd_flags     => x"01",             -- big-endian, no-child, present
+--    wbd_width     => x"07",             -- 8/16/32-bit port granularity
+--    abi_ver_major => x"01",
+--    abi_ver_minor => x"01",
+--    abi_class     => x"00000000",       -- undocumented device
+--    dev_vendor    => x"0000CE42",       -- CERN
+--    dev_device    => x"f19ede1a",
+--    dev_version   => x"00000001",
+--    dev_date      => x"20120425",
+--    description   => "Fine Delay Core ");
 
   type t_fd_timestamp is record
     u     : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
