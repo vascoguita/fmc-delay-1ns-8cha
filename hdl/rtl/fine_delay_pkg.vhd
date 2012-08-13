@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-06-06
+-- Last update: 2012-08-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -78,21 +78,21 @@ package fine_delay_pkg is
   -- Calibration pulse width
   constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 10;
 
-
---  constant c_fine_delay_core_sdb : t_sdb_device := (
---    wbd_begin     => x"0000000000000000",
---    wbd_end       => x"00000000000003ff",
---    sdwb_child    => x"0000000000000000",
---    wbd_flags     => x"01",             -- big-endian, no-child, present
---    wbd_width     => x"07",             -- 8/16/32-bit port granularity
---    abi_ver_major => x"01",
---    abi_ver_minor => x"01",
---    abi_class     => x"00000000",       -- undocumented device
---    dev_vendor    => x"0000CE42",       -- CERN
---    dev_device    => x"f19ede1a",
---    dev_version   => x"00000001",
---    dev_date      => x"20120425",
---    description   => "Fine Delay Core ");
+  constant c_FD_SDB_DEVICE : t_sdb_device := (
+    abi_class     => x"0000",              -- undocumented device
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7",                 -- 8/16/32-bit port granularity
+    sdb_component => (
+      addr_first  => x"0000000000000000",
+      addr_last   => x"00000000000007ff",
+      product     => (
+        vendor_id => x"000000000000CE42",  -- CERN
+        device_id => x"f19ede1a",
+        version   => x"00000001",
+        date      => x"20120809",
+        name      => "Fine Delay Core    ")));
 
   type t_fd_timestamp is record
     u     : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
@@ -326,7 +326,7 @@ package fine_delay_pkg is
       dbg_tag_in_o      : out std_logic;
       dbg_tag_out_o     : out std_logic);
   end component;
-  
+
   component fd_ring_buffer
     generic (
       g_size_log2 : integer);
