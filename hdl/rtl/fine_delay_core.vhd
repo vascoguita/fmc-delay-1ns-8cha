@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-06-06
+-- Last update: 2012-08-09
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -242,6 +242,15 @@ architecture rtl of fine_delay_core is
      x"000003c0",
      x"000003c0");
 
+  function f_select_spi_rate return integer is
+  begin
+    if(g_simulation) then
+      return 1;
+    else
+      return 8;
+    end if;
+  end f_select_spi_rate;
+
   signal tag_frac   : std_logic_vector(c_TIMESTAMP_FRAC_BITS-1 downto 0);
   signal tag_coarse : std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
   signal tag_utc    : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
@@ -350,14 +359,14 @@ begin  -- rtl
       g_num_slaves  => 6,
       g_registered  => true,
       g_address     => c_cnx_base_addr,
-      g_mask       => c_cnx_base_mask)
+      g_mask        => c_cnx_base_mask)
     port map (
-      clk_sys_i     => clk_sys_i,
-      rst_n_i       => rst_n_i,
-      slave_i       => slave_in,
-      slave_o       => slave_out,
-      master_i      => cnx_in,
-      master_o      => cnx_out);
+      clk_sys_i => clk_sys_i,
+      rst_n_i   => rst_n_i,
+      slave_i   => slave_in,
+      slave_o   => slave_out,
+      master_i  => cnx_in,
+      master_o  => cnx_out);
 
 
   U_Reset_Generator : fd_reset_generator
@@ -398,7 +407,7 @@ begin  -- rtl
 
   U_SPI_Arbiter : fd_spi_dac_arbiter
     generic map (
-      g_div_ratio_log2 => 8)
+      g_div_ratio_log2 => f_select_spi_rate)
     port map (
       clk_sys_i       => clk_sys_i,
       rst_n_i         => rst_n_sys,
@@ -447,8 +456,8 @@ begin  -- rtl
       wb_we_i    => cnx_out(0).we,
       wb_ack_o   => cnx_in(0).ack,
       wb_stall_o => cnx_in(0).stall,
-      wb_int_o => wb_irq_o,
-      
+      wb_int_o   => wb_irq_o,
+
       clk_ref_i => clk_ref_0_i,
 
       tcr_rd_ack_o          => tcr_rd_ack,
@@ -484,10 +493,10 @@ begin  -- rtl
       acam_start_dis_o  => acam_start_dis_o,
       acam_alutrigger_o => acam_alutrigger_o,
 
-      tag_frac_o   => tag_frac,
-      tag_coarse_o => tag_coarse,
-      tag_utc_o    => tag_utc,
-      tag_valid_o  => tag_valid,
+      tag_frac_o    => tag_frac,
+      tag_coarse_o  => tag_coarse,
+      tag_utc_o     => tag_utc,
+      tag_valid_o   => tag_valid,
       tag_dbg_raw_o => tag_dbg,
 
       tag_rearm_p1_i => '1',
@@ -537,18 +546,18 @@ begin  -- rtl
       clk_ref_i   => clk_ref_0_i,
       clk_sys_i   => clk_sys_i,
 
-      tag_source_i => rbuf_source,
-      tag_valid_i  => rbuf_valid,
-      tag_utc_i    => rbuf_in_ts.u,
-      tag_coarse_i => rbuf_in_ts.c,
-      tag_frac_i   => rbuf_in_ts.f,
+      tag_source_i  => rbuf_source,
+      tag_valid_i   => rbuf_valid,
+      tag_utc_i     => rbuf_in_ts.u,
+      tag_coarse_i  => rbuf_in_ts.c,
+      tag_frac_i    => rbuf_in_ts.f,
       tag_dbg_raw_i => tag_dbg,
 
       tsbcr_read_ack_i => tsbcr_read_ack,
-      fid_read_ack_i => fid_read_ack,
-      buf_irq_o      => irq_rbuf,
-      regs_i         => regs_fromwb,
-      regs_o         => regs_towb_rbuf);
+      fid_read_ack_i   => fid_read_ack,
+      buf_irq_o        => irq_rbuf,
+      regs_i           => regs_fromwb,
+      regs_o           => regs_towb_rbuf);
 
   U_Extend_Cal_Pulse : gc_extend_pulse
     generic map (
@@ -630,10 +639,10 @@ begin  -- rtl
       dmtd_pattern_o    => dmtd_pattern,
       dmtr_in_rd_ack_i  => dmtr_in_rd_ack,
       dmtr_out_rd_ack_i => dmtr_out_rd_ack,
-      dbg_tag_in_o => dbg_tag_in,
-      dbg_tag_out_o => dbg_tag_out
+      dbg_tag_in_o      => dbg_tag_in,
+      dbg_tag_out_o     => dbg_tag_out
       );
-  
+
   tag_valid_masked <= tag_valid when unsigned(not chx_delay_idle) = 0 else '0';
 
   U_LED_Driver : gc_extend_pulse
@@ -668,10 +677,10 @@ begin  -- rtl
   regs_towb_local.i2cr_sda_in_i <= i2c_sda_i;
   regs_towb_local.i2cr_scl_in_i <= i2c_scl_i;
 
-  regs_towb_local.gcr_ddr_locked_i <= pll_status_i;
+  regs_towb_local.gcr_ddr_locked_i  <= pll_status_i;
   regs_towb_local.gcr_fmc_present_i <= not fmc_present_n_i;
-  
-  
+
+
   -- Debug PWM driver for adjusting Peltier temperature. Drivers SPI MOSI line
   -- with PWM waveform when none of the SPI peripherals is in use (we have no
   -- spare pins in the FMC connector left)
@@ -694,7 +703,7 @@ begin  -- rtl
 
   -- VCXO Frequency measuremnt (for DAC testing purposes)
 
-  U_VCXO_Freq_Meter: gc_frequency_meter
+  U_VCXO_Freq_Meter : gc_frequency_meter
     generic map (
       g_with_internal_timebase => true,
       g_clk_sys_freq           => c_SYS_CLK_FREQ,
@@ -706,7 +715,7 @@ begin  -- rtl
       pps_p1_i     => '0',
       freq_o       => regs_towb_local.tder1_vcxo_freq_i(30 downto 0),
       freq_valid_o => regs_towb_local.tder1_vcxo_freq_i(31));
-  
+
   spi_mosi_o      <= spi_mosi when (spi_cs_gpio_n and spi_cs_pll_n and spi_cs_dac_n) = '0' else pwm_out;
   spi_cs_gpio_n_o <= spi_cs_gpio_n;
   spi_cs_dac_n_o  <= spi_cs_dac_n;
