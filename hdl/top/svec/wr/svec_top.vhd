@@ -1,3 +1,44 @@
+-------------------------------------------------------------------------------
+-- Title      : Fine Delay FMC SVEC (Simple VME FMC Carrier) top level
+-- Project    : Fine Delay FMC (fmc-delay-1ns-4cha)
+-------------------------------------------------------------------------------
+-- File       : svec_top.vhd
+-- Author     : Tomasz Wlostowski
+-- Company    : CERN
+-- Created    : 2011-08-24
+-- Last update: 2012-08-13
+-- Platform   : FPGA-generic
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Description: Top level for the SVEC 1.0 card with two Fine Delay FMCs.
+-- Supports:
+-- - A24/A32/D32 VME addressing
+-- - SDB enumeration (SDB descriptor at 0x60000)
+-- - White Rabbit and Etherbone
+-- Does not yet support:
+-- - Interrupts
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
+
 
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
@@ -8,6 +49,8 @@ use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
+use work.etherbone_pkg.all;
+use work.wr_xilinx_pkg.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -49,6 +92,7 @@ entity svec_top is
       VME_DTACK_n_o   : inout std_logic;
       VME_RETRY_n_o   : out   std_logic;
       VME_RETRY_OE_o  : out   std_logic;
+
       VME_LWORD_n_b   : inout std_logic;
       VME_ADDR_b      : inout std_logic_vector(31 downto 1);
       VME_DATA_b      : inout std_logic_vector(31 downto 0);
@@ -190,157 +234,42 @@ end svec_top;
 
 architecture rtl of svec_top is
 
-  
   component xvme64x_core
     port (
-      clk_i           : in    std_logic;
-      rst_n_i         : in    std_logic;
-      VME_AS_n_i      : in    std_logic;
-      VME_RST_n_i     : in    std_logic;
-      VME_WRITE_n_i   : in    std_logic;
-      VME_AM_i        : in    std_logic_vector(5 downto 0);
-      VME_DS_n_i      : in    std_logic_vector(1 downto 0);
-      VME_GA_i        : in    std_logic_vector(5 downto 0);
-      VME_BERR_o      : out   std_logic;
-      VME_DTACK_n_o   : out   std_logic;
-      VME_RETRY_n_o   : out   std_logic;
-      VME_RETRY_OE_o  : out   std_logic;
-      VME_LWORD_n_b   : inout std_logic;
-      VME_ADDR_b      : inout std_logic_vector(31 downto 1);
-      VME_DATA_b      : inout std_logic_vector(31 downto 0);
-      VME_BBSY_n_i    : in    std_logic;
-      VME_IRQ_n_o     : out   std_logic_vector(6 downto 0);
-      VME_IACK_n_i    : in    std_logic;
-      VME_IACKIN_n_i  : in    std_logic;
-      VME_IACKOUT_n_o : out   std_logic;
-      VME_DTACK_OE_o  : out   std_logic;
-      VME_DATA_DIR_o  : out   std_logic;
-      VME_DATA_OE_N_o : out   std_logic;
-      VME_ADDR_DIR_o  : out   std_logic;
-      VME_ADDR_OE_N_o : out   std_logic;
-      master_o        : out   t_wishbone_master_out;
-      master_i        : in    t_wishbone_master_in;
-      irq_i           : in    std_logic);
+      clk_i           : in  std_logic;
+      rst_n_i         : in  std_logic;
+      rst_n_o         : out std_logic;
+      VME_AS_n_i      : in  std_logic;
+      VME_RST_n_i     : in  std_logic;
+      VME_WRITE_n_i   : in  std_logic;
+      VME_AM_i        : in  std_logic_vector(5 downto 0);
+      VME_DS_n_i      : in  std_logic_vector(1 downto 0);
+      VME_GA_i        : in  std_logic_vector(5 downto 0);
+      VME_BERR_o      : out std_logic;
+      VME_DTACK_n_o   : out std_logic;
+      VME_RETRY_n_o   : out std_logic;
+      VME_RETRY_OE_o  : out std_logic;
+      VME_LWORD_n_b_i : in  std_logic;
+      VME_LWORD_n_b_o : out std_logic;
+      VME_ADDR_b_i    : in  std_logic_vector(31 downto 1);
+      VME_ADDR_b_o    : out std_logic_vector(31 downto 1);
+      VME_DATA_b_i    : in  std_logic_vector(31 downto 0);
+      VME_DATA_b_o    : out std_logic_vector(31 downto 0);
+      VME_IRQ_n_o     : out std_logic_vector(6 downto 0);
+      VME_IACKIN_n_i  : in  std_logic;
+      VME_IACK_n_i    : in  std_logic;
+      VME_IACKOUT_n_o : out std_logic;
+      VME_DTACK_OE_o  : out std_logic;
+      VME_DATA_DIR_o  : out std_logic;
+      VME_DATA_OE_N_o : out std_logic;
+      VME_ADDR_DIR_o  : out std_logic;
+      VME_ADDR_OE_N_o : out std_logic;
+      master_o        : out t_wishbone_master_out;
+      master_i        : in  t_wishbone_master_in;
+      irq_i           : in  std_logic;
+      irq_ack_o       : out std_logic);
   end component;
 
-  component xwr_core is
-    generic(
-      g_simulation                : integer                        := 0;
-      g_phys_uart                 : boolean                        := true;
-      g_virtual_uart              : boolean                        := false;
-      g_with_external_clock_input : boolean                        := false;
-      g_aux_clks                  : integer                        := 1;
-      g_ep_rxbuf_size             : integer                        := 1024;
-      g_dpram_initf               : string                         := "wrc_stub.ram";
-      g_dpram_size                : integer                        := 16384;  --in 32-bit words
-      g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
-      g_address_granularity       : t_wishbone_address_granularity := BYTE
-      );
-    port(
-      clk_sys_i  : in std_logic;
-      clk_dmtd_i : in std_logic;
-      clk_ref_i  : in std_logic;
-      clk_aux_i  : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
-      rst_n_i    : in std_logic;
-
-      dac_hpll_load_p1_o : out std_logic;
-      dac_hpll_data_o    : out std_logic_vector(15 downto 0);
-      dac_dpll_load_p1_o : out std_logic;
-      dac_dpll_data_o    : out std_logic_vector(15 downto 0);
-
-      phy_ref_clk_i      : in  std_logic;
-      phy_tx_data_o      : out std_logic_vector(7 downto 0);
-      phy_tx_k_o         : out std_logic;
-      phy_tx_disparity_i : in  std_logic;
-      phy_tx_enc_err_i   : in  std_logic;
-      phy_rx_data_i      : in  std_logic_vector(7 downto 0);
-      phy_rx_rbclk_i     : in  std_logic;
-      phy_rx_k_i         : in  std_logic;
-      phy_rx_enc_err_i   : in  std_logic;
-      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
-      phy_rst_o          : out std_logic;
-      phy_loopen_o       : out std_logic;
-
-      led_red_o   : out std_logic;
-      led_green_o : out std_logic;
-      scl_o       : out std_logic;
-      scl_i       : in  std_logic;
-      sda_o       : out std_logic;
-      sda_i       : in  std_logic;
-      sfp_scl_o   : out std_logic;
-      sfp_scl_i   : in  std_logic;
-      sfp_sda_o   : out std_logic;
-      sfp_sda_i   : in  std_logic;
-      sfp_det_i   : in  std_logic;
-      btn1_i      : in  std_logic := '1';
-      btn2_i      : in  std_logic := '1';
-
-      uart_rxd_i : in  std_logic;
-      uart_txd_o : out std_logic;
-
-      owr_en_o : out std_logic_vector(1 downto 0);
-      owr_i    : in  std_logic_vector(1 downto 0);
-
-      wrf_src_o : out t_wrf_source_out;
-      wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
-      wrf_snk_o : out t_wrf_sink_out;
-      wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
-
-      slave_i : in  t_wishbone_slave_in;
-      slave_o : out t_wishbone_slave_out;
-
-      tm_link_up_o         : out std_logic;
-      tm_dac_value_o       : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o          : out std_logic;
-      tm_clk_aux_lock_en_i : in  std_logic;
-      tm_clk_aux_locked_o  : out std_logic;
-      tm_time_valid_o      : out std_logic;
-      tm_utc_o             : out std_logic_vector(39 downto 0);
-      tm_cycles_o          : out std_logic_vector(27 downto 0);
-      pps_p_o              : out std_logic;
-
-      rst_aux_n_o : out std_logic
-      );
-  end component;
-
-  component wr_gtp_phy_spartan6
-    generic (
-      g_simulation : integer);
-    port (
-      gtp_clk_i          : in  std_logic;
-      ch0_ref_clk_i      : in  std_logic;
-      ch0_tx_data_i      : in  std_logic_vector(7 downto 0);
-      ch0_tx_k_i         : in  std_logic;
-      ch0_tx_disparity_o : out std_logic;
-      ch0_tx_enc_err_o   : out std_logic;
-      ch0_rx_rbclk_o     : out std_logic;
-      ch0_rx_data_o      : out std_logic_vector(7 downto 0);
-      ch0_rx_k_o         : out std_logic;
-      ch0_rx_enc_err_o   : out std_logic;
-      ch0_rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      ch0_rst_i          : in  std_logic;
-      ch0_loopen_i       : in  std_logic;
-      ch1_ref_clk_i      : in  std_logic;
-      ch1_tx_data_i      : in  std_logic_vector(7 downto 0) := "00000000";
-      ch1_tx_k_i         : in  std_logic                    := '0';
-      ch1_tx_disparity_o : out std_logic;
-      ch1_tx_enc_err_o   : out std_logic;
-      ch1_rx_data_o      : out std_logic_vector(7 downto 0);
-      ch1_rx_rbclk_o     : out std_logic;
-      ch1_rx_k_o         : out std_logic;
-      ch1_rx_enc_err_o   : out std_logic;
-      ch1_rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      ch1_rst_i          : in  std_logic                    := '0';
-      ch1_loopen_i       : in  std_logic                    := '0';
-      pad_txn0_o         : out std_logic;
-      pad_txp0_o         : out std_logic;
-      pad_rxn0_i         : in  std_logic                    := '0';
-      pad_rxp0_i         : in  std_logic                    := '0';
-      pad_txn1_o         : out std_logic;
-      pad_txp1_o         : out std_logic;
-      pad_rxn1_i         : in  std_logic                    := '0';
-      pad_rxp1_i         : in  std_logic                    := '0');
-  end component;
 
   component fd_ddr_pll
     port (
@@ -369,6 +298,11 @@ architecture rtl of svec_top is
       dac_sdata_o   : out std_logic;
       xdone_o       : out std_logic);
   end component;
+
+  signal VME_DATA_b_out                                        : std_logic_vector(31 downto 0);
+  signal VME_ADDR_b_out                                        : std_logic_vector(31 downto 1);
+  signal VME_LWORD_n_b_out, VME_DATA_DIR_int, VME_ADDR_DIR_int : std_logic;
+
 
 
   signal dac_hpll_load_p1 : std_logic;
@@ -399,17 +333,15 @@ architecture rtl of svec_top is
   constant c_SLAVE_FD0    : integer := 1;
   constant c_SLAVE_WRCORE : integer := 2;
 
-  constant c_cnx_base_addr : t_wishbone_address_array(c_NUM_WB_MASTERS-1 downto 0) :=
-    (c_SLAVE_FD1    => x"00050000",
-     c_SLAVE_FD0    => x"00040000",
-     c_SLAVE_WRCORE => x"00000000"
-     );
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
 
-  constant c_cnx_base_mask : t_wishbone_address_array(c_NUM_WB_MASTERS-1 downto 0) :=
-    (c_SLAVE_FD1    => x"000f0000",
-     c_SLAVE_FD0    => x"000f0000",
-     c_SLAVE_WRCORE => x"000c0000"
-     );
+  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
+    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00000000"),
+     c_SLAVE_FD0    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00040000"),
+     c_SLAVE_FD1    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00050000"));
+
+  constant c_SDB_ADDRESS : t_wishbone_address := x"00060000";
+
 
   signal cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
   signal cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
@@ -487,61 +419,31 @@ architecture rtl of svec_top is
     end if;
   end f_int2bool;
 
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
+  function f_resize_slv (x : std_logic_vector; len : integer) return std_logic_vector is
+    variable tmp : std_logic_vector(len-1 downto 0);
+  begin
+    if(len > x'length) then
+      tmp(x'length-1 downto 0)   := x;
+      tmp(len-1 downto x'length) := (others => '0');
+    elsif(len < x'length) then
+      tmp := x(len-1 downto 0);
+    else
+      tmp := x;
+    end if;
+    return tmp;
+  end f_resize_slv;
 
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
+  signal etherbone_rst_n   : std_logic;
+  signal etherbone_src_out : t_wrf_source_out;
+  signal etherbone_src_in  : t_wrf_source_in;
+  signal etherbone_snk_out : t_wrf_sink_out;
+  signal etherbone_snk_in  : t_wrf_sink_in;
+  signal etherbone_cfg_in  : t_wishbone_slave_in;
+  signal etherbone_cfg_out : t_wishbone_slave_out;
 
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
-  
+  attribute buffer_type                    : string;  --" {bufgdll | ibufg | bufgp | ibuf | bufr | none}";
+  attribute buffer_type of clk_125m_pllref : signal is "BUFG";
 begin
-
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_125m_pllref,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL);
-
-  TRIG0(31 downto 1) <= VME_ADDR_b;
-  TRIG1(31 downto 0) <= VME_DATA_b;
-  TRIG2(5 downto 0)  <= VME_AM_i;
-  trig2(7 downto 6)  <= VME_DS_n_i;
-  trig2(13 downto 8) <= VME_GA_i;
-  trig2(14)          <= VME_DTACK_n_o;
-  trig2(15)          <= VME_DTACK_oe_o;
-  trig2(16)          <= VME_LWORD_n_b;
-  trig2(17)          <= VME_WRITE_n_i;
-  trig2(18)          <= VME_AS_n_i;
-  trig2(19)          <= VME_DATA_DIR_o;
-  trig2(20)          <= VME_DATA_OE_N_o;
-  trig2(21)          <= VME_addr_DIR_o;
-  trig2(22)          <= VME_addr_OE_N_o;
-  trig2(23)          <= rst_n_i;
-  trig2(24)          <= local_reset_n;
-  trig2(25)          <= VME_RST_n_i;
-
 
   U_Buf_CLK_GTP : IBUFDS
     generic map (
@@ -627,7 +529,7 @@ begin
       data_i   => rst_n_a,
       synced_o => local_reset_n);
 
-  U_Buf_CLK_PLL : IBUFDS
+  U_Buf_CLK_PLL : IBUFGDS
     generic map (
       DIFF_TERM    => true,
       IBUF_LOW_PWR => true  -- Low power (TRUE) vs. performance (FALSE) setting for referenced
@@ -669,22 +571,31 @@ begin
       VME_DTACK_n_o   => VME_DTACK_n_o,
       VME_RETRY_n_o   => VME_RETRY_n_o,
       VME_RETRY_OE_o  => VME_RETRY_OE_o,
-      VME_LWORD_n_b   => VME_LWORD_n_b,
-      VME_ADDR_b      => VME_ADDR_b,
-      VME_DATA_b      => VME_DATA_b,
-      VME_BBSY_n_i    => VME_BBSY_n_i,
+      VME_LWORD_n_b_i => VME_LWORD_n_b,
+      VME_LWORD_n_b_o => VME_LWORD_n_b_out,
+      VME_ADDR_b_i    => VME_ADDR_b,
+      VME_DATA_b_o    => VME_DATA_b_out,
+      VME_ADDR_b_o    => VME_ADDR_b_out,
+      VME_DATA_b_i    => VME_DATA_b,
       VME_IRQ_n_o     => VME_IRQ_n_o,
       VME_IACK_n_i    => VME_IACK_n_i,
       VME_IACKIN_n_i  => VME_IACKIN_n_i,
       VME_IACKOUT_n_o => VME_IACKOUT_n_o,
       VME_DTACK_OE_o  => VME_DTACK_OE_o,
-      VME_DATA_DIR_o  => VME_DATA_DIR_o,
+      VME_DATA_DIR_o  => VME_DATA_DIR_int,
       VME_DATA_OE_N_o => VME_DATA_OE_N_o,
-      VME_ADDR_DIR_o  => VME_ADDR_DIR_o,
+      VME_ADDR_DIR_o  => VME_ADDR_DIR_int,
       VME_ADDR_OE_N_o => VME_ADDR_OE_N_o,
       master_o        => vme_master_out,
       master_i        => vme_master_in,
       irq_i           => '0');
+
+  VME_DATA_b    <= VME_DATA_b_out    when VME_DATA_DIR_int = '1' else (others => 'Z');
+  VME_ADDR_b    <= VME_ADDR_b_out    when VME_ADDR_DIR_int = '1' else (others => 'Z');
+  VME_LWORD_n_b <= VME_LWORD_n_b_out when VME_ADDR_DIR_int = '1' else 'Z';
+
+  VME_ADDR_DIR_o <= VME_ADDR_DIR_int;
+  VME_DATA_DIR_o <= VME_DATA_DIR_int;
 
   cnx_slave_in(c_MASTER_VME) <= vme_master_out;
   vme_master_in              <= cnx_slave_out(c_MASTER_VME);
@@ -724,8 +635,8 @@ begin
       g_with_external_clock_input => false,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "",
-      g_dpram_size                => 4096 * 5,
+      g_dpram_initf               => "wrc.ram",
+      g_dpram_size                => 90112/4,  --16384,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE)
     port map (
@@ -775,10 +686,16 @@ begin
       slave_i => cnx_master_out(c_SLAVE_WRCORE),
       slave_o => cnx_master_in(c_SLAVE_WRCORE),
 
-      --wrf_src_o => mbone_snk_in,
-      --wrf_src_i => mbone_snk_out,
-      --wrf_snk_o => mbone_src_in,
-      --wrf_snk_i => mbone_src_out,
+      aux_master_o => etherbone_cfg_in,
+      aux_master_i => etherbone_cfg_out,
+
+      wrf_src_o => etherbone_snk_in,
+      wrf_src_i => etherbone_snk_out,
+      wrf_snk_o => etherbone_src_in,
+      wrf_snk_i => etherbone_src_out,
+
+      btn1_i => '0',
+      btn2_i => '0',
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
@@ -789,7 +706,7 @@ begin
       tm_utc_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
 
-      rst_aux_n_o => open,
+      rst_aux_n_o => etherbone_rst_n,
       pps_p_o     => pps
       );
 
@@ -827,15 +744,30 @@ begin
       dac_sdata_o   => pll25dac_din_o,
       xdone_o       => open);
 
+  U_Etherbone : EB_CORE
+    generic map (
+      g_sdb_address => f_resize_slv(c_sdb_address, 64))
+    port map (
+      clk_i       => clk_sys,
+      nRst_i      => etherbone_rst_n,
+      src_o       => etherbone_src_out,
+      src_i       => etherbone_src_in,
+      snk_o       => etherbone_snk_out,
+      snk_i       => etherbone_snk_in,
+      cfg_slave_o => etherbone_cfg_out,
+      cfg_slave_i => etherbone_cfg_in,
+      master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
+      master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
 
   
-  U_Intercon : xwb_crossbar
+  U_Intercon : xwb_sdb_crossbar
     generic map (
       g_num_masters => c_NUM_WB_SLAVES,
       g_num_slaves  => c_NUM_WB_MASTERS,
       g_registered  => true,
-      g_address     => c_cnx_base_addr,
-      g_mask        => c_cnx_base_mask)
+      g_wraparound  => true,
+      g_layout      => c_INTERCONNECT_LAYOUT,
+      g_sdb_addr    => c_SDB_ADDRESS)
     port map (
       clk_sys_i => clk_sys,
       rst_n_i   => local_reset_n,
@@ -848,6 +780,8 @@ begin
 
     U_GTP : wr_gtp_phy_spartan6
       generic map (
+        g_enable_ch0 => 0,
+        g_enable_ch1 => 1,
         g_simulation => g_simulation)
       port map (
         gtp_clk_i          => clk_125m_gtp,
@@ -886,9 +820,6 @@ begin
         pad_rxp1_i         => sfp_rxp_i);
 
   end generate gen_with_phy;
-
-  cnx_slave_in(c_MASTER_ETHERBONE).cyc <= '0';
-
 
 -------------------------------------------------------------------------------
 -- FINE DELAY 0 INSTANTIATION
@@ -993,8 +924,8 @@ begin
 
   cnx_master_in(c_SLAVE_FD0).err <= '0';
   cnx_master_in(c_SLAVE_FD0).rty <= '0';
-  
-  
+
+
 -- tristate buffer for the TDC data bus:
   fd0_tdc_d_b    <= tdc0_data_out when tdc0_data_oe = '1' else (others => 'Z');
   fd0_tdc_oe_n_o <= '1';

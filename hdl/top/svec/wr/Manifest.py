@@ -1,9 +1,10 @@
-files = [ "svec_top.vhd", "svec_top.ucf", "xvme64x_core.vhd", "spec_serial_dac.vhd" ]
+files = [ "svec_top.vhd", "svec_top.ucf", "xvme64x_core.vhd" ]
 
 fetchto = "../../../ip_cores"
 
 modules = {
-    "local" : ["../../../rtl", "../../../platform", "../../../ip_cores/vme64x-core" ],
-    "git" : [ "git://ohwr.org/hdl-core-lib/wr-cores.git::wishbonized" ]
- #   "svn" : [ "http://svn.ohwr.org/vme64x-core/trunk/hdl/vme64x-core/rtl" ]
+    "local" : ["../../../rtl", "../../../platform" ],
+    "git" : [ "git://ohwr.org/hdl-core-lib/wr-cores.git",
+    					"git://ohwr.org/hdl-core-lib/etherbone-core.git" ],
+    "svn" : [ "http://svn.ohwr.org/vme64x-core/trunk/hdl/vme64x-core/rtl" ]
     }

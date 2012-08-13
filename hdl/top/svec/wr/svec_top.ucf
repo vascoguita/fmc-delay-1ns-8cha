@@ -360,8 +360,8 @@ NET "fd1_clk_ref_p_i" TNM_NET = fd1_clk_ref_p_i;
 TIMESPEC TS_fd1_clk_ref_p_i = PERIOD "fd1_clk_ref_p_i" 8 ns HIGH 50%;
 NET "fd1_clk_ref_n_i" TNM_NET = fd1_clk_ref_n_i;
 TIMESPEC TS_fd1_clk_ref_n_i = PERIOD "fd1_clk_ref_n_i" 8 ns HIGH 50%;
-NET "gen_with_phy.U_GTP/ch0_gtp_clkout_int<1>" TNM_NET = gen_with_phy.U_GTP/ch0_gtp_clkout_int<1>;
-TIMESPEC TS_gen_with_phy_U_GTP_ch0_gtp_clkout_int_1_ = PERIOD "gen_with_phy.U_GTP/ch0_gtp_clkout_int<1>" 8 ns HIGH 50%;
+#NET "gen_with_phy.U_GTP/ch0_gtp_clkout_int<1>" TNM_NET = gen_with_phy.U_GTP/ch0_gtp_clkout_int<1>;
+#TIMESPEC TS_gen_with_phy_U_GTP_ch0_gtp_clkout_int_1_ = PERIOD "gen_with_phy.U_GTP/ch0_gtp_clkout_int<1>" 8 ns HIGH 50%;
 NET "gen_with_phy.U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = gen_with_phy.U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_gen_with_phy_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "gen_with_phy.U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
 
