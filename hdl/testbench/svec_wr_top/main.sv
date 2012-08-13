@@ -1,8 +1,49 @@
 `include "vme64x_bfm.svh"
 `include "svec_vme_buffers.svh"
 
-`include "regs/fd_main_regs.vh"
-`include "regs/fd_channel_regs.vh"
+`include "fdelay_board.svh"
+`include "simdrv_fine_delay.svh"
+
+
+module delay_meas(input enable, input a, input b);
+
+   mailbox tag_a, tag_b;
+
+   event   q_notempty;
+   
+   initial begin
+      tag_a = new(1024);
+      tag_b = new(1024);
+   end
+
+   always@(posedge a) begin
+      if(enable) tag_a.put($time);
+   end
+   
+   always@(posedge b) begin
+      if(enable) tag_b.put($time);
+   end
+   
+   
+
+   initial forever begin
+      wait(tag_a.num() > 0 && tag_b.num() > 0);
+      
+      while(tag_a.num() > 0 && tag_b.num() > 0)
+        begin
+           longint ta, tb, delta;
+           
+           tag_a.get(ta);
+           tag_b.get(tb);
+
+           delta = tb - ta;
+
+           $display("Delay: %.3f ns",  real'(delta) / real'(1ns) );
+        end
+   end
+endmodule // delay_meas
+
+
 
 module main;
 
@@ -17,6 +58,7 @@ module main;
       rst_n = 1;
    end
 
+   IFineDelayFMC I_fmc0(), I_fmc1();
    
    IVME64X VME(rst_n);
 
@@ -31,42 +73,85 @@ module main;
 		 .clk_125m_gtp_p_i(clk_125m),
 		 .clk_125m_gtp_n_i(~clk_125m),
 		 .clk_20m_vcxo_i(clk_20m),
-                 .fd0_clk_ref_p_i(clk_125m),
-                 .fd0_clk_ref_n_i(~clk_125m),
-                 .fd1_clk_ref_p_i(clk_125m),
-                 .fd1_clk_ref_n_i(~clk_125m),
+                
 		 .rst_n_i(rst_n),
                  
-		 `WIRE_VME_PINS(8)
+		 `WIRE_VME_PINS(8),
+                 `WIRE_FINE_DELAY_PINS(0, I_fmc0),
+                 `WIRE_FINE_DELAY_PINS(1, I_fmc1)
 	         );
+
+   wire trig0, trig1;
+   wire [3:0] out0, out1;
+   reg        pulse_enable = 0;
+   
+   
+   random_pulse_gen
+     #(
+       .g_pulse_width  (50ns),
+       .g_min_spacing  (1001ns),
+       .g_max_spacing  (1001.1ns))
+   U_Gen0
+     (
+      .enable_i(pulse_enable),
+      .pulse_o(trig0)
+      );
+   
+   fdelay_board U_Board0 
+     (
+      .trig_i(trig0),
+      .out_o(out0),
+      .fmc(I_fmc0.board)
+      );
+
+  delay_meas U_DMeas0 (pulse_enable, trig0, out0[0]);
+   
+   task automatic init_vme64x_core(ref CBusAccessor_VME64x acc);
+      /* map func0 to 0x80000000, A32 */
+      acc.write('h7ff63, 'h80, A32|CR_CSR|D08Byte3);
+      acc.write('h7ff67, 0, CR_CSR|A32|D08Byte3);
+      acc.write('h7ff6b, 0, CR_CSR|A32|D08Byte3);
+      acc.write('h7ff6f, 36, CR_CSR|A32|D08Byte3);
+      acc.write('h7ff33, 1, CR_CSR|A32|D08Byte3);
+      acc.write('h7fffb, 'h10, CR_CSR|A32|D08Byte3); /* enable module (BIT_SET = 0x10) */
+
+   endtask // init_vme64x_core
    
    initial begin
-      uint64_t d, abuf[16], dbuf[16];
-      
-      int i, result;
-      
       CBusAccessor_VME64x acc = new(VME.master);
-
+      CBusAccessor acc_casted = CBusAccessor'(acc);
+      Timestamp dly;
+      
+      CSimDrv_FineDelay drv0;
+      uint64_t d;
+      
       #20us;
 
-      acc.read('h40004, d, A32|SINGLE|D32);
-      $display("IDR0: %x\n", d);
-      acc.write('h40000 + `ADDR_FD_RSTR, 'hdeadffff, A32|SINGLE|D32); /* Un-reset the card */
-      #10us;
+      init_vme64x_core(acc);
+      acc_casted.set_default_xfer_size(A32|SINGLE|D32);
       
-      acc.write('h40100, 'hdeadbeef, A32|SINGLE|D32);
+      drv0 = new(acc, 'h40000);
+      drv0.init();
 
-      acc.read('h50004, d, A32|SINGLE|D32);
-      $display("IDR1: %x\n", d);
-      acc.write('h50000 + `ADDR_FD_RSTR, 'hdeadffff, A32|SINGLE|D32); /* Un-reset the card */
-      #10us;
+      dly=new;
+      dly.from_ps(600000);
+      drv0.config_output(0, CSimDrv_FineDelay::DELAY, 1, dly, 200000);
       
-      acc.write('h50100, 'hdeadbeef, A32|SINGLE|D32);
-      
-      
-      
-      
-      
+      $display("Init done");
+
+      pulse_enable = 1;
+
+      forever begin
+         drv0.rbuf_update();
+
+         if(drv0.poll())
+           begin
+              Timestamp ts;
+              ts = drv0.get();
+             // $display("TS: %.3f", ts.flatten());
+           end
+         #1us;
+      end
    end
 
   
