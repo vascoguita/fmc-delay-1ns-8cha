@@ -74,6 +74,9 @@ module acam_model
 
    task master_reset;
       int i;
+
+      if(g_verbose) $display("Acam::MasterReset");
+      
       
       q_start             = new(16384);
       q_stop1             = new(16384);
@@ -119,7 +122,7 @@ module acam_model
 
    always@(posedge DStart) 
      if(PuResN && !StartDis && !start_disabled_int) begin
-	if(g_verbose)$display("acam::start %d", t);
+//	if(g_verbose)$display("acam::start %d", t);
 	q_start.put(t);
 	start_disabled_int <= r_StartDisStart;
 	
@@ -127,7 +130,7 @@ module acam_model
 
    always@(posedge DStop1) 
      if(PuResN && !StopDis[1]) begin
-		if(g_verbose)$display("acam::stop1 %d", t);
+	if(g_verbose)$display("acam::stop1 %d", t);
 	q_stop1.put(t);
      end
    
@@ -140,7 +143,7 @@ module acam_model
    
    always@(negedge RDN) if (!CSN && WRN)
      begin
-		if(g_verbose)$display("acam::read reg %x val %x\n", Adr, RB[Adr]);     
+	if(g_verbose)$display("acam::read reg %x val %x\n", Adr, RB[Adr]);     
 	if(Adr == 8) begin
 	   int hit;
 	   
@@ -157,48 +160,47 @@ module acam_model
       for (i=0;i<14;i++) RB[i] <= 0;
    end
 
-   assign D  = (!OEN)?DQ:28'bz;
+   assign D  = (!CSN && !RDN)?DQ:28'bz;
+
    
-   initial forever
+   
+
+   
+   always@(posedge RefClk)
      begin
+ 
 	int t_start, t_stop1, n_starts, tmp, hit;
 
-	#1;
+        if(q_stop1.num() > 0)
+          begin
+	     q_stop1.get(t_stop1);
 
-	q_stop1.get(t_stop1);
+	     while(q_start.num() > 0) begin
+	        q_start.peek(t_start);
+	        
+	        if(t_start < t_stop1)
+	          begin
+		     q_start.get(tmp);
+	          end 
+	        else 
+	          break;
+	     end
+	     if(t_stop1 - t_start > 3780)
+	       hit  =  (t_stop1 - t_start) - (128ns/g_rmode_resolution) + rmode_start_offset * 3;
+	     else
+	       hit  = t_stop1 - t_start + rmode_start_offset * 3;
+
+	     if(g_verbose)$display("acam::hit1 %d t_stop1 %d t_start %d", hit, t_stop1, t_start);
 	
-
-	while(q_start.num() > 0) begin
-	   q_start.peek(t_start);
-	   
-	   if(t_start < t_stop1)
-	     begin
-		q_start.get(tmp);
-	     end 
-	   else 
-	     break;
-	   end
-
-
-
-	if(t_stop1 - t_start > 3780)
-	  hit  =  (t_stop1 - t_start) - (128ns/g_rmode_resolution) + rmode_start_offset * 3;
-	else
-	  hit  = t_stop1 - t_start + rmode_start_offset * 3;
-
+	     if(q_hit.num() == 0) begin
+	        #(c_empty_flag_delay);
+	     end
 	
-	if(g_verbose)$display("acam::hit1 %d t_stop1 %d t_start %d", hit, t_stop1, t_start);
-	
-	if(q_hit.num() == 0) begin
-	  #(c_empty_flag_delay);
-	end
-
-	
-	q_hit.put(hit);
-
-	end 
-
-
+	     q_hit.put(hit);
+	  end // if (q_stop1.num() > 0)
+     end // always@ (posedge RefClk)
+   
+   
    reg fifo_empty     =1;
    reg fifo_notempty  = 0;
    

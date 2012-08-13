@@ -25,7 +25,7 @@ module random_pulse_gen
 	  
        end else begin
 	  pulse_o <= 1'b0;
-	  #1;
+	  @(posedge enable_i);
        end
    
 endmodule // random_pulse_gen

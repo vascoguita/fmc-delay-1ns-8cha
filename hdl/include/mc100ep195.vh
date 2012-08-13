@@ -18,9 +18,12 @@ module mc100ep195
    assign o     = o_reg;
    
 
-   always@(len)
-     if(!len)
-       cur_dly <= delay;
+   always@(posedge len)
+     begin
+        cur_dly <= delay;
+     end
+   
+   
 
    always@(i)
      o_reg         <= #(c_min_delay +  cur_dly * c_time_per_tap) i;

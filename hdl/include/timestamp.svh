@@ -21,6 +21,11 @@ class Timestamp;
       return real'(utc) * real'(coarse_range * 8) + real'(coarse) * 8.0 + (real'(frac)/4096.0 * 8.0);
    endfunction // flatten
 
+   task from_ps(int x);
+      unflatten(uint64_t'(x) * 4096 / 8000);
+   endtask // from_ps
+   
+   
    task unflatten(int x);
       int t;
       t       =x;
