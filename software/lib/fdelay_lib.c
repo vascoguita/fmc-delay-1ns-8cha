@@ -919,12 +919,12 @@ int fdelay_init(fdelay_device_t *dev, int init_flags)
       hw->calib.zero_offset[i] = 50000;
   }
 
-
   /* Reset the FMC hardware. */
   fd_do_reset(dev, FD_RESET_HW);
 
   /* Initialize the clock system - AD9516 PLL */
   oc_spi_init(dev);
+
   if(sgpio_init(dev) < 0)
     return -1;
 
@@ -1445,11 +1445,11 @@ int fdelay_configure_sync(fdelay_device_t *dev, int mode)
 
 	if(mode == FDELAY_SYNC_LOCAL)
 	{
-//	 	fd_writel(0, FD_REG_GCR);
+	 	fd_writel(0, FD_REG_GCR);
 	 	fd_writel(0, FD_REG_TCR);
 	 	hw->wr_enabled = 0;
 	} else {
-//	 	fd_writel(0, FD_REG_GCR);
+	 	fd_writel(0, FD_REG_GCR);
 	 	fd_writel(FD_TCR_WR_ENABLE, FD_REG_TCR);
 	 	hw->wr_enabled = 1;
 	}
@@ -1459,13 +1459,11 @@ int fdelay_check_sync(fdelay_device_t *dev)
 {   
 	fd_decl_private(dev)
 
-//	fprintf(stderr, "TCR %x\n", fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED);
-
     if(hw->wr_enabled && (fd_readl(FD_REG_TCR) & FD_TCR_WR_LOCKED))
     {
-		fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_ISR);
-		fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_IER);
-    	return 1;
+			fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_ISR);
+			fd_writel(FD_EIC_ISR_SYNC_STATUS, FD_REG_EIC_IER);
+    		return 1;
     } else if (!hw->wr_enabled)
     	return 1;
     

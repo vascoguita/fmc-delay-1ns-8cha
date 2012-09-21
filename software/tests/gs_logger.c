@@ -44,7 +44,7 @@ struct board_def {
 	int term_on;
 	int64_t input_offset;
 	int64_t output_offset;
-	int hw_index;
+	char *location;
 	int in_use;
 	int fd;
 	int prev_seq;
@@ -60,7 +60,7 @@ struct board_def boards[MAX_BOARDS];
 
 static FILE *log_file = NULL;
 
-void log_write(fdelay_time_t *t, int card_id)
+void log_write(fdelay_time_t *t, const char *location)
 {
 	struct binary_timestamp bt;
 	if(!log_file)
@@ -71,7 +71,7 @@ void log_write(fdelay_time_t *t, int card_id)
 	bt.ts.seq_id = t->seq_id;
 	bt.ts.channel = 0;
 	bt.type = TYPE_TIMESTAMP;
-	bt.card_id = card_id;
+	bt.card_id = 0; //card_id; // fixme: hash location string?
 	fwrite(&bt, sizeof(struct binary_timestamp), 1, log_file);
 	fflush(log_file);
 }
@@ -216,10 +216,10 @@ void load_config(const char *config_file)
 		
 
 
-		if(!strcmp(cmd, "hw_index"))
+		if(!strcmp(cmd, "location"))
 		{
-			CUR.hw_index = parse_num(args[0]);
-			printf("Adding board %d, hw_index %x\n", current_board, CUR.hw_index);
+			CUR.location = strdup(args[0]);
+			printf("Adding board %d, location %s\n", current_board, CUR.location);
 		
 		}
 			
@@ -261,13 +261,12 @@ void load_config(const char *config_file)
 #undef CUR
 
 
-void enable_wr(fdelay_device_t *b, int index)
+void enable_wr(fdelay_device_t *b)
 {
 	int lock_retries = 50;
-	printf("Locking to WR network [board=%d]...", index);
+	printf("Locking to WR network ...");
 	fflush(stdout);
-	fdelay_configure_sync(b, FDELAY_SYNC_LOCAL);
-/*	sleep(2);
+
 	fdelay_configure_sync(b, FDELAY_SYNC_WR);
 
 	while(fdelay_check_sync(b) <= 0)
@@ -283,7 +282,7 @@ void enable_wr(fdelay_device_t *b, int index)
 	}
 
 	printf("\n");
-	fflush(stdout);*/
+	fflush(stdout);
 }
 
 /* Add two timestamps */
@@ -313,22 +312,22 @@ int configure_board(struct board_def *bdef)
 	
 
 	
-	if(spec_fdelay_create_bd(b, bdef->hw_index >>8, bdef->hw_index & 0xff, 0x80000) < 0)
+	if(fdelay_probe(b, bdef->location) < 0)
 	{
-		fprintf(stderr,"Can't open fdelay board @ hw_index %x\n", bdef->hw_index);
+		fprintf(stderr,"Can't open fdelay board @ %s\n", bdef->location);
 		exit(-1);
 	}
 
 	if(fdelay_init(b, 0) < 0)
 	{
-		fprintf(stderr,"Can't initialize fdelay board @ hw_index %x\n", bdef->hw_index);
+		fprintf(stderr,"Can't initialize fdelay board @ %s\n", bdef->location);
 		exit(-1);
 	}
 	
 	bdef->b = b;
 
 	fdelay_configure_trigger(bdef->b, 0, bdef->term_on);	
-	enable_wr(b, bdef->hw_index);
+	enable_wr(b);
 
 	int val = bdef->input_offset;
 //	fdelay_sysfs_set((struct __fdelay_board *)b, "fd-input/user-offset", (uint32_t *)&val);
@@ -431,9 +430,9 @@ void handle_readout(struct board_def *bdef)
     {	    
 
 		t_ps = (t.coarse * 8000LL) + ((t.frac * 8000LL) >> 12);
-		printf("card 0x%04x, seq %5i: time %lli s, %lli.%03lli ns [count %d] ",  bdef->hw_index, t.seq_id, t.utc, t_ps / 1000LL, t_ps % 1000LL, (t.raw.tsbcr >> 10) & 0x3ff);
+		printf("card %s, seq %5i: time %lli s, %lli.%03lli ns [count %d] ", bdef->location, t.seq_id, t.utc, t_ps / 1000LL, t_ps % 1000LL, (t.raw.tsbcr >> 10) & 0x3ff);
 	//	printf("raw utc=%lld coarse=%d startoffs=%d suboffs=%d frac=%d [%x]\n", t.raw.utc, t.raw.coarse, t.raw.start_offset, t.raw.subcycle_offset, t.raw.frac- 30000, t.raw.frac);
-		log_write(&t, bdef->hw_index);
+		log_write(&t, bdef->location);
 	
 		if(((bdef->prev_seq + 1) & 0xffff) != (t.seq_id & 0xffff))
 		{

@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 
 import sys
 import PyQt4
@@ -70,11 +70,7 @@ def on_chk_wr():
 if __name__ == "__main__":
 	import os,sys
 	
-	if(os.getuid() != 0):
-	    print("Sorry, I must be run as root...");
-	    sys.exit(-1)
-	
-	card = FineDelay()
+	card = FineDelay(sys.argv[1])
 
 	app = QApplication(sys.argv)
 	
