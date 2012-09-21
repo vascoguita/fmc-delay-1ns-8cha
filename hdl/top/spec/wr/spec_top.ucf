@@ -363,13 +363,7 @@ TIMESPEC TS_clk_125m_pllref_p_i = PERIOD "clk_125m_pllref_p_i" 8 ns HIGH 50%;
 NET "clk_125m_pllref_n_i" TNM_NET = clk_125m_pllref_n_i;
 TIMESPEC TS_clk_125m_pllref_n_i = PERIOD "clk_125m_pllref_n_i" 8 ns HIGH 50%;
 
-PIN "U_GTP/U_Rbclk_bufg_ch1.O" CLOCK_DEDICATED_ROUTE = FALSE;
-#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/06/09
-NET "U_GTP/ch0_gtp_clkout_int<1>" TNM_NET = U_GTP/ch0_gtp_clkout_int<1>;
-TIMESPEC TS_U_GTP_ch0_gtp_clkout_int_1_ = PERIOD "U_GTP/ch0_gtp_clkout_int<1>" 8 ns HIGH 50%;
-NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
-TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
- PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
+PIN "cmp_clk_dmtd_buf.O" CLOCK_DEDICATED_ROUTE = FALSE; 
 
 NET "fd_clk_ref_n_i" TNM_NET = fd_clk_ref_n_i;
 TIMESPEC TS_fd_clk_ref_n_i = PERIOD "fd_clk_ref_n_i" 8 ns HIGH 50%;
@@ -382,8 +376,6 @@ TIMESPEC TS_clk_20m_vcxo_i = PERIOD "clk_20m_vcxo_i" 50 ns HIGH 50%;
 TIMESPEC ts_ignore_crossclock = FROM "clk_sys" TO "fd_clk_ref_p_i" 10ns DATAPATHONLY;
 TIMESPEC ts_ignore_crossclock2 = FROM "fd_clk_ref_p_i" TO "clk_sys" 10ns  DATAPATHONLY;
 #bank 0
-#PIN "U_GTP/gen2.refbufg_ch1.O" CLOCK_DEDICATED_ROUTE = FALSE;
-#PIN "U_GTP/gen2.refbufg_ch1.O" CLOCK_DEDICATED_ROUTE = FALSE;
 #gennum
 NET "l_rst_n" TIG;
 NET "cmp_gn4124_core/rst_*" TIG;

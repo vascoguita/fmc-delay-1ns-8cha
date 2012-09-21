@@ -1,4 +1,42 @@
-
+-------------------------------------------------------------------------------
+-- Title      : Fine Delay FMC SPEC (Simple PCI-Express FMC Carrier) top level
+-- Project    : Fine Delay FMC (fmc-delay-1ns-4cha)
+-------------------------------------------------------------------------------
+-- File       : spec_top.vhd
+-- Author     : Tomasz Wlostowski
+-- Company    : CERN
+-- Created    : 2011-08-24
+-- Last update: 2012-08-21
+-- Platform   : FPGA-generic
+-- Standard   : VHDL'93
+-------------------------------------------------------------------------------
+-- Description: Top level for the SPEC 1.1 (and later releases) cards with
+-- one Fine Delay FMCs.
+-- Supports:
+-- - SDB enumeration (SDB descriptor at 0x00000)
+-- - White Rabbit and Etherbone
+-- - Interrupts
+-------------------------------------------------------------------------------
+--
+-- Copyright (c) 2011 - 2012 CERN / BE-CO-HT
+--
+-- This source file is free software; you can redistribute it   
+-- and/or modify it under the terms of the GNU Lesser General   
+-- Public License as published by the Free Software Foundation; 
+-- either version 2.1 of the License, or (at your option) any   
+-- later version.                                               
+--
+-- This source is distributed in the hope that it will be       
+-- useful, but WITHOUT ANY WARRANTY; without even the implied   
+-- warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      
+-- PURPOSE.  See the GNU Lesser General Public License for more 
+-- details.                                                     
+--
+-- You should have received a copy of the GNU Lesser General    
+-- Public License along with this source; if not, download it   
+-- from http://www.gnu.org/licenses/lgpl-2.1.html
+--
+-------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.all;
 use IEEE.NUMERIC_STD.all;
@@ -9,6 +47,8 @@ use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
+use work.etherbone_pkg.all;
+use work.wr_xilinx_pkg.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -160,126 +200,6 @@ end spec_top;
 architecture rtl of spec_top is
 
 
-  component wr_gtp_phy_spartan6
-    generic (
-      g_simulation         : integer);
-    port (
-      gtp_clk_i : in std_logic;
-      ch0_ref_clk_i      : in  std_logic;
-      ch0_tx_data_i      : in  std_logic_vector(7 downto 0);
-      ch0_tx_k_i         : in  std_logic;
-      ch0_tx_disparity_o : out std_logic;
-      ch0_tx_enc_err_o   : out std_logic;
-      ch0_rx_rbclk_o     : out std_logic;
-      ch0_rx_data_o      : out std_logic_vector(7 downto 0);
-      ch0_rx_k_o         : out std_logic;
-      ch0_rx_enc_err_o   : out std_logic;
-      ch0_rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      ch0_rst_i          : in  std_logic;
-      ch0_loopen_i       : in  std_logic;
-      ch1_ref_clk_i      : in  std_logic;
-      ch1_tx_data_i      : in  std_logic_vector(7 downto 0) := "00000000";
-      ch1_tx_k_i         : in  std_logic                    := '0';
-      ch1_tx_disparity_o : out std_logic;
-      ch1_tx_enc_err_o   : out std_logic;
-      ch1_rx_data_o      : out std_logic_vector(7 downto 0);
-      ch1_rx_rbclk_o     : out std_logic;
-      ch1_rx_k_o         : out std_logic;
-      ch1_rx_enc_err_o   : out std_logic;
-      ch1_rx_bitslide_o  : out std_logic_vector(3 downto 0);
-      ch1_rst_i          : in  std_logic                    := '0';
-      ch1_loopen_i       : in  std_logic                    := '0';
-      pad_txn0_o         : out std_logic;
-      pad_txp0_o         : out std_logic;
-      pad_rxn0_i         : in  std_logic                    := '0';
-      pad_rxp0_i         : in  std_logic                    := '0';
-      pad_txn1_o         : out std_logic;
-      pad_txp1_o         : out std_logic;
-      pad_rxn1_i         : in  std_logic                    := '0';
-      pad_rxp1_i         : in  std_logic                    := '0');
-  end component;
-
-  component xwr_core is
-    generic(
-      g_simulation                : integer                        := 0;
-      g_phys_uart                 : boolean                        := true;
-      g_virtual_uart              : boolean                        := false;
-      g_with_external_clock_input : boolean                        := false;
-      g_aux_clks                  : integer                        := 1;
-      g_ep_rxbuf_size             : integer                        := 1024;
-      g_dpram_initf               : string                         := "wrc_stub.ram";
-      g_dpram_size                : integer                        := 16384;  --in 32-bit words
-      g_interface_mode            : t_wishbone_interface_mode      := PIPELINED;
-      g_address_granularity       : t_wishbone_address_granularity := BYTE
-      );
-    port(
-      clk_sys_i  : in std_logic;
-      clk_dmtd_i : in std_logic;
-      clk_ref_i  : in std_logic;
-      clk_aux_i  : in std_logic_vector(g_aux_clks-1 downto 0) := (others => '0');
-      rst_n_i    : in std_logic;
-
-      dac_hpll_load_p1_o : out std_logic;
-      dac_hpll_data_o    : out std_logic_vector(15 downto 0);
-      dac_dpll_load_p1_o : out std_logic;
-      dac_dpll_data_o    : out std_logic_vector(15 downto 0);
-
-      phy_ref_clk_i      : in  std_logic;
-      phy_tx_data_o      : out std_logic_vector(7 downto 0);
-      phy_tx_k_o         : out std_logic;
-      phy_tx_disparity_i : in  std_logic;
-      phy_tx_enc_err_i   : in  std_logic;
-      phy_rx_data_i      : in  std_logic_vector(7 downto 0);
-      phy_rx_rbclk_i     : in  std_logic;
-      phy_rx_k_i         : in  std_logic;
-      phy_rx_enc_err_i   : in  std_logic;
-      phy_rx_bitslide_i  : in  std_logic_vector(3 downto 0);
-      phy_rst_o          : out std_logic;
-      phy_loopen_o       : out std_logic;
-
-      led_red_o   : out std_logic;
-      led_green_o : out std_logic;
-      scl_o       : out std_logic;
-      scl_i       : in  std_logic;
-      sda_o       : out std_logic;
-      sda_i       : in  std_logic;
-      sfp_scl_o   : out std_logic;
-      sfp_scl_i   : in  std_logic;
-      sfp_sda_o   : out std_logic;
-      sfp_sda_i   : in  std_logic;
-      sfp_det_i   : in  std_logic;
-      btn1_i      : in  std_logic := '1';
-      btn2_i      : in  std_logic := '1';
-
-      uart_rxd_i : in  std_logic;
-      uart_txd_o : out std_logic;
-
-      owr_en_o : out std_logic_vector(1 downto 0);
-      owr_i    : in  std_logic_vector(1 downto 0);
-
-      wrf_src_o : out t_wrf_source_out;
-      wrf_src_i : in  t_wrf_source_in := c_dummy_src_in;
-      wrf_snk_o : out t_wrf_sink_out;
-      wrf_snk_i : in  t_wrf_sink_in   := c_dummy_snk_in;
-
-      slave_i : in  t_wishbone_slave_in;
-      slave_o : out t_wishbone_slave_out;
-
-      tm_link_up_o         : out std_logic;
-      tm_dac_value_o       : out std_logic_vector(23 downto 0);
-      tm_dac_wr_o          : out std_logic;
-      tm_clk_aux_lock_en_i : in  std_logic;
-      tm_clk_aux_locked_o  : out std_logic;
-      tm_time_valid_o      : out std_logic;
-      tm_utc_o             : out std_logic_vector(39 downto 0);
-      tm_cycles_o          : out std_logic_vector(27 downto 0);
-      pps_p_o              : out std_logic;
-
-      rst_aux_n_o : out std_logic
-      );
-  end component;
-
-
   component spec_serial_dac_arb
     generic(
       g_invert_sclk    : boolean;
@@ -297,21 +217,6 @@ architecture rtl of spec_top is
       dac_din_o   : out std_logic);
   end component;
 
-  component xmini_bone
-    generic (
-      g_class_mask    : std_logic_vector(7 downto 0);
-      g_our_ethertype : std_logic_vector(15 downto 0));
-    port (
-      clk_sys_i : in  std_logic;
-      rst_n_i   : in  std_logic;
-      src_o     : out t_wrf_source_out;
-      src_i     : in  t_wrf_source_in;
-      snk_o     : out t_wrf_sink_out;
-      snk_i     : in  t_wrf_sink_in;
-      master_o  : out t_wishbone_master_out;
-      master_i  : in  t_wishbone_master_in);
-  end component;
-
   component fd_ddr_pll
     port (
       RST       : in  std_logic;
@@ -322,7 +227,28 @@ architecture rtl of spec_top is
       CLK_OUT2  : out std_logic);
   end component;
 
-  -- SPI
+  component spec_reset_gen
+    port (
+      clk_sys_i        : in  std_logic;
+      rst_pcie_n_a_i   : in  std_logic;
+      rst_button_n_a_i : in  std_logic;
+      rst_n_o          : out std_logic);
+  end component;
+
+  function f_resize_slv (x : std_logic_vector; len : integer) return std_logic_vector is
+    variable tmp : std_logic_vector(len-1 downto 0);
+  begin
+    if(len > x'length) then
+      tmp(x'length-1 downto 0)   := x;
+      tmp(len-1 downto x'length) := (others => '0');
+    elsif(len < x'length) then
+      tmp := x(len-1 downto 0);
+    else
+      tmp := x;
+    end if;
+    return tmp;
+  end f_resize_slv;
+
 
   signal pllout_clk_sys       : std_logic;
   signal pllout_clk_dmtd      : std_logic;
@@ -353,37 +279,26 @@ architecture rtl of spec_top is
   signal phy_loopen       : std_logic;
 
   signal local_reset_n : std_logic;
-  signal mbone_rst_n   : std_logic;
-
-  signal mbone_src_out : t_wrf_source_out;
-  signal mbone_src_in  : t_wrf_source_in;
-  signal mbone_snk_out : t_wrf_sink_out;
-  signal mbone_snk_in  : t_wrf_sink_in;
-
-  signal mbone_wb_out : t_wishbone_master_out;
-  signal mbone_wb_in  : t_wishbone_master_in;
 
   constant c_NUM_WB_MASTERS : integer := 2;
   constant c_NUM_WB_SLAVES  : integer := 2;
 
-  constant c_MASTER_GENNUM   : integer := 0;
-  constant c_MASTER_MINIBONE : integer := 1;
+  constant c_MASTER_GENNUM    : integer := 0;
+  constant c_MASTER_ETHERBONE : integer := 1;
 
   constant c_SLAVE_FD     : integer := 0;
   constant c_SLAVE_WRCORE : integer := 1;
 
-  constant c_cnx_base_addr : t_wishbone_address_array(c_NUM_WB_SLAVES-1 downto 0) :=
-    (c_SLAVE_FD     => x"00080000",
-     c_SLAVE_WRCORE => x"000c0000"
-     );
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
 
-  constant c_cnx_base_mask : t_wishbone_address_array(c_NUM_WB_SLAVES-1 downto 0) :=
-    (c_SLAVE_FD     => x"000c0000",
-     c_SLAVE_WRCORE => x"000c0000"
-     );
+  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
+    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"000c0000"),
+     c_SLAVE_FD     => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00080000"));
 
-  signal cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
-  signal cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
+  constant c_SDB_ADDRESS  : t_wishbone_address := x"00000000";
+
+  signal   cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
+  signal   cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
 
   signal cnx_slave_out : t_wishbone_slave_out_array(c_NUM_WB_SLAVES-1 downto 0);
   signal cnx_slave_in  : t_wishbone_slave_in_array(c_NUM_WB_SLAVES-1 downto 0);
@@ -426,66 +341,27 @@ architecture rtl of spec_top is
     end if;
   end f_int2bool;
 
-  signal l_rst_n_synced : std_logic;
+  signal etherbone_rst_n   : std_logic;
+  signal etherbone_src_out : t_wrf_source_out;
+  signal etherbone_src_in  : t_wrf_source_in;
+  signal etherbone_snk_out : t_wrf_sink_out;
+  signal etherbone_snk_in  : t_wrf_sink_in;
+  signal etherbone_cfg_in  : t_wishbone_slave_in;
+  signal etherbone_cfg_out : t_wishbone_slave_out;
 
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
+  attribute buffer_type                    : string;  --" {bufgdll | ibufg | bufgp | ibuf | bufr | none}";
+  attribute buffer_type of clk_125m_pllref : signal is "BUFG";
 
-  component chipscope_icon
-     port (
-       CONTROL0 : inout std_logic_vector (35 downto 0));
-   end component;
-
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
-
-  
 begin
 
-  --chipscope_ila_1 : chipscope_ila
-  --  port map (
-  --    CONTROL => CONTROL,
-  --    CLK     => clk_125m_pllref,
-  --    TRIG0   => TRIG0,
-  --    TRIG1   => TRIG1,
-  --    TRIG2   => TRIG2,
-  --    TRIG3   => TRIG3);
-
-  --chipscope_icon_1 : chipscope_icon
-  --  port map (
-  --    CONTROL0 => CONTROL);
-
-  
-  U_Sync_Reset : gc_sync_ffs
+  U_Reset_Generator : spec_reset_gen
     port map (
-      rst_n_i  => '1',
-      data_i   => L_RST_N,
-      synced_o => l_rst_n_synced,
-      clk_i    => clk_sys);
+      clk_sys_i        => clk_sys,
+      rst_pcie_n_a_i   => l_rst_n,
+      rst_button_n_a_i => button1_i,
+      rst_n_o          => local_reset_n);
 
-  process(clk_sys, L_RST_N)
-  begin
-    if L_RST_N = '0' then
-      local_reset_n <= '0';
-    elsif rising_edge(clk_sys) then
-      local_reset_n <= l_rst_n_synced;
-    end if;
-  end process;
-
-
-
-  U_Buf_CLK_PLL : IBUFDS
+  U_Buf_CLK_PLL : IBUFGDS
     generic map (
       DIFF_TERM    => true,
       IBUF_LOW_PWR => true  -- Low power (TRUE) vs. performance (FALSE) setting for referenced
@@ -548,7 +424,7 @@ begin
       DIVCLK_DIVIDE      => 1,
       CLKFBOUT_MULT      => 50,
       CLKFBOUT_PHASE     => 0.000,
-      CLKOUT0_DIVIDE     => 16,          -- 62.5 MHz
+      CLKOUT0_DIVIDE     => 16,         -- 62.5 MHz
       CLKOUT0_PHASE      => 0.000,
       CLKOUT0_DUTY_CYCLE => 0.500,
       CLKOUT1_DIVIDE     => 16,         -- 62.5 MHz
@@ -667,21 +543,6 @@ begin
       dma_reg_we_i  => '0'
       );
 
-  --TRIG0    <= cnx_slave_in(c_MASTER_GENNUM).adr;
-  --TRIG1    <= cnx_slave_in(c_MASTER_GENNUM).dat;
-  --trig2(0) <= cnx_slave_in(c_MASTER_GENNUM).cyc;
-  --trig2(1) <= cnx_slave_in(c_MASTER_GENNUM).stb;
-  --trig2(3) <= cnx_slave_in(c_MASTER_GENNUM).we;
-  --trig2(4) <= cnx_slave_out(c_MASTER_GENNUM).ack;
-  --trig2(5) <= cnx_slave_out(c_MASTER_GENNUM).stall;
-  --trig2(6) <= cnx_master_out(c_SLAVE_WRCORE).cyc;
-  --trig2(7) <= cnx_master_out(c_SLAVE_WRCORE).stb;
-  --trig2(8) <= cnx_master_out(c_SLAVE_WRCORE).WE;
-  --trig2(9) <= cnx_master_in(c_SLAVE_WRCORE).ack;
-  --trig2(10) <= cnx_master_in(c_SLAVE_WRCORE).stall;
-  
-
-
   cnx_slave_in(c_MASTER_GENNUM).adr <= gn_wb_adr(29 downto 0) & "00";
 
 -------------------------------------------------------------------------------
@@ -713,8 +574,8 @@ begin
       g_with_external_clock_input => false,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "",
-      g_dpram_size                => 4096 * 5,
+      g_dpram_initf               => "wrc.ram",
+      g_dpram_size                => 90112/4,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE)
     port map (
@@ -764,10 +625,13 @@ begin
       slave_i => cnx_master_out(c_SLAVE_WRCORE),
       slave_o => cnx_master_in(c_SLAVE_WRCORE),
 
-      wrf_src_o => mbone_snk_in,
-      wrf_src_i => mbone_snk_out,
-      wrf_snk_o => mbone_src_in,
-      wrf_snk_i => mbone_src_out,
+      aux_master_o => etherbone_cfg_in,
+      aux_master_i => etherbone_cfg_out,
+
+      wrf_src_o => etherbone_snk_in,
+      wrf_src_i => etherbone_snk_out,
+      wrf_snk_o => etherbone_src_in,
+      wrf_snk_i => etherbone_src_out,
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
@@ -778,17 +642,21 @@ begin
       tm_utc_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
 
-      rst_aux_n_o => mbone_rst_n,
+      btn1_i => '1',
+      btn2_i => '1',
+      
+      rst_aux_n_o => etherbone_rst_n,
       pps_p_o     => pps
       );
 
-  U_Intercon : xwb_crossbar
+  U_Intercon : xwb_sdb_crossbar
     generic map (
-      g_num_masters => c_NUM_WB_MASTERS,
-      g_num_slaves  => c_NUM_WB_SLAVES,
+      g_num_masters => c_NUM_WB_SLAVES,
+      g_num_slaves  => c_NUM_WB_MASTERS,
       g_registered  => true,
-      g_address     => c_cnx_base_addr,
-      g_mask        => c_cnx_base_mask)
+      g_wraparound  => true,
+      g_layout      => c_INTERCONNECT_LAYOUT,
+      g_sdb_addr    => c_SDB_ADDRESS)
     port map (
       clk_sys_i => clk_sys,
       rst_n_i   => local_reset_n,
@@ -800,7 +668,9 @@ begin
 
   U_GTP : wr_gtp_phy_spartan6
     generic map (
-      g_simulation => g_simulation)
+      g_simulation => g_simulation,
+      g_enable_ch0 => 0,
+      g_enable_ch1 => 1)
     port map (
       gtp_clk_i          => clk_125m_gtp,
       ch0_ref_clk_i      => clk_125m_pllref,
@@ -837,33 +707,21 @@ begin
       pad_rxn1_i         => sfp_rxn_i,
       pad_rxp1_i         => sfp_rxp_i);
 
-  trig0(7 downto 0) <= phy_tx_data;
-  trig0(8) <= phy_tx_k;
-  trig0(9) <= phy_tx_disparity;
-  trig0(10) <= phy_tx_enc_err;
-
-  trig1(7 downto 0) <= phy_rx_data;
-  trig1(8) <= phy_rx_k;
-  trig1(10) <= phy_rx_enc_err;
-  trig1(11) <= phy_rst;
-  trig1(15 downto 12) <= phy_rx_bitslide;
-  
-  
-  U_MiniBone : xmini_bone
+  U_Etherbone : EB_CORE
     generic map (
-      g_class_mask    => x"f0",
-      g_our_ethertype => x"a0a0")
+      g_sdb_address => f_resize_slv(c_sdb_address, 64))
     port map (
-      clk_sys_i => clk_sys,
-      rst_n_i   => mbone_rst_n,
-      src_o     => mbone_src_out,
-      src_i     => mbone_src_in,
-      snk_o     => mbone_snk_out,
-      snk_i     => mbone_snk_in,
-      master_o  => mbone_wb_out,
-      master_i  => mbone_wb_in);
+      clk_i       => clk_sys,
+      nRst_i      => etherbone_rst_n,
+      src_o       => etherbone_src_out,
+      src_i       => etherbone_src_in,
+      snk_o       => etherbone_snk_out,
+      snk_i       => etherbone_snk_in,
+      cfg_slave_o => etherbone_cfg_out,
+      cfg_slave_i => etherbone_cfg_in,
+      master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
+      master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
 
-  cnx_slave_in(c_MASTER_MINIBONE).cyc <= '0';
 
   U_DAC_ARB : spec_serial_dac_arb
     generic map (
@@ -967,8 +825,8 @@ begin
       tm_utc_i             => tm_utc,
       tm_clk_aux_lock_en_o => tm_clk_aux_lock_en,
       tm_clk_aux_locked_i  => tm_clk_aux_locked,
-      tm_clk_dmtd_locked_i => '1',   --    FIXME: fan out real signal from the
-                                     --    WRCore
+      tm_clk_dmtd_locked_i => '1',  --    FIXME: fan out real signal from the
+      --    WRCore
       tm_dac_value_i       => tm_dac_value,
       tm_dac_wr_i          => tm_dac_wr,
 
