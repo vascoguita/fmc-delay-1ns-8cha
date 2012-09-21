@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-08-13
+-- Last update: 2012-09-13
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ entity svec_top is
       tempid_dq_b : inout std_logic;
 
       fp_ledn_o : out std_logic_vector(7 downto 0);
-
+      
       -------------------------------------------------------------------------
       -- Fine Delay Pins
       -------------------------------------------------------------------------
@@ -333,15 +333,14 @@ architecture rtl of svec_top is
   constant c_SLAVE_FD0    : integer := 1;
   constant c_SLAVE_WRCORE : integer := 2;
 
-  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00070000");
 
   constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
-    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00000000"),
-     c_SLAVE_FD0    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00040000"),
-     c_SLAVE_FD1    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00050000"));
+    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
+     c_SLAVE_FD0    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
+     c_SLAVE_FD1    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"));
 
-  constant c_SDB_ADDRESS : t_wishbone_address := x"00060000";
-
+  constant c_SDB_ADDRESS : t_wishbone_address := x"00000000";
 
   signal cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
   signal cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
