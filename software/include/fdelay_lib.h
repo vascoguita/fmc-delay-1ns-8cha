@@ -51,12 +51,12 @@ typedef struct {
 
 typedef struct 
 {
-  fdelay_raw_time_t raw;
-
   int64_t utc; /* TAI seconds */ /* FIXME: replace all UTCs with TAIs or seconds for clarity */
   int32_t coarse; /* 125 MHz counter cycles */
   int32_t frac; /* Fractional part (<8ns) */
   uint16_t seq_id; /* Sequence ID to detect missed timestamps */
+
+  fdelay_raw_time_t raw;
 } fdelay_time_t;
 
 /* 
