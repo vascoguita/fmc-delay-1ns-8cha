@@ -6,16 +6,16 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-08-21
+-- Last update: 2012-10-10
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
 -- Description: Top level for the SPEC 1.1 (and later releases) cards with
--- one Fine Delay FMCs.
+-- one Fine Delay FMC.
 -- Supports:
 -- - SDB enumeration (SDB descriptor at 0x00000)
 -- - White Rabbit and Etherbone
--- - Interrupts
+-- - Interrupts (via WR VIC)
 -------------------------------------------------------------------------------
 --
 -- Copyright (c) 2011 - 2012 CERN / BE-CO-HT
@@ -249,6 +249,49 @@ architecture rtl of spec_top is
     return tmp;
   end f_resize_slv;
 
+  function f_int2bool (x : integer) return boolean is
+  begin
+    if(x = 0) then
+      return false;
+    else
+      return true;
+    end if;
+  end f_int2bool;
+
+  constant c_NUM_WB_MASTERS : integer := 3;
+  constant c_NUM_WB_SLAVES  : integer := 2;
+
+  constant c_MASTER_GENNUM    : integer := 0;
+  constant c_MASTER_ETHERBONE : integer := 1;
+
+  constant c_SLAVE_FD     : integer := 0;
+  constant c_SLAVE_WRCORE : integer := 1;
+  constant c_SLAVE_VIC    : integer := 2;
+
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
+
+  constant c_xwb_vic_sdb : t_sdb_device := (
+    abi_class     => x"0000", -- undocumented device
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7", -- 8/16/32-bit port granularity
+    sdb_component => (
+    addr_first    => x"0000000000000000",
+    addr_last     => x"00000000000000ff",
+    product => (
+    vendor_id     => x"000000000000CE42", -- CERN
+    device_id     => x"00000013",
+    version       => x"00000001",
+    date          => x"20120113",
+    name          => "WB-VIC-Int.Control ")));
+
+  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
+    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"000c0000"),
+     c_SLAVE_FD     => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00080000"),
+     c_SLAVE_VIC    => f_sdb_embed_device(c_xwb_vic_sdb, x"00090000"));
+
+  constant c_SDB_ADDRESS : t_wishbone_address := x"00000000";
 
   signal pllout_clk_sys       : std_logic;
   signal pllout_clk_dmtd      : std_logic;
@@ -280,25 +323,8 @@ architecture rtl of spec_top is
 
   signal local_reset_n : std_logic;
 
-  constant c_NUM_WB_MASTERS : integer := 2;
-  constant c_NUM_WB_SLAVES  : integer := 2;
-
-  constant c_MASTER_GENNUM    : integer := 0;
-  constant c_MASTER_ETHERBONE : integer := 1;
-
-  constant c_SLAVE_FD     : integer := 0;
-  constant c_SLAVE_WRCORE : integer := 1;
-
-  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
-
-  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
-    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"000c0000"),
-     c_SLAVE_FD     => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00080000"));
-
-  constant c_SDB_ADDRESS  : t_wishbone_address := x"00000000";
-
-  signal   cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
-  signal   cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
+  signal cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
+  signal cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
 
   signal cnx_slave_out : t_wishbone_slave_out_array(c_NUM_WB_SLAVES-1 downto 0);
   signal cnx_slave_in  : t_wishbone_slave_in_array(c_NUM_WB_SLAVES-1 downto 0);
@@ -332,15 +358,6 @@ architecture rtl of spec_top is
 
   signal pps : std_logic;
 
-  function f_int2bool (x : integer) return boolean is
-  begin
-    if(x = 0) then
-      return false;
-    else
-      return true;
-    end if;
-  end f_int2bool;
-
   signal etherbone_rst_n   : std_logic;
   signal etherbone_src_out : t_wrf_source_out;
   signal etherbone_src_in  : t_wrf_source_in;
@@ -348,6 +365,8 @@ architecture rtl of spec_top is
   signal etherbone_snk_in  : t_wrf_sink_in;
   signal etherbone_cfg_in  : t_wishbone_slave_in;
   signal etherbone_cfg_out : t_wishbone_slave_out;
+
+  signal vic_irqs : std_logic_vector(31 downto 0);
 
   attribute buffer_type                    : string;  --" {bufgdll | ibufg | bufgp | ibuf | bufr | none}";
   attribute buffer_type of clk_125m_pllref : signal is "BUFG";
@@ -512,8 +531,8 @@ begin
       ---------------------------------------------------------
       -- Interrupt interface
       dma_irq_o => open,
-      irq_p_i   => fd_irq,
-      irq_p_o   => GPIO(0),
+      irq_p_i   => '0',
+      irq_p_o   => open,
 
       dma_reg_clk_i => clk_sys,
 
@@ -544,6 +563,39 @@ begin
       );
 
   cnx_slave_in(c_MASTER_GENNUM).adr <= gn_wb_adr(29 downto 0) & "00";
+
+-------------------------------------------------------------------------------
+-- Top level interconnect and interrupt controller
+-------------------------------------------------------------------------------
+  
+  U_Intercon : xwb_sdb_crossbar
+    generic map (
+      g_num_masters => c_NUM_WB_SLAVES,
+      g_num_slaves  => c_NUM_WB_MASTERS,
+      g_registered  => true,
+      g_wraparound  => true,
+      g_layout      => c_INTERCONNECT_LAYOUT,
+      g_sdb_addr    => c_SDB_ADDRESS)
+    port map (
+      clk_sys_i => clk_sys,
+      rst_n_i   => local_reset_n,
+      slave_i   => cnx_slave_in,
+      slave_o   => cnx_slave_out,
+      master_i  => cnx_master_in,
+      master_o  => cnx_master_out);
+
+  U_VIC : xwb_vic
+    generic map (
+      g_interface_mode      => PIPELINED,
+      g_address_granularity => BYTE,
+      g_num_interrupts      => 1)
+    port map (
+      clk_sys_i    => clk_sys,
+      rst_n_i      => local_reset_n,
+      slave_i      => cnx_master_out(c_SLAVE_VIC),
+      slave_o      => cnx_master_in(c_SLAVE_VIC),
+      irqs_i(0)    => fd_irq,
+      irq_master_o => GPIO(0));
 
 -------------------------------------------------------------------------------
 -- White Rabbit Core + PHY
@@ -644,26 +696,10 @@ begin
 
       btn1_i => '1',
       btn2_i => '1',
-      
+
       rst_aux_n_o => etherbone_rst_n,
       pps_p_o     => pps
       );
-
-  U_Intercon : xwb_sdb_crossbar
-    generic map (
-      g_num_masters => c_NUM_WB_SLAVES,
-      g_num_slaves  => c_NUM_WB_MASTERS,
-      g_registered  => true,
-      g_wraparound  => true,
-      g_layout      => c_INTERCONNECT_LAYOUT,
-      g_sdb_addr    => c_SDB_ADDRESS)
-    port map (
-      clk_sys_i => clk_sys,
-      rst_n_i   => local_reset_n,
-      slave_i   => cnx_slave_in,
-      slave_o   => cnx_slave_out,
-      master_i  => cnx_master_in,
-      master_o  => cnx_master_out);
 
 
   U_GTP : wr_gtp_phy_spartan6
