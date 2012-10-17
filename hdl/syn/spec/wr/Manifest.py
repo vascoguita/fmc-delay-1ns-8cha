@@ -10,3 +10,5 @@ syn_top = "spec_top"
 syn_project = "spec_fine_delay.xise"
 
 modules = { "local" : [ "../../../top/spec/wr", "../../../platform" ] }
+
+files = "wrc.ram"
