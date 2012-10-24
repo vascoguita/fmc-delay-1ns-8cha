@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-09-13
+-- Last update: 2012-10-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -82,16 +82,16 @@ entity svec_top is
       -- VME Interface pins
       -------------------------------------------------------------------------
 
-      VME_AS_n_i      : in    std_logic;
-      VME_RST_n_i     : in    std_logic;
-      VME_WRITE_n_i   : in    std_logic;
-      VME_AM_i        : in    std_logic_vector(5 downto 0);
-      VME_DS_n_i      : in    std_logic_vector(1 downto 0);
-      VME_GA_i        : in    std_logic_vector(5 downto 0);
-      VME_BERR_o      : inout std_logic;
-      VME_DTACK_n_o   : inout std_logic;
-      VME_RETRY_n_o   : out   std_logic;
-      VME_RETRY_OE_o  : out   std_logic;
+      VME_AS_n_i     : in    std_logic;
+      VME_RST_n_i    : in    std_logic;
+      VME_WRITE_n_i  : in    std_logic;
+      VME_AM_i       : in    std_logic_vector(5 downto 0);
+      VME_DS_n_i     : in    std_logic_vector(1 downto 0);
+      VME_GA_i       : in    std_logic_vector(5 downto 0);
+      VME_BERR_o     : inout std_logic;
+      VME_DTACK_n_o  : inout std_logic;
+      VME_RETRY_n_o  : out   std_logic;
+      VME_RETRY_OE_o : out   std_logic;
 
       VME_LWORD_n_b   : inout std_logic;
       VME_ADDR_b      : inout std_logic_vector(31 downto 1);
@@ -144,7 +144,7 @@ entity svec_top is
       tempid_dq_b : inout std_logic;
 
       fp_ledn_o : out std_logic_vector(7 downto 0);
-      
+
       -------------------------------------------------------------------------
       -- Fine Delay Pins
       -------------------------------------------------------------------------
@@ -323,7 +323,7 @@ architecture rtl of svec_top is
   signal phy_loopen       : std_logic;
 
 
-  constant c_NUM_WB_MASTERS : integer := 3;
+  constant c_NUM_WB_MASTERS : integer := 4;
   constant c_NUM_WB_SLAVES  : integer := 2;
 
   constant c_MASTER_VME       : integer := 0;
@@ -332,13 +332,32 @@ architecture rtl of svec_top is
   constant c_SLAVE_FD1    : integer := 0;
   constant c_SLAVE_FD0    : integer := 1;
   constant c_SLAVE_WRCORE : integer := 2;
+  constant c_SLAVE_VIC    : integer := 3;
 
   constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00070000");
+
+  constant c_xwb_vic_sdb : t_sdb_device := (
+    abi_class     => x"0000",              -- undocumented device
+    abi_ver_major => x"01",
+    abi_ver_minor => x"01",
+    wbd_endian    => c_sdb_endian_big,
+    wbd_width     => x"7",                 -- 8/16/32-bit port granularity
+    sdb_component => (
+      addr_first  => x"0000000000000000",
+      addr_last   => x"00000000000000ff",
+      product     => (
+        vendor_id => x"000000000000CE42",  -- CERN
+        device_id => x"00000013",
+        version   => x"00000001",
+        date      => x"20120113",
+        name      => "WB-VIC-Int.Control ")));
 
   constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
     (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
      c_SLAVE_FD0    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
-     c_SLAVE_FD1    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"));
+     c_SLAVE_FD1    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"),
+     c_SLAVE_VIC    => f_sdb_embed_device(c_xwb_vic_sdb, x"00030000")
+     );
 
   constant c_SDB_ADDRESS : t_wishbone_address := x"00000000";
 
@@ -408,6 +427,7 @@ architecture rtl of svec_top is
   signal led_divider : unsigned(22 downto 0);
   signal leds        : std_logic_vector(7 downto 0);
 
+  signal vic_master_irq : std_logic;
 
   function f_int2bool (x : integer) return boolean is
   begin
@@ -587,7 +607,7 @@ begin
       VME_ADDR_OE_N_o => VME_ADDR_OE_N_o,
       master_o        => vme_master_out,
       master_i        => vme_master_in,
-      irq_i           => '0');
+      irq_i           => vic_master_irq);
 
   VME_DATA_b    <= VME_DATA_b_out    when VME_DATA_DIR_int = '1' else (others => 'Z');
   VME_ADDR_b    <= VME_ADDR_b_out    when VME_ADDR_DIR_int = '1' else (others => 'Z');
@@ -743,7 +763,7 @@ begin
       dac_sdata_o   => pll25dac_din_o,
       xdone_o       => open);
 
-  U_Etherbone : EB_CORE
+  U_Etherbone : eb_slave_core
     generic map (
       g_sdb_address => f_resize_slv(c_sdb_address, 64))
     port map (
@@ -774,6 +794,20 @@ begin
       slave_o   => cnx_slave_out,
       master_i  => cnx_master_in,
       master_o  => cnx_master_out);
+
+  U_VIC : xwb_vic
+    generic map (
+      g_interface_mode      => PIPELINED,
+      g_address_granularity => BYTE,
+      g_num_interrupts      => 2)
+    port map (
+      clk_sys_i    => clk_sys,
+      rst_n_i      => local_reset_n,
+      slave_i      => cnx_master_out(c_SLAVE_VIC),
+      slave_o      => cnx_master_in(c_SLAVE_VIC),
+      irqs_i(0)    => fd0_irq,
+      irqs_i(1)    => fd1_irq,
+      irq_master_o => vic_master_irq);
 
   gen_with_phy : if(g_with_wr_phy /= 0) generate
 
