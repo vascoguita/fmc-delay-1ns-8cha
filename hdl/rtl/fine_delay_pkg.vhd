@@ -92,7 +92,7 @@ package fine_delay_pkg is
         device_id => x"f19ede1a",
         version   => x"00000001",
         date      => x"20120809",
-        name      => "Fine Delay Core    ")));
+        name      => "Fine-Delay-Core    ")));
 
   type t_fd_timestamp is record
     u     : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
