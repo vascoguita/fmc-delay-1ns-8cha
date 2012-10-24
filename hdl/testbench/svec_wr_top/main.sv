@@ -130,7 +130,7 @@ module main;
       init_vme64x_core(acc);
       acc_casted.set_default_xfer_size(A32|SINGLE|D32);
       
-      drv0 = new(acc, 'h40000);
+      drv0 = new(acc, 'h10000);
       drv0.init();
 
       dly=new;
