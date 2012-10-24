@@ -933,7 +933,7 @@ write 0: DMTD pattern generation disabled.";
 
    irq {
       name = "TS Buffer not empty.";
-      trigger = LEVEL_0;
+      trigger = LEVEL_1;
       prefix = "ts_buf_notempty";
    };
 
