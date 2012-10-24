@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-10-10
+-- Last update: 2012-10-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -743,7 +743,7 @@ begin
       pad_rxn1_i         => sfp_rxn_i,
       pad_rxp1_i         => sfp_rxp_i);
 
-  U_Etherbone : EB_CORE
+  U_Etherbone : eb_slave_core
     generic map (
       g_sdb_address => f_resize_slv(c_sdb_address, 64))
     port map (
