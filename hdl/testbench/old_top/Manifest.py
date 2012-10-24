@@ -1,3 +1,4 @@
+target = "xilinx"
 action = "simulation"
 
 vlog_opt="+incdir+../../include +incdir+../../include/wb"

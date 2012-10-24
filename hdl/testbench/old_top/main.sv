@@ -1,11 +1,11 @@
 `timescale 10fs/10fs
 
-`include "acam_model.sv"
-`include "tunable_clock_gen.sv"
-`include "random_pulse_gen.sv"
-`include "jittery_delay.sv"
-`include "ideal_timestamper.sv"
-`include "mc100ep195.sv"
+`include "acam_model.svh"
+`include "tunable_clock_gen.svh"
+`include "random_pulse_gen.svh"
+`include "jittery_delay.svh"
+`include "ideal_timestamper.svh"
+`include "mc100ep195.vh"
 
 `include "regs/fd_main_regs.vh"
 `include "regs/fd_channel_regs.vh"
@@ -31,7 +31,7 @@ module clock_reset_gen
    output reg rst_n_o);
    
    parameter real g_ref_period 	= 8ns;
-   parameter real g_dmtd_period = 8.31ns;
+   parameter real g_dmtd_period = 15.9ns;
    parameter real g_sys_period 	= 16.31ns;
    parameter real g_ref_jitter 	= 10ps;
    parameter real g_tdc_jitter 	= 10ps;
@@ -99,6 +99,9 @@ endmodule  // clock_reset_gen
 const int SPI_PLL  = 0;
 const int SPI_GPIO  = 1;
 const int SPI_DAC  = 2;
+
+int dly_seed= 10;
+
 
 class CSimDrv_FineDelay;
    protected CBusAccessor m_acc;
@@ -181,23 +184,22 @@ class CSimDrv_FineDelay;
          end
       endtask // set_reference
    
-     
-     
+
    task rbuf_update();
       Timestamp ts;
       uint64_t utc, coarse, seq_frac, stat, sech, secl;
 
       m_acc.read(`ADDR_FD_TSBCR, stat);
 
-     // $display("TSBCR %x\n", stat);
-      
       if((stat & `FD_TSBCR_EMPTY) == 0) begin
+
+         m_acc.write(`ADDR_FD_TSBR_ADVANCE, 1);
          
          m_acc.read(`ADDR_FD_TSBR_SECH, sech);
          m_acc.read(`ADDR_FD_TSBR_SECL, secl);
          m_acc.read(`ADDR_FD_TSBR_CYCLES,   coarse);
          m_acc.read(`ADDR_FD_TSBR_FID,  seq_frac);
-
+         
          ts         = new (0,0,0);
 
          ts.source = seq_frac & 'h7;
@@ -264,19 +266,12 @@ class CSimDrv_FineDelay;
       if(mode == PULSE_GEN)
                   dcr |= `FD_DCR_MODE;
       if((width_ps < 200000) || (((delta_ps-width_ps) < 150000) && (rep_count > 1)))
-        begin
-                  dcr |= `FD_DCR_NO_FINE;
-           $display("NoFine!");
-        end
-      
+        dcr |= `FD_DCR_NO_FINE;
       
       m_acc.write('h100 + 'h100 * channel + `ADDR_FD_DCR, dcr);
       if(mode == PULSE_GEN)
         m_acc.write('h100 + 'h100 * channel + `ADDR_FD_DCR, dcr | `FD_DCR_PG_ARM);
    endtask // config_output
-   
-                      
-   
    
    task init();
       int rval;
@@ -291,42 +286,31 @@ class CSimDrv_FineDelay;
       acam_write(5, c_acam_start_offset); // set StartOffset
       acam_read(5, rval);
 
-      
-      $display("AcamReadback %x", rval);
-
       m_acam.addr= 8; /* permanently select FIFO1 */
-      
 
       // Clear the ring buffer
       m_acc.write(`ADDR_FD_TSBCR, `FD_TSBCR_ENABLE | `FD_TSBCR_PURGE | `FD_TSBCR_RST_SEQ | (3 << `FD_TSBCR_CHAN_MASK_OFFSET));
 
       m_acc.write(`ADDR_FD_ADSFR, int' (real'(1<< (c_frac_bits + c_scaler_shift)) * c_acam_bin / c_ref_period));
 
-      $display("ADSFR: %d", int' (real'(1<< (c_frac_bits + c_scaler_shift)) * c_acam_bin / c_ref_period));
       m_acc.write(`ADDR_FD_ASOR, c_acam_start_offset * 3);
       m_acc.write(`ADDR_FD_ATMCR, c_acam_merge_c_threshold | (c_acam_merge_f_threshold << 4));
       
       // Enable trigger input
       m_acc.write(`ADDR_FD_GCR,  0);
-
       
-      t.utc = 1;
-      t.coarse = 1000;
+      t.utc = 0;
+      t.coarse = 0;
       set_time(t);
-      
-//     get_time(t);
       
       // Enable trigger input
       m_acc.write(`ADDR_FD_GCR,  `FD_GCR_INPUT_EN);
-      
-      
    endtask // init
 
    task force_cal_pulse(int channel, int delay_setpoint);
       m_acc.write(`ADDR_FD_FRR + (channel * 'h20), delay_setpoint);
       m_acc.write(`ADDR_FD_DCR + (channel * 'h20), `FD_DCR_FORCE_DLY);
       m_acc.write(`ADDR_FD_CALR, `FD_CALR_CAL_PULSE | ((1<<channel) << `FD_CALR_PSEL_OFFSET));
-      
    endtask // force_cal_pulse
    
 endclass // CSimDrv_FineDelay
@@ -440,8 +424,8 @@ module main;
    random_pulse_gen
      #(
        .g_pulse_width(40ns),
-       .g_min_spacing(100.111ns),
-       .g_max_spacing(100.112ns)
+       .g_min_spacing(5000.111ns),
+       .g_max_spacing(5010.112ns)
        )
      TRIG_GEN
        (
@@ -547,7 +531,7 @@ module main;
    fine_delay_core
      #(
        .g_simulation(1),
-       .g_with_wr_core(0))
+       .g_with_wr_core(1))
      DUT (
 	  .clk_ref_0_i(clk_ref),
 	  .clk_ref_180_i(~clk_ref),
@@ -660,10 +644,9 @@ module main;
         dmtd_fb_in <= ~trig_a_muxed;
         dmtd_out_chx[0] <= ~d_out[0];
         dmtd_out_chx[1] <= ~d_out[1];
-        
-        
      end
-   assign dmtd_fb_out = dmtd_out_chx[0] & dmtd_out_chx[1];
+  
+ assign dmtd_fb_out = dmtd_out_chx[0] & dmtd_out_chx[1];
    
    
    always@(posedge clk_ref)
@@ -697,64 +680,41 @@ module main;
       fd_drv.init();
       fd_drv.get_time(t_cur);
 
-      //fd_drv.set_reference(0);
+      fd_drv.set_reference(1);
 
 
       $display("GetTime: %d:%d",t_cur.utc, t_cur.coarse);
 
-      t_cur.utc= 0 ;
-      
-      t_cur.frac = 0;
-      t_cur.coarse = 500/8;
-      
-      fd_drv.config_output(0, CSimDrv_FineDelay::DELAY, 1, t_cur, 100000, 100000, 3);
 
+      t_cur.unflatten(600000.0 * 4096.0 / 8000.0);
+      fd_drv.config_output(0, CSimDrv_FineDelay::DELAY, 1, t_cur, 200000, 100000, 1);
 
+      wb.write(`ADDR_FD_CALR, `FD_CALR_CAL_DMTD);
+      trig_cal_sel = 0;
       
       
       
-      
-      
-      // fd_drv.config_output(1,1, 1100500, 200000);
-      // fd_drv.config_output(2,1, 1100900, 200000);
-      // fd_drv.config_output(3,1, 1110100, 200000);
-
-//       fd_drv.force_cal_pulse(0, 100);
-  //    #(320ns);
-    //  fd_drv.force_cal_pulse(0, 200);
-
-     // forever fd_drv.rbuf_update();
+      forever fd_drv.rbuf_update();
    end
 
    Timestamp prev  = null;
 
+   int prev_seqid = -1;
+   
+   
    always@(posedge clk_ref) 
      if (fd_drv != null)
        begin
-          if(fd_drv.poll() && IDEAL_TSU.poll() && Output_TSU0.poll()/* && Output_TSU1.poll()*/)
+          if(fd_drv.poll())
             begin
-               real delta, delta2, delta3;
-               
                Timestamp t_acam;
-               Timestamp t_ideal;
-               Timestamp t_out0, t_out1;
-               
                t_acam   = fd_drv.get();
-               t_ideal  = IDEAL_TSU.get();
-               t_out0    = Output_TSU0.get();
-//               t_out1    = Output_TSU1.get();
+               $display("TS: seq %d [%d:%d:%d src %d]", t_acam.seq_id, t_acam.utc, t_acam.coarse, t_acam.frac, t_acam.source);
 
-               
-               delta    = t_acam.flatten() - t_ideal.flatten();
-               delta2   = t_out0.flatten() - t_ideal.flatten();
-//               delta3   = t_out1.flatten() - t_ideal.flatten();
-               
-               
-               $display("TS: seq %d [%d:%d:%d src %d] delta %.4f delta_out %.4f %.4f", t_acam.seq_id, t_acam.utc, t_acam.coarse, t_acam.frac, t_acam.source, delta, delta2, delta3);
-               if(delta > 0.1 || delta < -0.1)
+               if((prev_seqid+1)&'hffff != t_acam.seq_id)
                  begin
-//                    $display("TS Failure");
-//                    $stop;
+                    $error("Seqid mismatch");
+                    $stop;
                  end
             end
        end
