@@ -365,7 +365,8 @@ TIMESPEC TS_fd1_clk_ref_n_i = PERIOD "fd1_clk_ref_n_i" 8 ns HIGH 50%;
 NET "gen_with_phy.U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = gen_with_phy.U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_gen_with_phy_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "gen_with_phy.U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
 
-
+#PIN "gen_with_phy.U_GTP/gen_with_channel1.U_Rbclk_buf_ch1.DIVCLK"
+#   CLOCK_DEDICATED_ROUTE = FALSE;
 
 TIMESPEC ts_ignore_xclock1 = FROM "pllout_clk_sys" TO "clk_125m_pllref_p_i" 10 ns DATAPATHONLY;
 TIMESPEC ts_ignore_xclock2 = FROM "clk_125m_pllref_p_i" TO "pllout_clk_sys" 10 ns DATAPATHONLY;
