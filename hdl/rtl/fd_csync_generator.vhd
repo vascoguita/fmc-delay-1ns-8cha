@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2012-11-26
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -347,8 +347,8 @@ begin  -- behavioral
         pulse_i    => pps_p1,
         extended_o => csync_pps_o);
 
-    
-  irq_sync_o              <= '0' when (g_with_wr_core = false) else ((dmtd_locked_d0 xor wr_clk_dmtd_locked_i) or (wr_state_changed and regs_i.tcr_wr_enable_o));
+
+  irq_sync_o              <= '0' when (g_with_wr_core = false or rst_n_sys_i = '0') else (wr_state_changed and regs_i.tcr_wr_enable_o);
   
   regs_o.tcr_wr_present_i <= '1' when (g_with_wr_core)         else '0';
 end behavioral;
