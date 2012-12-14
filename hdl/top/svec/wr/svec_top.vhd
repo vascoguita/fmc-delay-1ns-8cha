@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-10-24
+-- Last update: 2012-11-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -421,7 +421,6 @@ architecture rtl of svec_top is
   signal vme_master_in  : t_wishbone_master_in;
 
   signal pins    : std_logic_vector(31 downto 0);
-  signal rst_n_a : std_logic;
   signal pps     : std_logic;
 
   signal led_divider : unsigned(22 downto 0);
@@ -462,7 +461,31 @@ architecture rtl of svec_top is
 
   attribute buffer_type                    : string;  --" {bufgdll | ibufg | bufgp | ibuf | bufr | none}";
   attribute buffer_type of clk_125m_pllref : signal is "BUFG";
+
+  signal powerup_reset_cnt : unsigned(7 downto 0) := "00000000";
+  signal powerup_rst_n     : std_logic            := '0';
+  signal sys_locked        : std_logic;
+  
 begin
+
+  p_powerup_reset : process(clk_sys)
+  begin
+    if rising_edge(clk_sys) then
+      if(VME_RST_n_i = '0' or rst_n_i = '0') then
+        powerup_rst_n <= '0';
+      elsif sys_locked = '1' then
+        if(powerup_reset_cnt = "11111111") then
+          powerup_rst_n <= '1';
+        else
+          powerup_rst_n     <= '0';
+          powerup_reset_cnt <= powerup_reset_cnt + 1;
+        end if;
+      else
+        powerup_rst_n     <= '0';
+        powerup_reset_cnt <= "00000000";
+      end if;
+    end if;
+  end process;
 
   U_Buf_CLK_GTP : IBUFDS
     generic map (
@@ -503,7 +526,7 @@ begin
       CLKOUT3  => open,
       CLKOUT4  => open,
       CLKOUT5  => open,
-      LOCKED   => open,
+      LOCKED   => sys_locked,
       RST      => '0',
       CLKFBIN  => pllout_clk_fb_pllref,
       CLKIN    => clk_125m_pllref);
@@ -540,12 +563,12 @@ begin
       CLKFBIN  => pllout_clk_fb_dmtd,
       CLKIN    => clk_20m_vcxo_buf);
 
-  rst_n_a <= VME_RST_n_i and rst_n_i;
+--  rst_n_a <= VME_RST_n_i and rst_n_i;
   U_Sync_Reset : gc_sync_ffs
     port map (
       clk_i    => clk_sys,
       rst_n_i  => '1',
-      data_i   => rst_n_a,
+      data_i   => powerup_rst_n,
       synced_o => local_reset_n);
 
   U_Buf_CLK_PLL : IBUFGDS
@@ -579,9 +602,9 @@ begin
   U_VME_Core : xvme64x_core
     port map (
       clk_i           => clk_sys,
-      rst_n_i         => local_reset_n,
+      rst_n_i         => powerup_rst_n,
       VME_AS_n_i      => VME_AS_n_i,
-      VME_RST_n_i     => VME_RST_n_i,
+      VME_RST_n_i     => powerup_rst_n,
       VME_WRITE_n_i   => VME_WRITE_n_i,
       VME_AM_i        => VME_AM_i,
       VME_DS_n_i      => VME_DS_n_i,
