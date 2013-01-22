@@ -6,17 +6,16 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-11-22
+-- Last update: 2013-01-16
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
 -- Description: Top level for the SVEC 1.0 card with two Fine Delay FMCs.
 -- Supports:
 -- - A24/A32/D32 VME addressing
--- - SDB enumeration (SDB descriptor at 0x60000)
+-- - SDB enumeration (SDB descriptor at 0x0)
 -- - White Rabbit and Etherbone
--- Does not yet support:
--- - Interrupts
+-- - Interrupts (via vme64x-core interrupter, to be verified)
 -------------------------------------------------------------------------------
 --
 -- Copyright (c) 2011 CERN / BE-CO-HT
@@ -334,7 +333,7 @@ architecture rtl of svec_top is
   constant c_SLAVE_WRCORE : integer := 2;
   constant c_SLAVE_VIC    : integer := 3;
 
-  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00070000");
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00040000");
 
   constant c_xwb_vic_sdb : t_sdb_device := (
     abi_class     => x"0000",              -- undocumented device
