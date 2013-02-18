@@ -1,7 +1,7 @@
-TESTS = gs_logger # dmtd_calibration gs_logger random_pulse_test sweep_test temperature_calibration
+TESTS = gs_logger simple_delay random_pulse_gen
 
 CFLAGS = -I../include
-LDFLAGS = -L../lib ../lib/libfinedelay.a -lm -letherbone
+LDFLAGS = -L../lib ../lib/libfinedelay.a -lm 
 CC=gcc
 
 .PHONY: all
