@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-08-09
+-- Last update: 2012-11-23
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -17,7 +17,7 @@
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
--- Public License as published by the Free Software Foundation; 
+-- Public License as published by the Free Software Fsoundation; 
 -- either version 2.1 of the License, or (at your option) any   
 -- later version.                                               
 --
@@ -42,6 +42,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 use work.gencores_pkg.all;
+use work.genram_pkg.all;
 use work.wishbone_pkg.all;
 use work.fd_main_wbgen2_pkg.all;
 use work.fine_delay_pkg.all;
@@ -54,6 +55,11 @@ entity fine_delay_core is
 
     -- when true, some timeouts are reduced to speed up simulations
     g_simulation : boolean := false;
+
+    -- when true, the card does not operate as a Delay, but instead
+    -- provides direct output from the TDC and direct inputs to the channel
+    -- drivers.
+    g_with_direct_timestamp_io : boolean := false;
 
     -- Wishbone slave settings
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
@@ -213,7 +219,21 @@ entity fine_delay_core is
     wb_we_i    : in  std_logic;
     wb_ack_o   : out std_logic;
     wb_stall_o : out std_logic;
-    wb_irq_o   : out std_logic
+    wb_irq_o   : out std_logic;
+
+    ---------------------------------------------------------------------------
+    -- Input/Output timestamp I/O
+    ---------------------------------------------------------------------------
+
+    tdc_seconds_o : out std_logic_vector(39 downto 0);
+    tdc_cycles_o  : out std_logic_vector(27 downto 0);
+    tdc_frac_o    : out std_logic_vector(11 downto 0);
+    tdc_valid_o   : out std_logic;
+
+    outx_seconds_i : in std_logic_vector(40 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 40 * 4);
+    outx_cycles_i  : in std_logic_vector(28 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 28 * 4);
+    outx_frac_i    : in std_logic_vector(12 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 12 * 4);
+    outx_valid_i   : in std_logic_vector(3 downto 0)          := x"0"
     );
 
 end fine_delay_core;
@@ -276,12 +296,20 @@ architecture rtl of fine_delay_core is
   signal tsbcr_read_ack, fid_read_ack : std_logic;
   signal irq_rbuf, irq_spll, irq_sync : std_logic;
 
+  type t_delay_channel is record
+    idle           : std_logic;
+    pulse0, pulse1 : std_logic;
+    value          : std_logic_vector(9 downto 0);
+    load           : std_logic;
+    load_done      : std_logic;
+    tag            : t_fd_timestamp;
+  end record;
 
-  signal chx_delay_idle                       : std_logic_vector(3 downto 0);
-  signal chx_delay_pulse0, chx_delay_pulse1   : std_logic_vector(3 downto 0);
-  signal chx_delay_value                      : t_dly_array(0 to 3);
-  signal chx_delay_load , chx_delay_load_done : std_logic_vector(3 downto 0);
+  type t_delay_channel_array is array (integer range <>) of t_delay_channel;
 
+  signal channels : t_delay_channel_array(3 downto 0);
+
+  signal chx_delay_idle : std_logic_vector(3 downto 0);
 
   signal cnx_out : t_wishbone_master_out_array(0 to 5);
   signal cnx_in  : t_wishbone_master_in_array(0 to 5);
@@ -517,6 +545,28 @@ begin  -- rtl
   rbuf_mux_valid_masked <= rbuf_mux_valid and regs_fromwb.tsbcr_chan_mask_o;
 
 
+  gen_with_direct_io_tdc : if(g_with_direct_timestamp_io) generate
+    
+    U_Sync_TDC_Valid_Out : gc_pulse_synchronizer
+      port map (
+        clk_in_i  => clk_ref_0_i,
+        clk_out_i => clk_sys_i,
+        rst_n_i   => rst_n_sys,
+        d_p_i     => tag_valid,
+        q_p_o     => tdc_valid_o);
+
+    process(clk_ref_0_i)
+    begin
+      if rising_edge(clk_ref_0_i) then
+        if(tag_valid = '1') then
+          tdc_cycles_o  <= tag_coarse;
+          tdc_seconds_o <= tag_utc;
+          tdc_frac_o    <= tag_frac;
+        end if;
+      end if;
+    end process;
+  end generate gen_with_direct_io_tdc;
+
   gen_pack_rbuf_mux : for i in 0 to 4 generate
     rbuf_mux_d(c_TIMESTAMP_TOTAL_BITS * (i+1) -1 downto c_TIMESTAMP_TOTAL_BITS * i) <= to_stdLogicVector(rbuf_mux_ts(i));
   end generate gen_pack_rbuf_mux;
@@ -572,6 +622,37 @@ begin  -- rtl
   gen_cal_pulse  <= cal_pulse_mask and regs_fromwb.calr_psel_o;
 
   gen_output_channels : for i in 0 to 3 generate
+
+    gen_with_direct_io : if g_with_direct_timestamp_io generate
+      
+
+      U_Sync_Valid_Pulse : gc_pulse_synchronizer
+        port map (
+          clk_in_i  => clk_sys_i,
+          clk_out_i => clk_ref_0_i,
+          rst_n_i   => rst_n_ref,
+          d_p_i     => outx_valid_i(i),
+          q_p_o     => channels(i).tag.valid);
+
+      process(clk_sys_i)
+      begin
+        if rising_edge(Clk_sys_i) then
+          if(outx_valid_i(i) = '1')then
+            channels(i).tag.u <= outx_seconds_i(40 * (i+1) - 1 downto 40 * i);
+            channels(i).tag.c <= outx_cycles_i(28 * (i+1) - 1 downto 28 * i);
+            channels(i).tag.f <= outx_frac_i(12 * (i+1) -1 downto 12 * i);
+          end if;
+        end if;
+      end process;
+    end generate gen_with_direct_io;
+
+    gen_without_direct_io : if not g_with_direct_timestamp_io generate
+      channels(i).tag.valid <= tag_valid_masked;
+      channels(i).tag.u     <= tag_utc;
+      channels(i).tag.c     <= tag_coarse;
+      channels(i).tag.f     <= tag_frac;
+    end generate gen_without_direct_io;
+
     U_Output_ChannelX : fd_delay_channel_driver
       generic map (
         g_index => i)
@@ -584,43 +665,53 @@ begin  -- rtl
         csync_utc_i       => master_csync_utc,
         csync_coarse_i    => master_csync_coarse,
         gen_cal_i         => gen_cal_pulse(i),
-        tag_valid_i       => tag_valid_masked,
-        tag_utc_i         => tag_utc,
-        tag_coarse_i      => tag_coarse,
-        tag_frac_i        => tag_frac,
+        tag_valid_i       => channels(i).tag.valid,
+        tag_utc_i         => channels(i).tag.u,
+        tag_coarse_i      => channels(i).tag.c,
+        tag_frac_i        => channels(i).tag.f,
         pstart_valid_o    => rbuf_mux_valid(i+1),
         pstart_utc_o      => rbuf_mux_ts(i+1).u,
         pstart_coarse_o   => rbuf_mux_ts(i+1).c,
         pstart_frac_o     => rbuf_mux_ts(i+1).f,
-        delay_pulse0_o    => chx_delay_pulse0(i),
-        delay_pulse1_o    => chx_delay_pulse1(i),
-        delay_value_o     => chx_delay_value(i),
-        delay_load_o      => chx_delay_load(i),
-        delay_idle_o      => chx_delay_idle(i),
-        delay_load_done_i => chx_delay_load_done(i),
+        delay_pulse0_o    => channels(i).pulse0,
+        delay_pulse1_o    => channels(i).pulse1,
+        delay_value_o     => channels(i).value,
+        delay_load_o      => channels(i).load,
+        delay_idle_o      => channels(i).idle,
+        delay_load_done_i => channels(i).load_done,
         wb_i              => cnx_out(i+1),
         wb_o              => cnx_in(i+1));
+
+    chx_delay_idle(i) <= channels(i).idle;
 
     U_DDR_Output : fd_ddr_driver
       port map (
         clk0_i => clk_ref_0_i,
         clk1_i => clk_ref_180_i,
-        d0_i   => chx_delay_pulse0(i),
-        d1_i   => chx_delay_pulse1(i),
+        d0_i   => channels(i).pulse0,
+        d1_i   => channels(i).pulse1,
         q_o    => delay_pulse_o(i));
 
   end generate gen_output_channels;
 
   U_Delay_Line_Arbiter : fd_delay_line_arbiter
     port map (
-      clk_ref_i    => clk_ref_0_i,
-      rst_n_i      => rst_n_ref,
-      load_i       => chx_delay_load,
-      done_o       => chx_delay_load_done,
-      delay_val0_i => f_reverse_bits(chx_delay_value(0)),
-      delay_val1_i => chx_delay_value(1),
-      delay_val2_i => f_reverse_bits(chx_delay_value(2)),
-      delay_val3_i => chx_delay_value(3),
+      clk_ref_i => clk_ref_0_i,
+      rst_n_i   => rst_n_ref,
+      load_i(0) => channels(0).load,
+      load_i(1) => channels(1).load,
+      load_i(2) => channels(2).load,
+      load_i(3) => channels(3).load,
+
+      done_o(0) => channels(0).load_done,
+      done_o(1) => channels(1).load_done,
+      done_o(2) => channels(2).load_done,
+      done_o(3) => channels(3).load_done,
+
+      delay_val0_i => f_reverse_bits(channels(0).value),
+      delay_val1_i => channels(1).value,
+      delay_val2_i => f_reverse_bits(channels(2).value),
+      delay_val3_i => channels(3).value,
       delay_val_o  => delay_val_o,
       delay_len_o  => delay_len_o);
 
@@ -643,6 +734,8 @@ begin  -- rtl
       dbg_tag_out_o     => dbg_tag_out
       );
 
+
+  
   tag_valid_masked <= tag_valid when unsigned(not chx_delay_idle) = 0 else '0';
 
   U_LED_Driver : gc_extend_pulse

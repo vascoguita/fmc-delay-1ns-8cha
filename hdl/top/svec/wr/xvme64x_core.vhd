@@ -51,8 +51,8 @@ architecture wrapper of xvme64x_core is
 
   component VME64xCore_Top
     generic (
-      g_width      : integer := 32;
-      g_addr_width : integer := 64;
+      g_wb_data_width      : integer := 32;
+      g_wb_addr_width : integer := 64;
       g_CRAM_SIZE  : integer := 1024);
     port (
       clk_i           : in  std_logic;
@@ -82,13 +82,13 @@ architecture wrapper of xvme64x_core is
       VME_ADDR_DIR_o  : out std_logic;
       VME_ADDR_OE_N_o : out std_logic;
       VME_RETRY_OE_o  : out std_logic;
-      DAT_i           : in  std_logic_vector(g_width - 1 downto 0);
-      DAT_o           : out std_logic_vector(g_width - 1 downto 0);
-      ADR_o           : out std_logic_vector(g_addr_width - 1 downto 0);
+      DAT_i           : in  std_logic_vector(g_wb_data_width - 1 downto 0);
+      DAT_o           : out std_logic_vector(g_wb_data_width - 1 downto 0);
+      ADR_o           : out std_logic_vector(g_wb_addr_width - 1 downto 0);
       CYC_o           : out std_logic;
       ERR_i           : in  std_logic;
       RTY_i           : in  std_logic;
-      SEL_o           : out std_logic_vector(f_div8(g_width) - 1 downto 0);
+      SEL_o           : out std_logic_vector(f_div8(g_wb_addr_width) - 1 downto 0);
       STB_o           : out std_logic;
       ACK_i           : in  std_logic;
       WE_o            : out std_logic;
@@ -157,6 +157,8 @@ begin  -- wrapper
   master_o.adr <= adr_out(29 downto 0) & "00";
   dat_in       <= master_i.dat;
 
+--  VME_IRQ_n_o <= (others => '0');
+  
   
   
 end wrapper;

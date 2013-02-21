@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-08-09
+-- Last update: 2012-11-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -44,7 +44,7 @@ use ieee.numeric_std.all;
 use work.wishbone_pkg.all;
 use work.fd_main_wbgen2_pkg.all;
 use work.fd_channel_wbgen2_pkg.all;
-
+use work.genram_pkg.all;
 
 package fine_delay_pkg is
 
@@ -377,10 +377,11 @@ package fine_delay_pkg is
 
   component fine_delay_core
     generic (
-      g_with_wr_core        : boolean;
-      g_simulation          : boolean;
-      g_interface_mode      : t_wishbone_interface_mode;
-      g_address_granularity : t_wishbone_address_granularity);
+      g_with_wr_core             : boolean := true;
+      g_simulation               : boolean := false;
+      g_with_direct_timestamp_io : boolean := false;
+      g_interface_mode           : t_wishbone_interface_mode;
+      g_address_granularity      : t_wishbone_address_granularity);
     port (
       clk_ref_0_i          : in  std_logic;
       clk_ref_180_i        : in  std_logic;
@@ -443,7 +444,15 @@ package fine_delay_pkg is
       wb_we_i              : in  std_logic;
       wb_ack_o             : out std_logic;
       wb_stall_o           : out std_logic;
-      wb_irq_o             : out std_logic);
+      wb_irq_o             : out std_logic;
+      tdc_seconds_o        : out std_logic_vector(39 downto 0);
+      tdc_cycles_o         : out std_logic_vector(27 downto 0);
+      tdc_frac_o           : out std_logic_vector(11 downto 0);
+      tdc_valid_o          : out std_logic;
+      outx_seconds_i       : in  std_logic_vector(40 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 40 * 4);
+      outx_cycles_i        : in  std_logic_vector(28 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 28 * 4);
+      outx_frac_i          : in  std_logic_vector(12 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 12 * 4);
+      outx_valid_i         : in  std_logic_vector(3 downto 0)          := x"0");
   end component;
   
   function f_to_internal_time (
