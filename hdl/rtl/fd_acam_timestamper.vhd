@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-05-18
+-- Last update: 2013-02-12
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -165,12 +165,10 @@ architecture behavioral of fd_acam_timestamper is
       rst_n_i                : in  std_logic;
       raw_valid_i            : in  std_logic;
       raw_utc_i              : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
-      raw_utc_shifted_i      : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
-      raw_coarse_i           : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
-      raw_coarse_shifted_i   : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
+      raw_coarse_i           : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
       raw_frac_i             : in  std_logic_vector(22 downto 0);
-      raw_start_offset_i     : in  std_logic_vector(3 downto 0);
-      acam_subcycle_offset_i : in  std_logic_vector(4 downto 0);
+      raw_start_offset_i     : in  std_logic_vector(4 downto 0);
+      acam_subcycle_offset_i : in  std_logic_vector(5 downto 0);
       tag_valid_o            : out std_logic;
       tag_utc_o              : out std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
       tag_coarse_o           : out std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
@@ -192,18 +190,18 @@ architecture behavioral of fd_acam_timestamper is
   -- maximum time (in clk_ref_i cycles) between the input pulse and the presence
   -- of its timestamp in ACAM's output FIFO.
   constant c_ACAM_TIMEOUT             : integer                       := 60;
-  constant c_FALLING_REENABLE_TIMEOUT : integer                       := 62;  -- 500 ns safety delay
+  constant c_ACAM_PURGE_TIMEOUT       : unsigned(3 downto 0)          := to_unsigned(15, 4);
+  constant c_FALLING_REENABLE_TIMEOUT : integer                       := 32;  -- 500 ns safety delay
   constant c_ones                     : std_logic_vector(31 downto 0) := x"ffffffff";
 
   -- states of the main ACAM FSM reading/writing data from/to the TDC
   type t_acam_fsm_state is (IDLE, R_ADDR, R_PULSE, R_READ, R_EXTEND_R_PULSE1, R_END_CYCLE, R_ADDR2, W_DATA_ADDR, W_PULSE, W_WAIT,
                             RMODE_PURGE_FIFO,
                             RMODE_PURGE_WAIT,
-                            RMODE_PURGE_WAIT2,
-                            RMODE_PURGE_CHECK_EMPTY,
                             RMODE_READ,
                             RMODE_READ_PULSE,
                             RMODE_READ_PULSE2,
+                            RMODE_READ_PULSE3,
                             R_EXTEND_R_PULSE2,
                             RMODE_CHECK_WIDTH,
                             RMODE_MEASURE_WIDTH);
@@ -224,21 +222,19 @@ architecture behavioral of fd_acam_timestamper is
   signal trig_pulse : std_logic;
 
   -- counters (internal time base)
-  signal start_count          : unsigned(3 downto 0);
-  signal coarse_count         : unsigned(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
-  signal coarse_count_shifted : unsigned(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
-  signal utc_count            : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
-  signal utc_count_shifted    : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
-  signal subcycle_offset      : signed(4 downto 0);
+  signal start_count     : unsigned(4 downto 0);
+  signal coarse_count    : unsigned(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
+  signal utc_count       : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
+  signal subcycle_offset : signed(5 downto 0);
 
   signal gcr_input_en_d0 : std_logic;
 
   -- raw (unprocessed) time tag
-  signal raw_tag_valid                     : std_logic;
-  signal raw_tag_coarse, raw_tag_coarse_sh : unsigned(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
-  signal raw_tag_frac                      : signed(22 downto 0);
-  signal raw_tag_start_offset              : unsigned(3 downto 0);
-  signal raw_tag_utc, raw_tag_utc_sh       : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
+  signal raw_tag_valid        : std_logic;
+  signal raw_tag_coarse       : unsigned(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
+  signal raw_tag_frac         : signed(22 downto 0);
+  signal raw_tag_start_offset : unsigned(4 downto 0);
+  signal raw_tag_utc          : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
 
   signal width_check_sreg : std_logic_vector(g_min_pulse_width-2 downto 0);
   signal width_check_mask : std_logic_vector(g_min_pulse_width-2 downto 0);
@@ -259,10 +255,13 @@ architecture behavioral of fd_acam_timestamper is
   signal tag_valid_int : std_logic;
   signal tag_coarse    : std_logic_vector(27 downto 0);
 
-  signal mask_stop : std_logic;
+  signal safety_counter      : unsigned(7 downto 0);
+  signal safety_counter_mask : std_logic;
 
-  signal mask_stop_clamp : std_logic;
-  signal safety_counter  : unsigned(7 downto 0);
+  signal purge_count  : unsigned(3 downto 0);
+  signal acam_restart : std_logic;
+
+  signal start_mask : std_logic;
   
 begin  -- behave
 
@@ -278,18 +277,13 @@ begin  -- behave
   begin
     if rising_edge(clk_ref_i) then
       if(rst_n_i = '0') then
-        trig_d       <= (others => '0');
-        trig_pulse   <= '0';
-        tag_enable_d <= (others => '0');
+        trig_d     <= (others => '0');
+        trig_pulse <= '0';
       else
-        trig_d(0)  <= trig_a_i and tag_enable;
-        trig_d(1)  <= trig_d(0) and tag_enable_d(0);
-        trig_d(2)  <= trig_d(1) and tag_enable_d(1);
-        trig_pulse <= (trig_d(1) and not trig_d(2)) and tag_enable_d(2) and not mask_stop_clamp;
-
-        tag_enable_d(0) <= tag_enable;
-        tag_enable_d(1) <= tag_enable_d(0);
-        tag_enable_d(2) <= tag_enable_d(1);
+        trig_d(0)  <= trig_a_i;
+        trig_d(1)  <= trig_d(0);
+        trig_d(2)  <= trig_d(1);
+        trig_pulse <= (trig_d(1) and not trig_d(2)) and tag_enable and (not safety_counter_mask);
       end if;
     end if;
   end process;
@@ -298,17 +292,16 @@ begin  -- behave
   begin
     if rising_edge(clk_ref_i) then
       if rst_n_i = '0' then
-        safety_counter  <= (others => '0');
-        mask_stop_clamp <= '0';
+        safety_counter      <= to_unsigned(c_FALLING_REENABLE_TIMEOUT, safety_counter'length);
+        safety_counter_mask <= '1';
       else
-
-        if(trig_d(2) = '1' and tag_enable = '1')then
-          mask_stop_clamp <= '1';
-          safety_counter  <= to_unsigned(c_FALLING_REENABLE_TIMEOUT, safety_counter'length);
-        elsif(trig_d(2) = '0' and tag_enable = '1') then
+        if(trig_d(2) = '1') then
+          safety_counter      <= to_unsigned(c_FALLING_REENABLE_TIMEOUT, safety_counter'length);
+          safety_counter_mask <= '1';
+        else
           safety_counter <= safety_counter-1;
           if(safety_counter = 0) then
-            mask_stop_clamp <= '0';
+            safety_counter_mask <= '0';
           end if;
         end if;
       end if;
@@ -377,7 +370,7 @@ begin  -- behave
 -- - we are not waiting for REARM command
 -- - we have generated at least one valid TDC start pulse (so the TDC has some
 --   meaningful reference
-          if(regs_i.gcr_input_en_o = '0' or tag_enable = '0' or start_ok = '0' or mask_stop = '1' or mask_stop_clamp = '1') then
+          if (regs_i.gcr_input_en_o = '0' or tag_enable = '0' or start_ok = '0' or safety_counter_mask = '1') then
             acam_stop_dis_o <= '1';
           else
             acam_stop_dis_o <= '0';
@@ -400,7 +393,7 @@ begin  -- behave
         start_ok_sreg    <= (others => '0');
         acam_start_dis_o <= '1';
       else
-        -- Host control? just pass the whatever the host decides to the start
+        -- Host control? just pass whatever the host decides to the start
         -- disable pin
         if(regs_i.gcr_bypass_o = '1') then
           acam_start_dis_o <= host_start_dis;
@@ -408,11 +401,14 @@ begin  -- behave
         else
           -- Enable the start input at proper moment to ensure that the 7.125 MHz
           -- "start clock" cycle is not cut.
-          if(start_count = x"e") then
+          if(start_count = x"8") then
             -- advance the start OK shift register with another one.
             start_ok_sreg    <= start_ok_sreg(start_ok_sreg'left-1 downto 0) & '1';
+            acam_start_dis_o <= '1';
+          elsif (start_count = x"18") then
             acam_start_dis_o <= '0';
           end if;
+          
         end if;
       end if;
     end if;
@@ -447,6 +443,8 @@ begin  -- behave
     end if;
   end process;
 
+
+
   -- Process: p_sync_acam_ef
   -- Input: acam_ef_i
   -- Output: acam_ef_d1
@@ -463,6 +461,17 @@ begin  -- behave
 -------------------------------------------------------------------------------
 -- Time Base Counters
 -------------------------------------------------------------------------------  
+
+  p_gen_start_mask : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        start_mask <= '0';
+      elsif(tdc_start_d(1) = '1' and tdc_start_d(2) = '0') then
+        start_mask <= not start_mask;
+      end if;
+    end if;
+  end process;
 
 -- Start counter: counts the number of clk_ref_i cycles from the last TDC start
 -- event.
@@ -483,18 +492,18 @@ begin  -- behave
         -- between the current start count and the LSBs of the new time value
         -- and correct the timestamps later on.
         if(csync_p1_i = '1') then
-          subcycle_offset <= signed('0' & csync_coarse_i(3 downto 0)) - signed('0' & start_count) - 1;
+          subcycle_offset <= signed('0' & csync_coarse_i(4 downto 0)) - signed('0' & start_count) - 1;
         end if;
 
         -- Rising edge on TDC_START? Resynchronize the counter, to go to zero
         -- right after the edge.
-        if(tdc_start_d(1) = '1' and tdc_start_d(2) = '0') then
-          start_count    <= x"2";
+        if(tdc_start_d(1) = '1' and tdc_start_d(2) = '0' and start_mask = '0') then
+          start_count    <= to_unsigned(2, 5);
           advance_coarse <= '0';
         else
           -- Start cycle expired - advance the 128 ns x counter. We do that one
           -- cycle in advance using a register to relax the P&R timing.
-          if(start_count = x"e") then
+          if(start_count = x"1e") then
             advance_coarse <= '1';
           else
             advance_coarse <= '0';
@@ -511,30 +520,25 @@ begin  -- behave
   begin
     if rising_edge(clk_ref_i) then
       if rst_n_i = '0' or regs_i.gcr_bypass_o = '1' then
-        coarse_count         <= (others => '0');
-        coarse_count_shifted <= (others => '0');
+        coarse_count <= (others => '0');
       else
         -- External resync event: reload the counter with new time value. A
         -- special case is executed when the resync event came at the same moment as the
         -- overflow of start_count.
         if(csync_p1_i = '1') then
           if(advance_coarse = '1') then
-            coarse_count <= unsigned(csync_coarse_i(27 downto 4)) + 1;
+            coarse_count <= unsigned(csync_coarse_i(27 downto 5)) + 1;
           else
-            coarse_count <= unsigned(csync_coarse_i(27 downto 4));
+            coarse_count <= unsigned(csync_coarse_i(27 downto 5));
           end if;
         elsif(advance_coarse = '1') then
           -- well, just boringly count up
-          if(coarse_count = (g_clk_ref_freq / 16) - 1) then
+          if(coarse_count = (g_clk_ref_freq / 32) - 1) then
             coarse_count <= (others => '0');
           else
             coarse_count <= coarse_count + 1;
           end if;
 
-          -- keep a "shifted" copy updated in the middle of TDC start cycle
-          if(start_count = x"8") then
-            coarse_count_shifted <= coarse_count;
-          end if;
           
         end if;
       end if;
@@ -546,24 +550,20 @@ begin  -- behave
   begin
     if rising_edge(clk_ref_i) then
       if(rst_n_i = '0') then
-        utc_count         <= (others => '0');
-        utc_count_shifted <= (others => '0');
+        utc_count <= (others => '0');
       else
         if(csync_p1_i = '1') then
-          if(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 16) -1) then
+          if(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 32) -1) then
             -- I hate special cases!
             utc_count <= unsigned(csync_utc_i) + 1;
           else
             utc_count <= unsigned(csync_utc_i);
           end if;
           
-        elsif(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 16) - 1) then
+        elsif(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 32) - 1) then
           utc_count <= utc_count + 1;
         end if;
 
-        if(start_count = x"8") then
-          utc_count_shifted <= utc_count;
-        end if;
       end if;
     end if;
   end process;
@@ -611,9 +611,11 @@ begin  -- behave
 
         gcr_input_en_d0 <= '0';
 
-        mask_stop <= '0';
-        
+        acam_restart <= '0';
       else
+        if (safety_counter_mask = '0') then
+          acam_restart <= '0';
+        end if;
 
         gcr_input_en_d0 <= regs_i.gcr_input_en_o;
 
@@ -646,22 +648,18 @@ begin  -- behave
 
               if(start_ok = '1' and trig_pulse = '0' and tag_rearm_p1_i = '1' and gcr_input_en_d0 = '1') then
                 tag_enable <= '1';
-                mask_stop  <= '0';
               end if;
 
               -- Got a trigger pulse?
               if(trig_pulse = '1' and tag_enable = '1' and start_ok = '1') then
-                mask_stop <= '1';
 
                 -- start checking its width 
                 afsm_state <= RMODE_MEASURE_WIDTH;
 
                 -- store the coarse timestamp
                 raw_tag_coarse       <= coarse_count;
-                raw_tag_coarse_sh    <= coarse_count_shifted;
                 raw_tag_start_offset <= start_count;
                 raw_tag_utc          <= utc_count;
-                raw_tag_utc_sh       <= utc_count_shifted;
 
                 timeout_counter <= (others => '0');
 
@@ -731,14 +729,17 @@ begin  -- behave
             afsm_state <= RMODE_READ_PULSE2;
 
           when RMODE_READ_PULSE2 =>
+            afsm_state <= RMODE_READ_PULSE3;
+
+          when RMODE_READ_PULSE3 =>
             afsm_state <= RMODE_READ;
 
           when RMODE_READ =>
 
 -- store the fine tag
-            raw_tag_frac <= signed(acam_d_i(raw_tag_frac'left downto 0));
+            raw_tag_frac(21 downto 0) <= signed(acam_d_i(21 downto 0));
+            raw_tag_frac(22) <= '0';
 
-            acam_rd_n_o <= '1';
 
             -- check if the FIFO has become empty after the readout. If it didn't, the TDC
             -- must have tagged another rising edge on the trigger input, which
@@ -750,37 +751,33 @@ begin  -- behave
             -- for 24 ns, there should be no risk of metastability.
 
             if(acam_ef_i = '1') then
-              afsm_state    <= IDLE;
               raw_tag_valid <= '1';
-              tag_enable    <= '0';
-            else
-              
-              afsm_state <= RMODE_PURGE_FIFO;
-              tag_enable <= '0';
             end if;
+
+            tag_enable <= '0';
+            afsm_state <= RMODE_PURGE_FIFO;
 
 -- Purge FIFO state: read out all data remaining in the ACAM fifo after when a
 -- glitchy pulse occured.
           when RMODE_PURGE_FIFO =>
-            acam_rd_n_o <= '0';
+            raw_tag_valid  <= '0';
+            acam_rd_n_o    <= '1';
+            acam_reset_int <= '1';
+
             afsm_state  <= RMODE_PURGE_WAIT;
+            purge_count <= to_unsigned(0, purge_count'length);
 
 -- RD_n width extension (SI)
           when RMODE_PURGE_WAIT =>
-            afsm_state <= RMODE_PURGE_WAIT2;
+            acam_reset_int <= '0';
 
-          when RMODE_PURGE_WAIT2 =>
-            afsm_state <= RMODE_PURGE_CHECK_EMPTY;
+            purge_count <= purge_count + 1;
 
--- Check if the FIFO is empty, if not - remove the next word
-          when RMODE_PURGE_CHECK_EMPTY =>
-            acam_rd_n_o <= '1';
-            if(acam_ef_i = '0') then
-              afsm_state <= RMODE_PURGE_FIFO;
-            else
-              tag_enable <= '1';
-              afsm_state <= IDLE;
+            if(purge_count = c_ACAM_PURGE_TIMEOUT) then
+              afsm_state   <= IDLE;
+              acam_restart <= '1';
             end if;
+
 
 -- Host ACAM access: W_states: writes, R_states: reads.
           when W_DATA_ADDR =>
@@ -856,9 +853,7 @@ begin  -- behave
       rst_n_i                => rst_n_i,
       raw_valid_i            => raw_tag_valid,
       raw_utc_i              => std_logic_vector(raw_tag_utc),
-      raw_utc_shifted_i      => std_logic_vector(raw_tag_utc_sh),
       raw_coarse_i           => std_logic_vector(raw_tag_coarse),
-      raw_coarse_shifted_i   => std_logic_vector(raw_tag_coarse_sh),
       raw_frac_i             => std_logic_vector(raw_tag_frac),
       raw_start_offset_i     => std_logic_vector(raw_tag_start_offset),
       acam_subcycle_offset_i => std_logic_vector(subcycle_offset),
