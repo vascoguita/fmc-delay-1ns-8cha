@@ -397,7 +397,7 @@ this something and the ACAM's internal time base is known (or better, fixed). In
 @item @code{subcycle_offset} - offset between the ACAM's and TDC core's timescales.
 @end itemize
 
-It's very simple if we work in local time base mode, as 
+It is very simple if we work in local time base mode, as 
 the counters need not be aligned to any other counters. The WR mode is a bit more complicated:
 TDC start occurs every 16 reference clock ticks, but a PPS pulse from the Csync 
 unit can come anytime. The most straightformward method here would be to reset the TDC start
@@ -413,6 +413,28 @@ bits of the Csync coarse counter and the subcycle counter (@code{subcycle_offset
 
 @subsection Input stage and TDC control
 
+This part of the core takes care of the coarse input pulse, TDC start and stop enable singnals. It is responsible for:
+@itemize
+@item @b{Sampling the coarse pulse input.} This is done in the @code{p_sync_trigger} process which implements 
+a modified 3-stage synchronizer with enable signal ANDed with the input signal at each synchronization stage, 
+minimizing the input's on/off reaction time. 
+
+@item @b{Safely enable and disable the TDC input}.
+There are three processes involved here: @code{p_safety_counter}, which disables the input upon the rising edge
+of the incoming pulse and re-enables it a certain time (@code{c_FALLING_REENABLE_TIMEOUT}) after the falling 
+edge of the currently processed pulse. This prevents the core from generating incorrect timestamps when the 
+input pulses come too close to each other or in case of poor quality or noise on the falling edge of the signal, which
+could be misinterpreted as a spurious input event. Even if the signal quality is fine, such spurious pulses may 
+occur while plugging the trigger input to a live signal. The remaining processes: @code{p_gen_acam_start_dis} 
+and @code{p_gen_acam_stop} drive the TDC's START and STOP disable signals. The former ensures that the start 
+input is not enabled in the middle of a rising edge of the 7.125 MHz start clock. The latter enables the stop 
+mainput when the TDC has received at least one valid start pulse and while we are not in the ``dead'' period.
+
+@item @b{Reject pulses that are not within the requirements.}
+
+
+
+@end itemize
 
 @subsection Host interface
 
@@ -485,8 +507,6 @@ the output cutoff and input selection switches. Therefore, production tests invo
 have shown that the error between DDMTD calibration mechanism and the external TIM did not exceed 800 ps.
 
 For more information on DDMTD phase/time measurement techniques please refer to @ref{book:toms_msc}.
-
-@chapter Long term stability
 
 @chapter Carrier implementation example
 
