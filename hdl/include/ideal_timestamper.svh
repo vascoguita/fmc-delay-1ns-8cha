@@ -14,7 +14,7 @@ module ideal_timestamper
    );
 
    parameter g_frac_range    = 4096;
-   parameter g_coarse_range  = 256;
+   parameter g_coarse_range  = 125000000;
 
    const time c_frac_step   = 8ns / g_frac_range;
    
