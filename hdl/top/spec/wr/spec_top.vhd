@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-10-17
+-- Last update: 2013-02-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -655,8 +655,8 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      led_red_o   => LED_RED,
-      led_green_o => LED_GREEN,
+      led_act_o   => LED_RED,
+      led_link_o => LED_GREEN,
 
       scl_o     => wrc_scl_out,
       scl_i     => wrc_scl_in,
@@ -691,7 +691,7 @@ begin
       tm_clk_aux_lock_en_i => tm_clk_aux_lock_en,
       tm_clk_aux_locked_o  => tm_clk_aux_locked,
       tm_time_valid_o      => tm_time_valid,
-      tm_utc_o             => tm_utc,
+      tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
 
       btn1_i => '1',
