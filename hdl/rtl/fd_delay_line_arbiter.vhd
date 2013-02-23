@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-04-25
+-- Last update: 2013-02-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ entity fd_delay_line_arbiter is
 end fd_delay_line_arbiter;
 
 architecture behavioral of fd_delay_line_arbiter is
-  signal arb_sreg : std_logic_vector(4*3 - 1 downto 0);
+  signal arb_sreg : std_logic_vector(4*4 - 1 downto 0);
 
   type t_dly_array is array (integer range <>) of std_logic_vector(9 downto 0);
 
@@ -78,6 +78,7 @@ architecture behavioral of fd_delay_line_arbiter is
   signal delay_vec     : t_dly_array(0 to 3);
   signal delay_len_reg : std_logic_vector(3 downto 0);
   signal delay_val_reg : std_logic_vector(9 downto 0);
+  signal pending_reg   : std_logic_vector(3 downto 0);
   
 begin  -- behavioral
 
@@ -93,31 +94,33 @@ begin  -- behavioral
       if rst_n_i = '0' then
         delay_len_reg <= (others => '1');
         delay_val_reg <= (others => '0');
-        delay_len_o <= (others => '1');
+        delay_len_o   <= (others => '1');
         -- done_reg      <= (others => '0');
         done_o        <= (others => '0');
         arb_sreg      <= std_logic_vector(to_unsigned(1, arb_sreg'length));
+        pending_reg   <= (others => '0');
       else
         arb_sreg <= arb_sreg(arb_sreg'left-1 downto 0) & arb_sreg(arb_sreg'left);
 
         for i in 0 to 3 loop
-          if(arb_sreg(3*i) = '1' and load_i(i) = '1') then
+
+          if(arb_sreg(4*i) = '1' and load_i(i) = '1') then
             delay_val_reg    <= delay_vec(i);
-            delay_len_reg(i) <= '0';
-            done_o(i)        <= '1';
-          end if;
-
-
-          if(arb_sreg(3*i+1) = '1') then
-            delay_val_reg <= delay_vec(i);
-            done_o(i)     <= '0';
-          end if;
-
-
-          if(arb_sreg(3*i+2) = '1') then
-            delay_val_reg    <= delay_vec(i);
+            pending_reg(i)   <= '1';
             delay_len_reg(i) <= '1';
             done_o(i)        <= '0';
+          elsif(arb_sreg(4*i+1) = '1') then
+            delay_len_reg(i) <= not pending_reg(i);
+            done_o(i)        <= '0';
+          elsif(arb_sreg(4*i+2) = '1') then
+            delay_len_reg(i) <= not pending_reg(i);
+            done_o(i)        <= '0';
+          elsif(arb_sreg(4*i+3) = '1') then
+            delay_len_reg(i) <= '1';
+            done_o(i)        <= pending_reg(i);
+            pending_reg(i)   <= '0';
+          else
+            done_o(i) <= '0';
           end if;
 
         end loop;  -- i in 0 to 3
