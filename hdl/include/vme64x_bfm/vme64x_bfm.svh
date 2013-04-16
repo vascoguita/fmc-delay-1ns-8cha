@@ -187,7 +187,7 @@ typedef enum { DONT_CARE = 'h100,
                } vme_addr_size_t;
 
 typedef enum { 
-               SINGLE = 'h10, CR_CSR='h20, MBLT='h30, BLT='h40, LCK='h50, TwoeVME='h60, TwoeSST='h70 } vme_xfer_type_t;
+               SINGLE = 'h10, CR_CSR='h20, MBLT='h30, BLT='h40, LCK='h50, TwoeVME='h60, TwoeSST='h70, IACK = 'h80 } vme_xfer_type_t;
 
 typedef enum { D08Byte0='h1, D08Byte1='h2, D08Byte2='h3, D08Byte3='h4, D16Byte01='h5, D16Byte23='h6, D32='h7 } vme_data_type_t ;
    
@@ -207,17 +207,48 @@ class CBusAccessor_VME64x extends CBusAccessor;
    protected bit [4:0] m_ga;
    virtual             IVME64X.tb vme;
 
+
+   
    function new(virtual IVME64X.tb _vme);
       vme = _vme;
       m_ga = 6'b010111;
       vme.q_ga = m_ga;
-      m_ba = 8'b10000000;
    endfunction // new
+
+
+
+   protected task acknowledge_irq(int level, ref int vector);
+      `assert_wait(tmo_rws_bus_free, vme.dtack_n && vme.berr_n, 10us)
+      release_bus();
+      #40ns;
+
+      vme.q_addr[3:1] = level;
+      vme.q_iackin_n = 1'b0;
+      vme.q_iack_n = 1'b0;
+      vme.q_am = 'h29;
+      #100ns;
+      
+      vme.q_as_n = 1'b0;
+      #100ns;
+      vme.q_ds_n[0] = 1'b0;
+      
+      `assert_wait(tmo_rws_bus_idle, !vme.dtack_n || !vme.berr_n, 4us)
+      if(!vme.berr_n)
+        $error("[rw_simple_generic]: VME bus error.");
+
+      vector = vme.data;
+      
+      vme.q_iackin_n = 1'b1;
+      vme.q_iack_n = 1'b1;
+      #100ns;
+      release_bus();
+   endtask
+   
 
    protected task set_address(uint64_t addr_in, vme_addr_size_t asize, vme_xfer_type_t xtype);
       bit[63:0] a = addr_in;
       bit [31:0] a_out;
-      
+
      const bit [5:0] am_map [int] = 
                       '{
                         A32 | CR_CSR : 6'b101111,
@@ -248,11 +279,11 @@ class CBusAccessor_VME64x extends CBusAccessor;
         a_out = {8'h0, ~m_ga[4:0], a[18:0]};
       else case(asize)
         A16: 
-          a_out = {16'h0, m_ba[7:3], a[10:2], 2'b00};
+                   a_out = {16'h0, a[15:2], 2'b00};
         A24: 
-          a_out = {8'h0, m_ba[7:3], a[18:2], 2'b00};
+          a_out = {8'h0, a[23:2], 2'b00};
         A32:
-          a_out = {m_ba[7:3], a[26:2], 2'b00};
+          a_out = { a[31:2], 2'b00};
       endcase // case (xtype)
 
       vme.q_addr[31:2] = a_out[31:2];
@@ -399,7 +430,30 @@ class CBusAccessor_VME64x extends CBusAccessor;
       writem(aa, da, size, result);
    endtask
 
+   task handle_irqs(ref int done);
+      done = 0;
+      
+      if(vme.irq_n != 7'h7f) 
+        begin
+           int i,level, vector;
+           for(i=6;i>=0;i--)
+             if(!vme.irq_n[i])
+               begin
+                  level = i+1;
+                  break;
+               end
+           $display("vme64x_bfm: got irq level %d", level);
+           
+           acknowledge_irq(level, vector);
+           $display("vme64x_bfm: vector %x", vector);
+           done = 1;
+           
+        end
+   endtask // handle_irqs
    
+
+      
+  
 endclass // CBusAccessor_VME64x
 
   

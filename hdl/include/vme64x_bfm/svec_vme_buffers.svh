@@ -67,6 +67,17 @@ module svec_vme_buffers (
    pullup(slave.write_n);
    pulldown(slave.bbsy_n);
    pullup(slave.iackin_n);
+   pullup(slave.iackout_n);
+
+   
+   genvar        i;
+   generate
+      for(i=0;i<6;i++)
+        assign slave.irq_n[i] = (VME_IRQ_n_i[i] ? 1'b0 : 1'bz);
+   endgenerate
+   
+   
+          
    
    assign VME_RST_n_o = slave.rst_n;
    
@@ -93,6 +104,8 @@ module svec_vme_buffers (
    assign slave.dtack_n = VME_DTACK_n_i;
    assign slave.berr_n = ~VME_BERR_i;
    assign slave.retry_n = VME_RETRY_n_i;
+   assign slave.iackout_n = VME_IACKOUT_n_i;
+   
 endmodule
 
 
