@@ -1,4 +1,4 @@
-files = [ "svec_top.vhd", "svec_top.ucf", "xvme64x_core.vhd" ]
+files = [ "synthesis_descriptor.vhd", "svec_top.vhd", "svec_top.ucf", "xvme64x_core.vhd" ]
 
 fetchto = "../../../ip_cores"
 

@@ -150,23 +150,23 @@ NET "pll25dac_sync_n_o" LOC = P26;
 NET "uart_txd_o" LOC = U27;
 NET "uart_rxd_i" LOC = U25;
 
-NET "fp_ledn_o[0]" LOC = AD27;
-NET "fp_ledn_o[1]" LOC = AD26;
-NET "fp_ledn_o[2]" LOC = AC28;
-NET "fp_ledn_o[3]" LOC = AC27;
-NET "fp_ledn_o[4]" LOC = AE27;
-NET "fp_ledn_o[5]" LOC = AE30;
-NET "fp_ledn_o[6]" LOC = AF28;
-NET "fp_ledn_o[7]" LOC = AE28;
+#NET "fp_ledn_o[0]" LOC = AD27;
+#NET "fp_ledn_o[1]" LOC = AD26;
+#NET "fp_ledn_o[2]" LOC = AC28;
+#NET "fp_ledn_o[3]" LOC = AC27;
+#NET "fp_ledn_o[4]" LOC = AE27;
+#NET "fp_ledn_o[5]" LOC = AE30;
+#NET "fp_ledn_o[6]" LOC = AF28;
+#NET "fp_ledn_o[7]" LOC = AE28;
 
-NET "fp_ledn_o[0]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[1]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[2]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[3]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[4]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[5]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[6]" IOSTANDARD = "LVCMOS33";
-NET "fp_ledn_o[7]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[0]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[1]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[2]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[3]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[4]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[5]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[6]" IOSTANDARD = "LVCMOS33";
+#NET "fp_ledn_o[7]" IOSTANDARD = "LVCMOS33";
 
 #----------------------------------------
 # 1-wire thermoeter + unique ID
