@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-02-22
+-- Last update: 2013-04-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -49,6 +49,8 @@ use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
 use work.etherbone_pkg.all;
 use work.wr_xilinx_pkg.all;
+
+use work.synthesis_descriptor.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -264,34 +266,25 @@ architecture rtl of spec_top is
   constant c_MASTER_GENNUM    : integer := 0;
   constant c_MASTER_ETHERBONE : integer := 1;
 
-  constant c_SLAVE_FD     : integer := 0;
-  constant c_SLAVE_WRCORE : integer := 1;
-  constant c_SLAVE_VIC    : integer := 2;
+  constant c_SLAVE_FD       : integer := 0;
+  constant c_SLAVE_WRCORE   : integer := 1;
+  constant c_SLAVE_VIC      : integer := 2;
+  constant c_DESC_SYNTHESIS : integer := 3;
+  constant c_DESC_REPO_URL  : integer := 4;
 
   constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
 
-  constant c_xwb_vic_sdb : t_sdb_device := (
-    abi_class     => x"0000", -- undocumented device
-    abi_ver_major => x"01",
-    abi_ver_minor => x"01",
-    wbd_endian    => c_sdb_endian_big,
-    wbd_width     => x"7", -- 8/16/32-bit port granularity
-    sdb_component => (
-    addr_first    => x"0000000000000000",
-    addr_last     => x"00000000000000ff",
-    product => (
-    vendor_id     => x"000000000000CE42", -- CERN
-    device_id     => x"00000013",
-    version       => x"00000001",
-    date          => x"20120113",
-    name          => "WB-VIC-Int.Control ")));
-
-  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
-    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"000c0000"),
-     c_SLAVE_FD     => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00080000"),
-     c_SLAVE_VIC    => f_sdb_embed_device(c_xwb_vic_sdb, x"00090000"));
+  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS+1 downto 0) :=
+    (c_SLAVE_WRCORE   => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"000c0000"),
+     c_SLAVE_FD       => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00080000"),
+     c_SLAVE_VIC      => f_sdb_embed_device(c_xwb_vic_sdb, x"00090000"),
+     c_DESC_SYNTHESIS => f_sdb_embed_synthesis(c_sdb_synthesis_info),
+     c_DESC_REPO_URL  => f_sdb_embed_repo_url(c_sdb_repo_url));
 
   constant c_SDB_ADDRESS : t_wishbone_address := x"00000000";
+
+  constant c_VIC_VECTOR_TABLE : t_wishbone_address_array(0 to 0) :=
+    (0 => x"00080000");
 
   signal pllout_clk_sys       : std_logic;
   signal pllout_clk_dmtd      : std_logic;
@@ -567,7 +560,7 @@ begin
 -------------------------------------------------------------------------------
 -- Top level interconnect and interrupt controller
 -------------------------------------------------------------------------------
-  
+
   U_Intercon : xwb_sdb_crossbar
     generic map (
       g_num_masters => c_NUM_WB_SLAVES,
@@ -588,7 +581,8 @@ begin
     generic map (
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
-      g_num_interrupts      => 1)
+      g_num_interrupts      => 1,
+      g_init_vectors        => c_VIC_VECTOR_TABLE)
     port map (
       clk_sys_i    => clk_sys,
       rst_n_i      => local_reset_n,
@@ -626,10 +620,11 @@ begin
       g_with_external_clock_input => false,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "wrc.ram",
+      g_dpram_initf               => "none",
       g_dpram_size                => 90112/4,
       g_interface_mode            => PIPELINED,
-      g_address_granularity       => BYTE)
+      g_address_granularity       => BYTE,
+      g_softpll_enable_debugger   => false)
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
@@ -655,7 +650,7 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      led_act_o   => LED_RED,
+      led_act_o  => LED_RED,
       led_link_o => LED_GREEN,
 
       scl_o     => wrc_scl_out,
@@ -687,9 +682,9 @@ begin
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
-      tm_dac_wr_o          => tm_dac_wr,
-      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en,
-      tm_clk_aux_locked_o  => tm_clk_aux_locked,
+      tm_dac_wr_o(0)          => tm_dac_wr,
+      tm_clk_aux_lock_en_i(0) => tm_clk_aux_lock_en,
+      tm_clk_aux_locked_o(0)  => tm_clk_aux_locked,
       tm_time_valid_o      => tm_time_valid,
       tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
