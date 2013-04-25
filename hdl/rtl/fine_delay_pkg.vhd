@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-11-22
+-- Last update: 2013-04-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ package fine_delay_pkg is
   constant c_FD_DMTD_CALIBRATION_PERIOD : integer := 144;
 
   -- Calibration pulse width
-  constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 10;
+  constant c_FD_DMTD_CALIBRATION_PWIDTH : integer := 32;
 
   constant c_FD_SDB_DEVICE : t_sdb_device := (
     abi_class     => x"0000",              -- undocumented device
