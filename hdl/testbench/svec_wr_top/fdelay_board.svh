@@ -197,21 +197,28 @@ module fdelay_board (
       );
 
    genvar     gg;
+
+   function bit[9:0] reverse_bits (bit [9:0] x);
+      reg [9:0] tmp;
+      int       i;
+
+      for(i=0;i<10;i++)
+        tmp[9-i]=x[i];
+      
+      
+      return tmp;
+   endfunction // reverse_bits
    
-   generate
-      for(gg=0;gg<4;gg++)
-        begin
-//           assign out_o[gg] = fmc.delay_pulse[gg];
+
+      
            
-           mc100ep195
-             U_delay_line(
-                 .len(fmc.delay_len[gg]),
-                 .i(fmc.delay_pulse[gg]),
-                 .delay(fmc.delay_val),
-                 .o(out_o[gg])
-                 ); 
-               end
-      endgenerate
+   mc100ep195
+    U_delay_line0(
+                  .len(fmc.delay_len[0]),
+                  .i(fmc.delay_pulse[0]),
+                  .delay(reverse_bits(fmc.delay_val)),
+                  .o(out_o[0]));
+   
    
 endmodule // main
 

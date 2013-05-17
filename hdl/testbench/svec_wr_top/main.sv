@@ -43,6 +43,43 @@ module delay_meas(input enable, input a, input b);
    end
 endmodule // delay_meas
 
+module period_meas(input enable, input a);
+
+   mailbox tag_a, tag_b;
+
+   event   q_notempty;
+   
+   initial begin
+      tag_a = new(1024);
+   end
+
+   time prev_a = 0;
+   
+   
+   always@(posedge a) begin
+      if(prev_a > 0)begin
+         if(enable) tag_a.put($time - prev_a);
+      end else
+        prev_a=$time;
+   end
+   
+   
+   
+
+   initial forever begin
+      wait(tag_a.num() > 0);
+      
+      while(tag_a.num() > 0)
+        begin
+           time delta;
+         
+           tag_a.get(delta);
+           
+           $display("Delay: %.3f ns",  real'(delta) / real'(1ns) );
+        end
+   end
+endmodule // delay_meas
+
 
 
 module main;
@@ -85,7 +122,6 @@ module main;
    wire [3:0] out0, out1;
    reg        pulse_enable = 0;
    
-   
    random_pulse_gen
      #(
        .g_pulse_width  (50ns),
@@ -104,7 +140,12 @@ module main;
       .fmc(I_fmc0.board)
       );
 
-  delay_meas U_DMeas0 (pulse_enable, trig0, out0[0]);
+   reg out0_delayed=0;
+
+   always@(out0[0]) out0_delayed <= #10ps out0[0];
+   
+   
+  period_meas U_DMeas0 (pulse_enable, out0[0]);
    
    task automatic init_vme64x_core(ref CBusAccessor_VME64x acc);
       /* map func0 to 0x80000000, A32 */
@@ -120,7 +161,7 @@ module main;
    initial begin
       CBusAccessor_VME64x acc = new(VME.master);
       CBusAccessor acc_casted = CBusAccessor'(acc);
-      Timestamp dly;
+      Timestamp dly, t_start;
       
       CSimDrv_FineDelay drv0;
       uint64_t d;
@@ -129,18 +170,34 @@ module main;
 
       init_vme64x_core(acc);
       acc_casted.set_default_xfer_size(A32|SINGLE|D32);
+
+//      acc.read('h20000, d, D32|A32|SINGLE);
+//      $display("Vector 1 = %x", d);
+      acc.read('h80030080, d, D32|A32|SINGLE);
+      $display("Vector 0 = %x", d);
+      acc.read('h80030084, d, D32|A32|SINGLE);
+      $display("Vector 1 = %x", d);
+      acc.read('h80030088, d, D32|A32|SINGLE);
+      $display("Vector 2 = %x", d);
+
+      $stop;
       
-      drv0 = new(acc, 'h10000);
+      
+      drv0 = new(acc, 'h80010000);
       drv0.init();
 
-      dly=new;
-      dly.from_ps(600000);
-      drv0.config_output(0, CSimDrv_FineDelay::DELAY, 1, dly, 200000);
+      t_start=new;    
+      drv0.get_time(t_start);
+      t_start.coarse += 2000;
+      
+      drv0.config_output(0, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001000, -1);
       
       $display("Init done");
 
+      
       pulse_enable = 1;
 
+/* -----\/----- EXCLUDED -----\/-----
       forever begin
          drv0.rbuf_update();
 
@@ -152,10 +209,13 @@ module main;
            end
          #1us;
       end
-   end
+ -----/\----- EXCLUDED -----/\----- */
+   end // initial begin
+   
 
   
 endmodule // main
+
 
 
 

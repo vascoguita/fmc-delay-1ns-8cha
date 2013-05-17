@@ -177,7 +177,7 @@ class CSimDrv_FineDelay;
 
       base = 'h100 + 'h100 * channel;
       
-      writel(base + `ADDR_FD_FRR, 800);
+      writel(base + `ADDR_FD_FRR, 865);
       writel(base + `ADDR_FD_U_STARTH, t_start.utc >> 32);
       writel(base + `ADDR_FD_U_STARTL, t_start.utc & 'hffffffff);
       writel(base + `ADDR_FD_C_START, t_start.coarse);
