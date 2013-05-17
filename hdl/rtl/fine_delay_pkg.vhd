@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-04-21
+-- Last update: 2013-04-30
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ package fine_delay_pkg is
       product     => (
         vendor_id => x"000000000000CE42",  -- CERN
         device_id => x"f19ede1a",
-        version   => x"00000001",
+        version   => x"00000003",
         date      => x"20120809",
         name      => "Fine-Delay-Core    ")));
 
