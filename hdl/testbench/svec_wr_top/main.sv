@@ -3,7 +3,6 @@
 
 `include "fdelay_board.svh"
 `include "simdrv_fine_delay.svh"
-`include "ideal_timestamper.svh"
 
 
 module delay_meas(input enable, input a, input b);
@@ -26,7 +25,6 @@ module delay_meas(input enable, input a, input b);
    end
    
    
-   
 
    initial forever begin
       wait(tag_a.num() > 0 && tag_b.num() > 0);
@@ -40,6 +38,43 @@ module delay_meas(input enable, input a, input b);
 
            delta = tb - ta;
 
+           $display("Delay: %.3f ns",  real'(delta) / real'(1ns) );
+        end
+   end
+endmodule // delay_meas
+
+module period_meas(input enable, input a);
+
+   mailbox tag_a, tag_b;
+
+   event   q_notempty;
+   
+   initial begin
+      tag_a = new(1024);
+   end
+
+   time prev_a = 0;
+   
+   
+   always@(posedge a) begin
+      if(prev_a > 0)begin
+         if(enable) tag_a.put($time - prev_a);
+      end else
+        prev_a=$time;
+   end
+   
+   
+   
+
+   initial forever begin
+      wait(tag_a.num() > 0);
+      
+      while(tag_a.num() > 0)
+        begin
+           time delta;
+         
+           tag_a.get(delta);
+           
            $display("Delay: %.3f ns",  real'(delta) / real'(1ns) );
         end
    end
@@ -87,14 +122,11 @@ module main;
    wire [3:0] out0, out1;
    reg        pulse_enable = 0;
    
-   
    random_pulse_gen
      #(
-       .g_pulse_width  (100ns),
+       .g_pulse_width  (50ns),
        .g_min_spacing  (1001ns),
-       .g_max_spacing  (1001.1ns),
-       .g_repetition(1),
-       .g_burst_spacing(3ns))
+       .g_max_spacing  (1001.1ns))
    U_Gen0
      (
       .enable_i(pulse_enable),
@@ -108,15 +140,12 @@ module main;
       .fmc(I_fmc0.board)
       );
 
-  delay_meas U_DMeas0 (pulse_enable, trig0, out0[0]);
+   reg out0_delayed=0;
 
-   ideal_timestamper tsu_in(
-                            .clk_ref_i(I_fmc0.clk_ref_p),
-                            .rst_n_i(rst_n),
-                            .enable_i(1'b1),
-                            .trig_a_i(trig0),
-                            .csync_p1_i(1'b0));
+   always@(out0[0]) out0_delayed <= #10ps out0[0];
    
+   
+  period_meas U_DMeas0 (pulse_enable, out0[0]);
    
    task automatic init_vme64x_core(ref CBusAccessor_VME64x acc);
       /* map func0 to 0x80000000, A32 */
@@ -132,7 +161,7 @@ module main;
    initial begin
       CBusAccessor_VME64x acc = new(VME.master);
       CBusAccessor acc_casted = CBusAccessor'(acc);
-      Timestamp dly;
+      Timestamp dly, t_start;
       
       CSimDrv_FineDelay drv0;
       uint64_t d;
@@ -141,70 +170,52 @@ module main;
 
       init_vme64x_core(acc);
       acc_casted.set_default_xfer_size(A32|SINGLE|D32);
+
+//      acc.read('h20000, d, D32|A32|SINGLE);
+//      $display("Vector 1 = %x", d);
+      acc.read('h80030080, d, D32|A32|SINGLE);
+      $display("Vector 0 = %x", d);
+      acc.read('h80030084, d, D32|A32|SINGLE);
+      $display("Vector 1 = %x", d);
+      acc.read('h80030088, d, D32|A32|SINGLE);
+      $display("Vector 2 = %x", d);
+
+      $stop;
       
-      drv0 = new(acc, 'h10000);
+      
+      drv0 = new(acc, 'h80010000);
       drv0.init();
 
-      dly=new;
-      dly.from_ps(800000);
-      drv0.config_output(0, CSimDrv_FineDelay::DELAY, 1, dly, 250000);
+      t_start=new;    
+      drv0.get_time(t_start);
+      t_start.coarse += 2000;
+      
+      drv0.config_output(0, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001000, -1);
       
       $display("Init done");
 
+      
       pulse_enable = 1;
 
-   
-
+/* -----\/----- EXCLUDED -----\/-----
       forever begin
-         //       drv0.rbuf_update();
-         //         if(drv0.poll())
-         Timestamp ts, ts_ref;
-         //              ts = drv0.get();
+         drv0.rbuf_update();
 
-         while(ts_q_fd0.size() == 0)
-           #1ns;
-         
-         ts = ts_q_fd0.pop_front();
-         $display("TS: %.3f", ts.flatten());
-         
-         while(tsu_in.poll())
+         if(drv0.poll())
            begin
-              ts_ref = tsu_in.get();
+              Timestamp ts;
+              ts = drv0.get();
+             // $display("TS: %.3f", ts.flatten());
            end
-
-         $display("TS: %.3f, ref: %.3f, delta: %.3f", ts.flatten(), ts_ref.flatten(), ts_ref.flatten() - ts.flatten());
-         
-         
+         #1us;
       end
+ -----/\----- EXCLUDED -----/\----- */
    end // initial begin
-
-      Timestamp ts_q_fd0[$];
    
 
-
-      always@(posedge DUT.dcm0_clk_ref_0)
-        begin
-           if(DUT.U_FineDelay_Core0.tag_valid)
-             begin
-                Timestamp tr;
-                tr = new;
-                
-                $display("Got a tag");
-                tr.coarse = DUT.U_FineDelay_Core0.tag_coarse;
-                tr.utc = 0;
-                tr.frac = DUT.U_FineDelay_Core0.tag_frac;
-
-                ts_q_fd0.push_back(tr);
-                
-                
-                
-             end
-           
-        end
-
-   
   
 endmodule // main
+
 
 
 

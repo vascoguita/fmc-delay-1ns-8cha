@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-02-21
+-- Last update: 2013-05-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,6 +50,8 @@ use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
 use work.etherbone_pkg.all;
 use work.wr_xilinx_pkg.all;
+
+use work.synthesis_descriptor.all;
 
 library UNISIM;
 use UNISIM.vcomponents.all;
@@ -141,8 +143,6 @@ entity svec_top is
       pll25dac_sync_n_o : out std_logic;
 
       tempid_dq_b : inout std_logic;
-
-      fp_ledn_o : out std_logic_vector(7 downto 0);
 
       -------------------------------------------------------------------------
       -- Fine Delay Pins
@@ -237,7 +237,6 @@ architecture rtl of svec_top is
     port (
       clk_i           : in  std_logic;
       rst_n_i         : in  std_logic;
-      rst_n_o         : out std_logic;
       VME_AS_n_i      : in  std_logic;
       VME_RST_n_i     : in  std_logic;
       VME_WRITE_n_i   : in  std_logic;
@@ -302,8 +301,6 @@ architecture rtl of svec_top is
   signal VME_ADDR_b_out                                        : std_logic_vector(31 downto 1);
   signal VME_LWORD_n_b_out, VME_DATA_DIR_int, VME_ADDR_DIR_int : std_logic;
 
-
-
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
   signal dac_hpll_data    : std_logic_vector(15 downto 0);
@@ -328,37 +325,30 @@ architecture rtl of svec_top is
   constant c_MASTER_VME       : integer := 0;
   constant c_MASTER_ETHERBONE : integer := 1;
 
-  constant c_SLAVE_FD1    : integer := 0;
-  constant c_SLAVE_FD0    : integer := 1;
-  constant c_SLAVE_WRCORE : integer := 2;
-  constant c_SLAVE_VIC    : integer := 3;
+  constant c_SLAVE_FD1      : integer := 1;
+  constant c_SLAVE_FD0      : integer := 0;
+  constant c_SLAVE_WRCORE   : integer := 3;
+  constant c_SLAVE_VIC      : integer := 2;
+  constant c_DESC_SYNTHESIS : integer := 4;
+  constant c_DESC_REPO_URL  : integer := 5;
 
-  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00040000");
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00070000");
 
-  constant c_xwb_vic_sdb : t_sdb_device := (
-    abi_class     => x"0000",              -- undocumented device
-    abi_ver_major => x"01",
-    abi_ver_minor => x"01",
-    wbd_endian    => c_sdb_endian_big,
-    wbd_width     => x"7",                 -- 8/16/32-bit port granularity
-    sdb_component => (
-      addr_first  => x"0000000000000000",
-      addr_last   => x"00000000000000ff",
-      product     => (
-        vendor_id => x"000000000000CE42",  -- CERN
-        device_id => x"00000013",
-        version   => x"00000001",
-        date      => x"20120113",
-        name      => "WB-VIC-Int.Control ")));
-
-  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS-1 downto 0) :=
-    (c_SLAVE_WRCORE => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
-     c_SLAVE_FD0    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
-     c_SLAVE_FD1    => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"),
-     c_SLAVE_VIC    => f_sdb_embed_device(c_xwb_vic_sdb, x"00030000")
+  constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS + 1 downto 0) :=
+    (
+     c_SLAVE_FD0      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
+     c_SLAVE_FD1      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"),
+     c_SLAVE_VIC      => f_sdb_embed_device(c_xwb_vic_sdb, x"00030000"),
+     c_SLAVE_WRCORE   => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
+     c_DESC_SYNTHESIS => f_sdb_embed_synthesis(c_sdb_synthesis_info),
+     c_DESC_REPO_URL  => f_sdb_embed_repo_url(c_sdb_repo_url)
      );
 
   constant c_SDB_ADDRESS : t_wishbone_address := x"00000000";
+
+  constant c_VIC_VECTOR_TABLE : t_wishbone_address_array(0 to 1) :=
+    (0 => x"00010000",
+     1 => x"00020000");
 
   signal cnx_master_out : t_wishbone_master_out_array(c_NUM_WB_MASTERS-1 downto 0);
   signal cnx_master_in  : t_wishbone_master_in_array(c_NUM_WB_MASTERS-1 downto 0);
@@ -376,17 +366,14 @@ architecture rtl of svec_top is
   signal tdc1_data_out, tdc1_data_in      : std_logic_vector(27 downto 0);
   signal tdc1_data_oe                     : std_logic;
 
-  signal tm_link_up          : std_logic;
-  signal tm_utc              : std_logic_vector(39 downto 0);
-  signal tm_cycles           : std_logic_vector(27 downto 0);
-  signal tm_time_valid       : std_logic;
-  signal tm0_clk_aux_lock_en : std_logic;
-  signal tm0_clk_aux_locked  : std_logic;
-  signal tm1_clk_aux_lock_en : std_logic;
-  signal tm1_clk_aux_locked  : std_logic;
-  signal tm_dac_value        : std_logic_vector(23 downto 0);
-  signal tm0_dac_wr          : std_logic;
-  signal tm1_dac_wr          : std_logic;
+  signal tm_link_up         : std_logic;
+  signal tm_utc             : std_logic_vector(39 downto 0);
+  signal tm_cycles          : std_logic_vector(27 downto 0);
+  signal tm_time_valid      : std_logic;
+  signal tm_clk_aux_lock_en : std_logic_vector(1 downto 0);
+  signal tm_clk_aux_locked  : std_logic_vector(1 downto 0);
+  signal tm_dac_value       : std_logic_vector(23 downto 0);
+  signal tm_dac_wr          : std_logic_vector(1 downto 0);
 
   signal ddr0_pll_reset                  : std_logic;
   signal ddr0_pll_locked, fd0_pll_status : std_logic;
@@ -419,11 +406,8 @@ architecture rtl of svec_top is
   signal vme_master_out : t_wishbone_master_out;
   signal vme_master_in  : t_wishbone_master_in;
 
-  signal pins    : std_logic_vector(31 downto 0);
-  signal pps     : std_logic;
-
-  signal led_divider : unsigned(22 downto 0);
-  signal leds        : std_logic_vector(7 downto 0);
+  signal pins : std_logic_vector(31 downto 0);
+  signal pps  : std_logic;
 
   signal vic_master_irq : std_logic;
 
@@ -674,17 +658,17 @@ begin
       g_phys_uart                 => true,
       g_virtual_uart              => true,
       g_with_external_clock_input => false,
-      g_aux_clks                  => 1,
-      g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "wrc.ram",
-      g_dpram_size                => 90112/4,  --16384,
+      g_aux_clks                  => 2,
       g_interface_mode            => PIPELINED,
-      g_address_granularity       => BYTE)
+      g_address_granularity       => BYTE,
+--      g_softpll_enable_debugger   => true,
+      g_dpram_initf               => "none")
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
       clk_ref_i    => clk_125m_pllref,
       clk_aux_i(0) => dcm0_clk_ref_0,
+      clk_aux_i(1) => dcm1_clk_ref_0,
       rst_n_i      => local_reset_n,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
@@ -705,8 +689,8 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      led_link_o   => open,
-      led_act_o => open,
+      led_link_o => open,
+      led_act_o  => open,
 
       scl_o     => wrc_scl_out,
       scl_i     => wrc_scl_in,
@@ -740,9 +724,9 @@ begin
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
-      tm_dac_wr_o          => tm0_dac_wr,
-      tm_clk_aux_lock_en_i => tm0_clk_aux_lock_en,
-      tm_clk_aux_locked_o  => tm0_clk_aux_locked,
+      tm_dac_wr_o          => tm_dac_wr(0),
+      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en(0),
+      tm_clk_aux_locked_o  => tm_clk_aux_locked(0),
       tm_time_valid_o      => tm_time_valid,
       tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
@@ -821,7 +805,8 @@ begin
     generic map (
       g_interface_mode      => PIPELINED,
       g_address_granularity => BYTE,
-      g_num_interrupts      => 2)
+      g_num_interrupts      => 2,
+      g_init_vectors        => c_VIC_VECTOR_TABLE)
     port map (
       clk_sys_i    => clk_sys,
       rst_n_i      => local_reset_n,
@@ -951,12 +936,11 @@ begin
       tm_time_valid_i      => tm_time_valid,
       tm_cycles_i          => tm_cycles,
       tm_utc_i             => tm_utc,
-      tm_clk_aux_lock_en_o => tm0_clk_aux_lock_en,
-      tm_clk_aux_locked_i  => tm0_clk_aux_locked,
-      tm_clk_dmtd_locked_i => '1',      -- FIXME: fan out real signal from the
---      WRCore
+      tm_clk_aux_lock_en_o => tm_clk_aux_lock_en(0),
+      tm_clk_aux_locked_i  => tm_clk_aux_locked(0),
+      tm_clk_dmtd_locked_i => '1',
       tm_dac_value_i       => tm_dac_value,
-      tm_dac_wr_i          => tm0_dac_wr,
+      tm_dac_wr_i          => tm_dac_wr(0),
 
       owr_en_o        => fd0_owr_en,
       owr_i           => fd0_owr_in,
@@ -1065,12 +1049,12 @@ begin
       tm_time_valid_i      => tm_time_valid,
       tm_cycles_i          => tm_cycles,
       tm_utc_i             => tm_utc,
-      tm_clk_aux_lock_en_o => tm1_clk_aux_lock_en,
-      tm_clk_aux_locked_i  => tm1_clk_aux_locked,
+      tm_clk_aux_lock_en_o => tm_clk_aux_lock_en(1),
+      tm_clk_aux_locked_i  => tm_clk_aux_locked(1),
       tm_clk_dmtd_locked_i => '1',  --    FIXME: fan out real signal from the
       --    --    WRCore
       tm_dac_value_i       => tm_dac_value,
-      tm_dac_wr_i          => tm1_dac_wr,
+      tm_dac_wr_i          => '0',
 
       owr_en_o        => fd1_owr_en,
       owr_i           => fd1_owr_in,
@@ -1104,26 +1088,6 @@ begin
 
   sfp_tx_disable_o <= '0';
 
-
-  p_drive_leds : process(clk_sys)
-  begin
-    if rising_edge(clk_sys) then
-      
-      if(local_reset_n = '0') then
-        leds        <= "01111111";
-        led_divider <= (others => '0');
-      else
-        led_divider <= led_divider+ 1;
-        if(led_divider = 0) then
-          leds <= leds(6 downto 0) & leds(7);
-        end if;
-        
-      end if;
-    end if;
-  end process;
-
-  fp_ledn_o <= leds;
-  
 end rtl;
 
 

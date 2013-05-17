@@ -171,6 +171,15 @@ NET "fmc_scl_b" IOSTANDARD =LVCMOS25;
 NET "fmc_sda_b" LOC =  F8 ;
 NET "fmc_sda_b" IOSTANDARD =LVCMOS25;
 
+#net "led_n_o[0]" loc=c20;
+#net "led_n_o[0]" IOSTANDARD=LVCMOS18;
+#net "led_n_o[1]" loc=F18;
+#net "led_n_o[1]" IOSTANDARD=LVCMOS18;
+#net "led_n_o[2]" loc=f20;
+#net "led_n_o[2]" IOSTANDARD=LVCMOS18;
+#net "led_n_o[3]" loc=G19;
+#net "led_n_o[3]" IOSTANDARD=LVCMOS18;
+
 
 NET "carrier_onewire_b" LOC = D4;
 NET "carrier_onewire_b" IOSTANDARD = "LVCMOS25";

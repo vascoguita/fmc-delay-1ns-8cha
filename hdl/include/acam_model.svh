@@ -119,11 +119,15 @@ module acam_model
    
 //    
    
-
+   time t_prev;
+   
    always@(posedge DStart) 
      if(PuResN && !StartDis && !start_disabled_int) begin
 //	if(g_verbose)$display("acam::start %d", t);
 	q_start.put(t);
+//        $display("StartEvt %d [delta %d]\n", t, t-t_prev);
+//        t_prev = t;
+        
 	start_disabled_int <= r_StartDisStart;
 	
      end
@@ -185,8 +189,8 @@ module acam_model
 	        else 
 	          break;
 	     end
-	     if(t_stop1 - t_start > 3780)
-	       hit  =  (t_stop1 - t_start) - (128ns/g_rmode_resolution) + rmode_start_offset * 3;
+	     if(t_stop1 - t_start > 8520)
+	       hit  =  (t_stop1 - t_start) - (256ns/g_rmode_resolution) + rmode_start_offset * 3;
 	     else
 	       hit  = t_stop1 - t_start + rmode_start_offset * 3;
 

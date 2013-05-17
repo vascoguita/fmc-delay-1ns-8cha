@@ -1,4 +1,4 @@
-/*                             \
+/*                             
 	FmcDelay1ns4Cha (a.k.a. The Fine Delay Card)
 	User-space driver/library
 
@@ -367,6 +367,7 @@ static void acam_write_reg(fdelay_device_t *dev, uint8_t reg, uint32_t data)
 	acam_set_address(dev, reg);
   fd_writel(data & 0xfffffff, FD_REG_TDR);
   fd_writel(FD_TDCSR_WRITE, FD_REG_TDCSR);
+//  printf("reg %d value 0x%x\n", reg, data);
 }
 
 /* Calculates the parameters of the ACAM PLL (hsdiv and refdiv)
@@ -483,7 +484,7 @@ static int acam_configure(fdelay_device_t *dev, int mode)
 	int64_t start_tics;
 	const int64_t lock_timeout = 2000000LL;
 
-	hw->acam_bin = acam_calc_pll(&hsdiv, &refdiv, 80.9553, 31.25e6) / 3.0;
+	hw->acam_bin = acam_calc_pll(&hsdiv, &refdiv, 80.9553, 31.25e6);// / 2.0;
 
 	/* Disable TDC inputs prior to configuring */
 	fd_writel(FD_TDCSR_STOP_DIS | FD_TDCSR_START_DIS, FD_REG_TDCSR);
@@ -498,11 +499,88 @@ static int acam_configure(fdelay_device_t *dev, int mode)
 	 					  AR1_Adj(4, 2) |
 	 					  AR1_Adj(5, 6) |
 	 					  AR1_Adj(6, 0));
-	   	acam_write_reg(dev, 2, AR2_RMode | AR2_Adj(7, 2) | AR2_Adj(8, 6));
-	   	acam_write_reg(dev, 3, 0);
-	   	acam_write_reg(dev, 4, AR4_EFlagHiZN);
+	   	acam_write_reg(dev, 2, AR2_RMode | AR2_Adj(7, 2) | AR2_Adj(8, 6)
+		    	   	    | AR2_DelRise1(0) 
+		    	   	    | AR2_DelFall1(0) 
+		    	   	    | AR2_DelRise2(0) 
+		    	   	    | AR2_DelFall2(0) 
+		    	   	);
+	   	acam_write_reg(dev, 3, AR3_DelTx(1,3) | 
+	   			       AR3_DelTx(2,3) |
+	   			       AR3_DelTx(3,3) |
+	   			       AR3_DelTx(4,3) |
+	   			       AR3_DelTx(5,3) |
+	   			       AR3_DelTx(6,3) |
+	   			       AR3_DelTx(7,3) |
+	   			       AR3_DelTx(8,3) | 
+	   			       AR3_RaSpeed(0,3) |
+	   			       AR3_RaSpeed(1,3) | 
+	   			       AR3_RaSpeed(2,3) 
+    	   			       );
+	   			       
+	   	acam_write_reg(dev, 4, AR4_EFlagHiZN
+	   			     | AR4_RaSpeed(3,3) 
+	   			     | AR4_RaSpeed(4,3)  
+	   			     | AR4_RaSpeed(5,3)  
+	   			     | AR4_RaSpeed(6,3)  
+	   			     | AR4_RaSpeed(7,3)  
+	   			     | AR4_RaSpeed(8,3)  
+	   			     );
 	   	acam_write_reg(dev, 5, AR5_StartRetrig |AR5_StartOff1(hw->calib.acam_start_offset) | AR5_MasterAluTrig);
 	   	acam_write_reg(dev, 6, AR6_Fill(200) | AR6_PowerOnECL);
+	   	acam_write_reg(dev, 7, AR7_HSDiv(hsdiv) | AR7_RefClkDiv(refdiv) | AR7_ResAdj | AR7_NegPhase);
+	   	acam_write_reg(dev, 11, 0x7ff0000);
+	   	acam_write_reg(dev, 12, 0x0000000);
+	   	acam_write_reg(dev, 14, 0);
+
+		/* Reset the ACAM after the configuration */
+	   	acam_write_reg(dev, 4, AR4_EFlagHiZN | AR4_MasterReset | AR4_StartTimer(0));
+	}else if(mode == ACAM_GMODE)
+	{
+		dbg("ACAM: working in G-Mode\n");
+
+	 	acam_write_reg(dev, 0, 0);
+	 	acam_write_reg(dev, 7, 0);
+	   	
+	 	sleep(1);
+
+	 	acam_write_reg(dev, 0, AR0_ROsc | AR0_RiseEn0 | AR0_RiseEn1 | AR0_HQSel );
+	 	acam_write_reg(dev, 1, AR1_Adj(0, 0) |
+	 					  AR1_Adj(1, 0) |
+	 					  AR1_Adj(2, 5) |
+	 					  AR1_Adj(3, 0) |
+	 					  AR1_Adj(4, 5) |
+	 					  AR1_Adj(5, 0) |
+	 					  AR1_Adj(6, 5));
+	   	acam_write_reg(dev, 2, AR2_GMode | AR2_Adj(7, 0) | AR2_Adj(8, 5)
+		    	   	    | AR2_DelRise1(0) 
+		    	   	    | AR2_DelFall1(0) 
+		    	   	    | AR2_DelRise2(0) 
+		    	   	    | AR2_DelFall2(0) 
+		    	   	);
+	   	acam_write_reg(dev, 3, AR3_DelTx(1,3) | 
+	   			       AR3_DelTx(2,3) |
+	   			       AR3_DelTx(3,3) |
+	   			       AR3_DelTx(4,3) |
+	   			       AR3_DelTx(5,3) |
+	   			       AR3_DelTx(6,3) |
+	   			       AR3_DelTx(7,3) |
+	   			       AR3_DelTx(8,3) | 
+	   			       AR3_RaSpeed(0,3) |
+	   			       AR3_RaSpeed(1,3) | 
+	   			       AR3_RaSpeed(2,3) 
+    	   			       );
+	   			       
+	   	acam_write_reg(dev, 4, AR4_EFlagHiZN
+	   			     | AR4_RaSpeed(3,3) 
+	   			     | AR4_RaSpeed(4,3)  
+	   			     | AR4_RaSpeed(5,3)  
+	   			     | AR4_RaSpeed(6,3)  
+	   			     | AR4_RaSpeed(7,3)  
+	   			     | AR4_RaSpeed(8,3)  
+	   			     );
+	   	acam_write_reg(dev, 5, AR5_StartRetrig |AR5_StartOff1(hw->calib.acam_start_offset) | AR5_MasterAluTrig);
+	   	acam_write_reg(dev, 6, AR6_Fill(200) | AR6_PowerOnECL | AR6_StartOff2(hw->calib.acam_start_offset));
 	   	acam_write_reg(dev, 7, AR7_HSDiv(hsdiv) | AR7_RefClkDiv(refdiv) | AR7_ResAdj | AR7_NegPhase);
 	   	acam_write_reg(dev, 11, 0x7ff0000);
 	   	acam_write_reg(dev, 12, 0x0000000);
@@ -513,6 +591,11 @@ static int acam_configure(fdelay_device_t *dev, int mode)
 
 	} else if (mode == ACAM_IMODE)
 	{
+	 	acam_write_reg(dev, 0, 0);
+	 	acam_write_reg(dev, 7, 0);
+	   	
+	 	sleep(1);
+
 		acam_write_reg(dev, 0, AR0_TRiseEn(0) | AR0_HQSel | AR0_ROsc);
 	   	acam_write_reg(dev, 2, AR2_IMode);
 	   	acam_write_reg(dev, 5, AR5_StartOff1(3000) | AR5_MasterAluTrig);
@@ -546,8 +629,9 @@ static int acam_configure(fdelay_device_t *dev, int mode)
 		usleep(10000);
     }
 
+    dbg("%s: Locking took %lld millieconds\n", __FUNCTION__, (get_tics() - start_tics) / 1000LL);
 
-	acam_set_address(dev, 8); /* Permamently select FIFO1 register for readout */
+    acam_set_address(dev, 8); /* Permamently select FIFO1 register for readout */
 
     return 0;
 }
@@ -612,7 +696,7 @@ static double measure_output_delay(fdelay_device_t *dev, int channel, int fine, 
       	udelay(1);
 		/* read the tag, convert to picoseconds and average */
 		fr = acam_read_reg(dev, chan_to_fifo[channel]);
-	 	double tag = (double)((fr >> 0) & 0x1ffff) * hw->acam_bin * 3.0;
+	 	double tag = (double)((fr >> 0) & 0x1ffff) * hw->acam_bin;
 
 //	 	dbg("Tag %.1f\n", tag);
 
@@ -794,7 +878,8 @@ void fdelay_update_calibration(fdelay_device_t *dev)
 	fd_decl_private(dev);
 	int channel, temp;
 
-    ds18x_read_temp(dev, &temp);
+        ds18x_read_temp(dev, &temp);
+    	hw->board_temp = temp;
 
 	for(channel = 1; channel <= 4; channel++)
 	{   
@@ -806,6 +891,12 @@ void fdelay_update_calibration(fdelay_device_t *dev)
      	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);
 	}
 }
+
+float fdelay_get_board_temperature(fdelay_device_t *dev)
+{
+    fd_decl_private(dev);
+    return (float)hw->board_temp / 16.0;
+}		
 
 #if 0
 void poll_stats()
@@ -911,9 +1002,9 @@ int fdelay_init(fdelay_device_t *dev, int init_flags)
     hw->calib.frr_poly[1] = -29825595LL;
     hw->calib.frr_poly[2] = 3801939743082LL;
     hw->calib.tdc_zero_offset = 35600;
-//    hw->calib.atmcr_val =  4 | (1500 << 4);
-    hw->calib.atmcr_val =  2 | (1000 << 4);
-    hw->calib.adsfr_val = 56648;
+    hw->calib.atmcr_val =  26 | (1500 << 8);
+//    hw->calib.atmcr_val =  2 | (1000 << 4);
+    hw->calib.adsfr_val =  84977;   //;;56648;
     hw->calib.acam_start_offset = 10000;
     for(i=0;i<4;i++)
       hw->calib.zero_offset[i] = 50000;
@@ -933,9 +1024,9 @@ int fdelay_init(fdelay_device_t *dev, int init_flags)
 
 	if(ds18x_init(dev) < 0)
 	{
-   fail(TEST_SPI, "DS18x sensor not detected.");
-		dbg("DS18x sensor not detected. Bah!\n");
-    	return -1;
+	    fail(TEST_SPI, "DS18x sensor not detected.");
+    	    dbg("DS18x sensor not detected. Bah!\n");
+    	    return -1;
 	}
 
 	int temp;
@@ -981,7 +1072,7 @@ int fdelay_init(fdelay_device_t *dev, int init_flags)
     return -1;
 
   /* Switch to the R-MODE (more precise) */
-  acam_configure(dev, ACAM_RMODE);
+  acam_configure(dev, ACAM_GMODE);
 
   /* Switch the ACAM to be driven by the delay core instead of the host */
   fd_writel( 0, FD_REG_GCR);
@@ -996,9 +1087,9 @@ int fdelay_init(fdelay_device_t *dev, int init_flags)
      - bin -> internal timebase scalefactor (ADSFR),
      - Start offset (must be consistent with the value written to the ACAM reg 4)
      - timestamp merging control register (ATMCR) */
-  fd_writel( hw->calib.adsfr_val, FD_REG_ADSFR);
-  fd_writel( 3 * hw->calib.acam_start_offset, FD_REG_ASOR);
-  fd_writel( hw->calib.atmcr_val, FD_REG_ATMCR);
+  fd_writel( hw->calib.adsfr_val, FD_REG_ADSFR );
+  fd_writel( 17000, FD_REG_ASOR );
+  fd_writel( hw->calib.atmcr_val, FD_REG_ATMCR );
 
   t_zero.utc = 0;
   t_zero.coarse = 0;
@@ -1178,23 +1269,23 @@ static int sign_extend(int n, int nbits)
 void ts_postprocess(fdelay_device_t *dev, fdelay_time_t *t)
 {
 	fd_decl_private(dev)
-	int32_t post_frac_start_adj = t->raw.frac - 3*hw->calib.acam_start_offset;
+	int32_t post_frac_start_adj = t->raw.frac - 17000; //2*hw->calib.acam_start_offset;
 
 	t->utc = t->raw.utc;
 
-	int c_thr = FD_ATMCR_C_THR_R(hw->calib.atmcr_val);
-	int f_thr = FD_ATMCR_F_THR_R(hw->calib.atmcr_val);
+	int c_thr = 26;//FD_ATMCR_C_THR_R(hw->calib.atmcr_val);
+	int f_thr = 1500;//FD_ATMCR_F_THR_R(hw->calib.atmcr_val);
 //	printf("CThr: %d FThr: %d\n", c_thr, f_thr);
 
     if (t->raw.start_offset <= c_thr
     && (post_frac_start_adj > f_thr))
-    	t->coarse = (t->raw.coarse-1) * 16;
+    	t->coarse = (t->raw.coarse-1) * 32;
 	else
-    	t->coarse = (t->raw.coarse) * 16;
+    	t->coarse = (t->raw.coarse) * 32;
 
    int64_t post_frac_multiplied = post_frac_start_adj * (int64_t)hw->calib.adsfr_val;
 
-	t->coarse += sign_extend(t->raw.subcycle_offset, 5) 
+	t->coarse += sign_extend(t->raw.subcycle_offset, 6) 
 	+ (post_frac_multiplied >> 24);
 	
 	t->frac = (post_frac_multiplied >> 12) & 0xfff;
@@ -1223,8 +1314,8 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 			uint32_t cyc, dbg;
 			ts.raw.utc = ((int64_t) (fd_readl(FD_REG_TSBR_SECH) & 0xff) << 32) | fd_readl(FD_REG_TSBR_SECL);
 			cyc =  fd_readl(FD_REG_TSBR_CYCLES) & 0xfffffff;
-			ts.raw.coarse = cyc >> 4;
-			ts.raw.start_offset = cyc & 0xf;
+			ts.raw.coarse = cyc >> 5;
+			ts.raw.start_offset = cyc & 0x1f;
 
 
 			dbg = fd_readl(FD_REG_TSBR_DEBUG);
@@ -1233,8 +1324,12 @@ int fdelay_read(fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many)
 			
 			ts.raw.frac = FD_TSBR_FID_FINE_R(seq_frac);
 			ts.raw.frac |= (dbg & 0x7ff) << 12;
-			ts.raw.subcycle_offset = (dbg >> 11) & 0x1f;
+			ts.raw.frac &= 0x1ffff;
 		
+			ts.raw.subcycle_offset = (dbg >> 11) & 0x1f;
+			if(dbg & (1<<31))
+			    ts.raw.subcycle_offset |= 0x20;
+			
 			
 //            tag_dbg_raw_o(23 downto 16) <= raw_coarse_shifted_i(7 downto 0);
 //            tag_dbg_raw_o(31 downto 24) <= raw_utc_shifted_i(7 downto 0);
@@ -1278,13 +1373,15 @@ int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64
  	if(channel < 1 || channel > 4)
  		return -1;
 
- 	delay_ps -= hw->calib.zero_offset[channel-1];
+ 	delay_ps -= 0; // hw->calib.zero_offset[channel-1];
  	start = fdelay_from_picos(delay_ps);
  	end = fdelay_from_picos(delay_ps + width_ps - 4000);
     delta = fdelay_from_picos(delta_ps);
  
 
-// 	printf("Start: %lld: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
+
+ 	printf("Start: %lld: %d:%d rep %d\n", start.utc, start.coarse, start.frac, rep_count);
+ 	printf("DelayPs: %lld\n", delay_ps);
 
 
  	chan_writel(hw->frr_cur[channel-1],  FD_REG_FRR);

@@ -66,6 +66,7 @@ PUBLIC API
 */
 
 
+fdelay_device_t *fdelay_create();
 
 /* Creates a local instance of Fine Delay Core at address base_addr on the SPEC at bus/devfn. Returns 0 on success, negative on error. */
 int spec_fdelay_create_bd(fdelay_device_t *dev, int bus, int dev_fn, uint32_t base);
@@ -117,6 +118,7 @@ int fdelay_configure_capture (fdelay_device_t *dev, int enable, int channel_mask
 int fdelay_read (fdelay_device_t *dev, fdelay_time_t *timestamps, int how_many);
 
 
+int fdelay_configure_output(fdelay_device_t *dev, int channel, int enable, int64_t delay_ps, int64_t width_ps, int64_t delta_ps, int rep_count)   ;
 /* (delay mode only) Configures output(s) selected in channel_mask to work in delay mode. Delta_ps = spacing between
 the rising edges of subsequent pulses. */
 int fdelay_configure_delay (fdelay_device_t *dev, int channel_mask, int enable, int64_t delay_ps, int64_t width_ps, int64_t delta_ps, int repeat_count);
@@ -134,5 +136,6 @@ int fdelay_get_time(fdelay_device_t *dev, fdelay_time_t *t);
 int fdelay_set_time(fdelay_device_t *dev, const fdelay_time_t t);
 
 int fdelay_dmtd_calibration(fdelay_device_t *dev, double *offsets);
+float fdelay_get_board_temperature(fdelay_device_t *dev);
 
 #endif

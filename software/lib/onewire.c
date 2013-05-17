@@ -172,6 +172,7 @@ int ds18x_init(fdelay_device_t *dev)
 {
 
 	ow_init(dev);
+
 	if(ds18x_read_serial(dev, ds18x_id) < 0)
 		return -1;
 
@@ -179,5 +180,7 @@ int ds18x_init(fdelay_device_t *dev)
 		ds18x_id[0], ds18x_id[1], ds18x_id[2], ds18x_id[3],
 		ds18x_id[4], ds18x_id[5], ds18x_id[6], ds18x_id[7]);
 
-	return ds18x_read_temp(dev, NULL);
+	ds18x_read_temp(dev, NULL);
+	sleep(1);
+	return 0;
 }

@@ -515,7 +515,7 @@ peripheral {
       field {
          name = "Wraparound Coarse Threshold";
          prefix = "C_THR";
-         size = 4;
+         size = 8;
          type = SLV;
          clock = "clk_ref_i";
          access_bus = READ_WRITE;

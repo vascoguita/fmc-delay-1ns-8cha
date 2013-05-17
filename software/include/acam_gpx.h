@@ -20,7 +20,15 @@
 #define AR2_Disable(chan) (1<<(3+chan))
 #define AR2_Adj(chan, value) (((value)&0xf)<<(12+4*(chan-7)))
 
-#define AR3_RaSpeed(num,val) (val << (num*2 + 21))
+#define AR2_DelRise1(value) (((value)&0x3)<<(20))
+#define AR2_DelFall1(value) (((value)&0x3)<<(22))
+#define AR2_DelRise2(value) (((value)&0x3)<<(24))
+#define AR2_DelFall2(value) (((value)&0x3)<<(26))
+
+#define AR3_DelTx(chan, value) (((value)&0x3)<<(5 + (chan -1 ) * 2))
+#define AR3_RaSpeed(chan, value) (((value)&0x3)<<(21 + (chan ) * 2))
+
+#define AR4_RaSpeed(chan, value) (((value)&0x3)<<(10 + (chan-3) * 2))
 
 #define AR3_Zero (0) // nothing interesting for the Fine Delay
 

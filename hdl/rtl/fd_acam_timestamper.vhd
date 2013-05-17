@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-02-21
+-- Last update: 2013-02-12
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -165,10 +165,10 @@ architecture behavioral of fd_acam_timestamper is
       rst_n_i                : in  std_logic;
       raw_valid_i            : in  std_logic;
       raw_utc_i              : in  std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
-      raw_coarse_i           : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
+      raw_coarse_i           : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
       raw_frac_i             : in  std_logic_vector(22 downto 0);
-      raw_start_offset_i     : in  std_logic_vector(3 downto 0);
-      acam_subcycle_offset_i : in  std_logic_vector(4 downto 0);
+      raw_start_offset_i     : in  std_logic_vector(4 downto 0);
+      acam_subcycle_offset_i : in  std_logic_vector(5 downto 0);
       tag_valid_o            : out std_logic;
       tag_utc_o              : out std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
       tag_coarse_o           : out std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
@@ -222,18 +222,18 @@ architecture behavioral of fd_acam_timestamper is
   signal trig_pulse : std_logic;
 
   -- counters (internal time base)
-  signal start_count     : unsigned(3 downto 0);
-  signal coarse_count    : unsigned(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
+  signal start_count     : unsigned(4 downto 0);
+  signal coarse_count    : unsigned(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
   signal utc_count       : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
-  signal subcycle_offset : signed(4 downto 0);
+  signal subcycle_offset : signed(5 downto 0);
 
   signal gcr_input_en_d0 : std_logic;
 
   -- raw (unprocessed) time tag
   signal raw_tag_valid        : std_logic;
-  signal raw_tag_coarse       : unsigned(c_TIMESTAMP_COARSE_BITS-4-1 downto 0);
+  signal raw_tag_coarse       : unsigned(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
   signal raw_tag_frac         : signed(22 downto 0);
-  signal raw_tag_start_offset : unsigned(3 downto 0);
+  signal raw_tag_start_offset : unsigned(4 downto 0);
   signal raw_tag_utc          : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
 
   signal width_check_sreg : std_logic_vector(g_min_pulse_width-2 downto 0);
@@ -401,11 +401,14 @@ begin  -- behave
         else
           -- Enable the start input at proper moment to ensure that the 7.125 MHz
           -- "start clock" cycle is not cut.
-          if(start_count = x"e") then
+          if(start_count = x"8") then
             -- advance the start OK shift register with another one.
             start_ok_sreg    <= start_ok_sreg(start_ok_sreg'left-1 downto 0) & '1';
+            acam_start_dis_o <= '1';
+          elsif (start_count = x"18") then
             acam_start_dis_o <= '0';
           end if;
+          
         end if;
       end if;
     end if;
@@ -440,6 +443,8 @@ begin  -- behave
     end if;
   end process;
 
+
+
   -- Process: p_sync_acam_ef
   -- Input: acam_ef_i
   -- Output: acam_ef_d1
@@ -456,6 +461,17 @@ begin  -- behave
 -------------------------------------------------------------------------------
 -- Time Base Counters
 -------------------------------------------------------------------------------  
+
+  p_gen_start_mask : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        start_mask <= '0';
+      elsif(tdc_start_d(1) = '1' and tdc_start_d(2) = '0') then
+        start_mask <= not start_mask;
+      end if;
+    end if;
+  end process;
 
 -- Start counter: counts the number of clk_ref_i cycles from the last TDC start
 -- event.
@@ -476,18 +492,18 @@ begin  -- behave
         -- between the current start count and the LSBs of the new time value
         -- and correct the timestamps later on.
         if(csync_p1_i = '1') then
-          subcycle_offset <= signed('0' & csync_coarse_i(3 downto 0)) - signed('0' & start_count) - 1;
+          subcycle_offset <= signed('0' & csync_coarse_i(4 downto 0)) - signed('0' & start_count) - 1;
         end if;
 
         -- Rising edge on TDC_START? Resynchronize the counter, to go to zero
         -- right after the edge.
-        if(tdc_start_d(1) = '1' and tdc_start_d(2) = '0') then
-          start_count    <= x"2";
+        if(tdc_start_d(1) = '1' and tdc_start_d(2) = '0' and start_mask = '0') then
+          start_count    <= to_unsigned(2, 5);
           advance_coarse <= '0';
         else
           -- Start cycle expired - advance the 128 ns x counter. We do that one
           -- cycle in advance using a register to relax the P&R timing.
-          if(start_count = x"e") then
+          if(start_count = x"1e") then
             advance_coarse <= '1';
           else
             advance_coarse <= '0';
@@ -511,13 +527,13 @@ begin  -- behave
         -- overflow of start_count.
         if(csync_p1_i = '1') then
           if(advance_coarse = '1') then
-            coarse_count <= unsigned(csync_coarse_i(27 downto 4)) + 1;
+            coarse_count <= unsigned(csync_coarse_i(27 downto 5)) + 1;
           else
-            coarse_count <= unsigned(csync_coarse_i(27 downto 4));
+            coarse_count <= unsigned(csync_coarse_i(27 downto 5));
           end if;
         elsif(advance_coarse = '1') then
           -- well, just boringly count up
-          if(coarse_count = (g_clk_ref_freq / 16) - 1) then
+          if(coarse_count = (g_clk_ref_freq / 32) - 1) then
             coarse_count <= (others => '0');
           else
             coarse_count <= coarse_count + 1;
@@ -537,14 +553,14 @@ begin  -- behave
         utc_count <= (others => '0');
       else
         if(csync_p1_i = '1') then
-          if(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 16) -1) then
+          if(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 32) -1) then
             -- I hate special cases!
             utc_count <= unsigned(csync_utc_i) + 1;
           else
             utc_count <= unsigned(csync_utc_i);
           end if;
           
-        elsif(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 16) - 1) then
+        elsif(advance_coarse = '1' and coarse_count = (g_clk_ref_freq / 32) - 1) then
           utc_count <= utc_count + 1;
         end if;
 
@@ -721,7 +737,8 @@ begin  -- behave
           when RMODE_READ =>
 
 -- store the fine tag
-            raw_tag_frac <= signed(acam_d_i(raw_tag_frac'left downto 0));
+            raw_tag_frac(21 downto 0) <= signed(acam_d_i(21 downto 0));
+            raw_tag_frac(22) <= '0';
 
 
             -- check if the FIFO has become empty after the readout. If it didn't, the TDC

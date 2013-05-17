@@ -31,6 +31,7 @@
 /* ACAM TDC operation modes */
 #define ACAM_RMODE 0
 #define ACAM_IMODE 1
+#define ACAM_GMODE 2
 
 /* MCP23S17 register addresses (only ones which are used by the lib) */
 #define MCP_IODIR 0x0
