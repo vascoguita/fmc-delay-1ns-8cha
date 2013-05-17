@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-04-16
+-- Last update: 2013-05-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -325,20 +325,21 @@ architecture rtl of svec_top is
   constant c_MASTER_VME       : integer := 0;
   constant c_MASTER_ETHERBONE : integer := 1;
 
-  constant c_SLAVE_FD1      : integer := 0;
-  constant c_SLAVE_FD0      : integer := 1;
-  constant c_SLAVE_WRCORE   : integer := 2;
-  constant c_SLAVE_VIC      : integer := 3;
+  constant c_SLAVE_FD1      : integer := 1;
+  constant c_SLAVE_FD0      : integer := 0;
+  constant c_SLAVE_WRCORE   : integer := 3;
+  constant c_SLAVE_VIC      : integer := 2;
   constant c_DESC_SYNTHESIS : integer := 4;
   constant c_DESC_REPO_URL  : integer := 5;
 
-  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00040000");
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00070000");
 
   constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS + 1 downto 0) :=
-    (c_SLAVE_WRCORE   => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
+    (
      c_SLAVE_FD0      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
      c_SLAVE_FD1      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"),
      c_SLAVE_VIC      => f_sdb_embed_device(c_xwb_vic_sdb, x"00030000"),
+     c_SLAVE_WRCORE   => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
      c_DESC_SYNTHESIS => f_sdb_embed_synthesis(c_sdb_synthesis_info),
      c_DESC_REPO_URL  => f_sdb_embed_repo_url(c_sdb_repo_url)
      );
@@ -660,7 +661,7 @@ begin
       g_aux_clks                  => 2,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
-      g_softpll_enable_debugger   => true,
+--      g_softpll_enable_debugger   => true,
       g_dpram_initf               => "none")
     port map (
       clk_sys_i    => clk_sys,
@@ -723,9 +724,9 @@ begin
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
-      tm_dac_wr_o          => tm_dac_wr,
-      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en,
-      tm_clk_aux_locked_o  => tm_clk_aux_locked,
+      tm_dac_wr_o          => tm_dac_wr(0),
+      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en(0),
+      tm_clk_aux_locked_o  => tm_clk_aux_locked(0),
       tm_time_valid_o      => tm_time_valid,
       tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
@@ -1053,7 +1054,7 @@ begin
       tm_clk_dmtd_locked_i => '1',  --    FIXME: fan out real signal from the
       --    --    WRCore
       tm_dac_value_i       => tm_dac_value,
-      tm_dac_wr_i          => tm_dac_wr(1),
+      tm_dac_wr_i          => '0',
 
       owr_en_o        => fd1_owr_en,
       owr_i           => fd1_owr_in,
