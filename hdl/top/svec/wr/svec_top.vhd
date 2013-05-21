@@ -641,8 +641,6 @@ begin
   fd1_scl_in <= fmc1_scl_b;
   fd1_sda_in <= fmc1_sda_b;
 
-
-
   -- Tristates for SFP EEPROM
   sfp_mod_def1_b <= '0' when sfp_scl_out = '0' else 'Z';
   sfp_mod_def2_b <= '0' when sfp_sda_out = '0' else 'Z';
@@ -658,7 +656,7 @@ begin
       g_phys_uart                 => true,
       g_virtual_uart              => true,
       g_with_external_clock_input => false,
-      g_aux_clks                  => 2,
+      g_aux_clks                  => 1,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
 --      g_softpll_enable_debugger   => true,
@@ -668,7 +666,7 @@ begin
       clk_dmtd_i   => clk_dmtd,
       clk_ref_i    => clk_125m_pllref,
       clk_aux_i(0) => dcm0_clk_ref_0,
-      clk_aux_i(1) => dcm1_clk_ref_0,
+--      clk_aux_i(1) => dcm1_clk_ref_0,
       rst_n_i      => local_reset_n,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
