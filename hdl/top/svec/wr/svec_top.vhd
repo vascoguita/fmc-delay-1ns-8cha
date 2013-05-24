@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-05-17
+-- Last update: 2013-05-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
-use work.etherbone_pkg.all;
+--use work.etherbone_pkg.all;
 use work.wr_xilinx_pkg.all;
 
 use work.synthesis_descriptor.all;
@@ -709,13 +709,13 @@ begin
       slave_i => cnx_master_out(c_SLAVE_WRCORE),
       slave_o => cnx_master_in(c_SLAVE_WRCORE),
 
-      aux_master_o => etherbone_cfg_in,
-      aux_master_i => etherbone_cfg_out,
+      --aux_master_o => etherbone_cfg_in,
+      --aux_master_i => etherbone_cfg_out,
 
-      wrf_src_o => etherbone_snk_in,
-      wrf_src_i => etherbone_snk_out,
-      wrf_snk_o => etherbone_src_in,
-      wrf_snk_i => etherbone_src_out,
+      --wrf_src_o => etherbone_snk_in,
+      --wrf_src_i => etherbone_snk_out,
+      --wrf_snk_o => etherbone_src_in,
+      --wrf_snk_i => etherbone_src_out,
 
       btn1_i => '0',
       btn2_i => '0',
@@ -767,21 +767,23 @@ begin
       dac_sdata_o   => pll25dac_din_o,
       xdone_o       => open);
 
-  U_Etherbone : eb_slave_core
-    generic map (
-      g_sdb_address => f_resize_slv(c_sdb_address, 64))
-    port map (
-      clk_i       => clk_sys,
-      nRst_i      => etherbone_rst_n,
-      src_o       => etherbone_src_out,
-      src_i       => etherbone_src_in,
-      snk_o       => etherbone_snk_out,
-      snk_i       => etherbone_snk_in,
-      cfg_slave_o => etherbone_cfg_out,
-      cfg_slave_i => etherbone_cfg_in,
-      master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
-      master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
+  --U_Etherbone : eb_slave_core
+  --  generic map (
+  --    g_sdb_address => f_resize_slv(c_sdb_address, 64))
+  --  port map (
+  --    clk_i       => clk_sys,
+  --    nRst_i      => etherbone_rst_n,
+  --    src_o       => etherbone_src_out,
+  --    src_i       => etherbone_src_in,
+  --    snk_o       => etherbone_snk_out,
+  --    snk_i       => etherbone_snk_in,
+  --    cfg_slave_o => etherbone_cfg_out,
+  --    cfg_slave_i => etherbone_cfg_in,
+  --    master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
+  --    master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
 
+
+  cnx_slave_in(c_MASTER_ETHERBONE).cyc <= '0';
   
   U_Intercon : xwb_sdb_crossbar
     generic map (

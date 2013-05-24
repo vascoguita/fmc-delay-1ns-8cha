@@ -1007,7 +1007,7 @@
     <file xil_pn:name="../../../../../wr-cores/modules/wrc_core/xwr_syscon_wb.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="Implementation" xil_pn:seqID="224"/>
     </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/etherbone_pkg.vhd" xil_pn:type="FILE_VHDL">
+    <file xil_pn:name="../../../top/svec/wr/svec_top.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="Implementation" xil_pn:seqID="225"/>
     </file>
     <file xil_pn:name="../../../../../wr-cores/platform/xilinx/wr_gtp_phy/gtp_bitslide.vhd" xil_pn:type="FILE_VHDL">
@@ -1033,45 +1033,6 @@
     </file>
     <file xil_pn:name="../../../../../wr-cores/platform/xilinx/wr_gtp_phy/wr_gtx_phy_virtex6.vhd" xil_pn:type="FILE_VHDL">
       <association xil_pn:name="Implementation" xil_pn:seqID="233"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_hdr_pkg.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="234"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_checksum.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="235"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_config.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="236"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_slave_core.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="237"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_main_fsm.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="238"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_rx_ctrl.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="239"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/eb_tx_ctrl.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="240"/>
-    </file>
-    <file xil_pn:name="../../../top/svec/wr/svec_top.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="241"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/piso_flag.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="242"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/vhdl_2008_workaround_pkg.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="243"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/sipo_flag.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="244"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/WB_bus_adapter_streaming_sg.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="245"/>
-    </file>
-    <file xil_pn:name="../../../../../etherbone-core/hdl/eb_slave_core/xetherbone_core.vhd" xil_pn:type="FILE_VHDL">
-      <association xil_pn:name="Implementation" xil_pn:seqID="246"/>
     </file>
   </files>
 
