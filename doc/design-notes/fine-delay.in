@@ -182,12 +182,12 @@ The FD's TDC is a single-chip solution, called TDC-GPX made by Acam (IC8). It ca
 timestamp from 1 to 8 inputs, with accuracy and repetition rate depending on the mode of 
 operation (R, I, M, G-modes, more details in the @cite{TDC-GPX datasheet}). In the FD, the ACAM serves two purposes:
 @itemize
-@item The obvious one: @b{time tagging trigger pulses}. The TDC in configured in the R-mode, with a single
-stop input, providing 10 Mpulses/second throughput, measurement range of 40 us and resolution (one-sigma) 
-of 27 ps. In this mode, LVPECL inputs are used, the Start being connected to the 7.125 MHz PLL 
-clock, and the Stop feeding in trigger pulses. As a result, we get the time difference between 
-the rising edge of the most recent start pulse and the stop pulse - for a 7.125 MHz start signal 
-frequency, it gives a measurement range of 0 to 128 ns. The coarse part of the timestamp is 
+@item The obvious one: @b{time tagging trigger pulses}. The TDC in configured in the G-mode, with a single
+stop input, providing 7 Mpulses/second throughput, measurement range of 40 us and resolution (one-sigma) 
+of 42 ps. In this mode, LVPECL inputs are used, the Start being connected to the 7.125 MHz PLL 
+clock (divided internally by 2), and the Stop feeding in trigger pulses. As a result, we get the time difference between 
+the rising edge of the most recent start pulse and the stop pulse - for a (7.125 / 2) MHz start event
+frequency, it gives a measurement range of 0 to 256 ns. The coarse part of the timestamp is 
 produced with a counter inside the FPGA and the two values are merged together to obtain the 
 final, accurate value (see @ref{Timestamp processing}).
 
@@ -354,7 +354,7 @@ Timing-wise, the FD can work in one of these two modes:
 @itemize 
 @item @b{local time base} mode, where @code{clk_ref_0} oscillator is free running and the time counters 
 are coarsely initialized by the host through the @code{TM_SECH}, @code{TM_SECL}, @code{TM_COARSE} and @code{TCR} registers. 
-In this mode, the TDC input/output events cannot be related to other cores/devices, 
+In this mode, the TDC input/output events cannot be accurately related to other cores/devices, 
 and the delay accuracy is as good as of the local oscillator (±2.5 ppm), 
 which means worst case error of 2.5 ns for a delay setting of 1 ms).
 @item @b{White Rabbit time base} mode, in which the reference clock is phase-locked to the WR master clock (by means of the SoftPLL
@@ -369,7 +369,7 @@ For your convenience, the diagram on @ref{fig:wr_pll} shows the interaction betw
 @caption{Operation of the FD core with White Rabbit as a time source.}
 @end float
 
-Mode selection is controlled by the @code{TCR} register and the @code{p_whiterabbit_fsm} state machin, 
+Mode selection is controlled by the @code{TCR} register and the @code{p_whiterabbit_fsm} state machine, 
 which also provides the status of WR/local operation and can generate interrupts whenever the state 
 of the synchronization source changes. When the WR link goes down, the FSM automatically
 switches the card to local time base mode, retaining the previous value of time base counters 
@@ -381,29 +381,32 @@ Relevant files: @code{fd_acam_timestamper.vhd}, @code{fd_acam_timestamp_postproc
 
 The TDC controller interfaces with the ACAM TDC-GPX chip and does whatever is neccessary to output timestamps aligned with the FD core's time base, as fast (in terms of delay) as possible. That is:
 @itemize
-@item detection of input pulses, checking their width and generation of coarse (128 ns granularity) timestamps by taking a snapshot of an internal counter,
+@item detection of input pulses, checking their width and generation of coarse (256 ns granularity) timestamps by taking a snapshot of an internal counter,
 @item reading out the fine part from the ACAM,
 @item merging these values together, aligning the result to the local timebase and outputting everything in a format digestible by the pulse generators.
 @end itemize
 
+The TDC works by default in a so-called G-Mode, utilizing four tapped delay lines, two for start events and two for stop events. This improves the resolution and average precision at the cost of worst-case error. For calibration purposes, another mode (I-mode) is used, as it provides independent, FPGA driven start input and 4 stop inputs.
+
 @subsection TDC timing
 
 Before we time tag any pulses, we need to make sure the TDC is referenced to something and the time shift between 
-this something and the ACAM's internal time base is known (or better, fixed). Inside the TDC core, the local time base consists of:
+this something and the ACAM's internal time base is known (or even better, constant). Inside the TDC core, the time base consists of:
 @itemize
 @item @code{utc_count} - seconds counter,
-@item @code{coarse_count} - coarse start cycle counter (counting at TDC start signal rising edge in cycles of 128 ns),
-@item @code{start_count} - start subcycle counter (0..15, reset with each start cycle of the TDC,
-@item @code{subcycle_offset} - offset between the ACAM's and TDC core's timescales.
+@item @code{coarse_count} - coarse start cycle counter, that counts TDC start events. In our case, the TDC start period of 256 ns is achieved by driving the Start input with a 7.8125 MHz clock coming from the PLL and gating out every second cycle via ACAM's StartDis input to effectively divide it by 2.
+@item @code{start_count} - start subcycle counter (0..31, reset with each start cycle of the TDC,
+@item @code{subcycle_offset} - offset between the ACAM's and core's internal timescales.
 @end itemize
 
-It's very simple if we work in local time base mode, as 
-the counters need not be aligned to any other counters. The WR mode is a bit more complicated:
-TDC start occurs every 16 reference clock ticks, but a PPS pulse from the Csync 
-unit can come anytime. The most straightformward method here would be to reset the TDC start
-generator at every PPS pulse, but it's unsafe (AD9516's output divider SYNC input is asynchronous).
+A snapshot of these counters is sampled for every input event. The values are later postprocessed to obtain White Rabbit-formatted timestamps.
+
+The interesting thing is how the TDC timebase is related to an external time scale, as TDC start events occur at fixed multiplies of 256 ns, but a PPS pulse from the Csync 
+unit can come anytime (with 8 ns granularity). The most straightformward method here would be to reset the TDC start
+generator at every PPS pulse, but it is not very safe, as the AD9516's output divider synchronization feature is asynchronous.
 The TDC core employs a simple trick here: when a PPS pulse comes, it stores the difference between the lowest 
-bits of the Csync coarse counter and the subcycle counter (@code{subcycle_offset} signal in @code{p_start_subcycle_counter} process). This difference is added to the timestamps at the postprocessing stage.
+bits of the Csync coarse counter and the subcycle counter (@code{subcycle_offset} signal in @code{p_start_subcycle_counter} process). This difference is added to the timestamps at the postprocessing stage to compensate time base shift.
+
 
 @ref{fig:tdc_timing} shows the relations between the time base signals.
 @float Figure,fig:tdc_timing
@@ -413,6 +416,28 @@ bits of the Csync coarse counter and the subcycle counter (@code{subcycle_offset
 
 @subsection Input stage and TDC control
 
+This part of the core takes care of the coarse input pulse, TDC start and stop enable singnals. It is responsible for:
+@itemize
+@item @b{Sampling the coarse pulse input.} This is done in the @code{p_sync_trigger} process which implements 
+a modified 3-stage synchronizer with enable signal ANDed with the input signal at each synchronization stage, 
+minimizing the input's on/off reaction time. 
+
+@item @b{Safely enable and disable the TDC input}.
+There are three processes involved here: @code{p_safety_counter}, which disables the input upon the rising edge
+of the incoming pulse and re-enables it a certain time (@code{c_FALLING_REENABLE_TIMEOUT}) after the falling 
+edge of the currently processed pulse. This prevents the core from generating incorrect timestamps when the 
+input pulses come too close to each other or in case of poor quality or noise on the falling edge of the signal, which
+could be misinterpreted as a spurious input event. Even if the signal quality is fine, such spurious pulses may 
+occur while plugging the trigger input to a live signal. The remaining processes: @code{p_gen_acam_start_dis} 
+and @code{p_gen_acam_stop} drive the TDC's START and STOP disable signals. The former ensures that the start 
+input is not enabled in the middle of a rising edge of the 7.125 MHz start clock and gates the StartDis TDC input to effectively divide the start clock by 2.
+ The latter enables the stop input when the TDC has received at least one correct start pulse.
+
+@item @b{Reject pulses that are not within the requirements.}
+
+
+
+@end itemize
 
 @subsection Host interface
 
@@ -485,8 +510,6 @@ the output cutoff and input selection switches. Therefore, production tests invo
 have shown that the error between DDMTD calibration mechanism and the external TIM did not exceed 800 ps.
 
 For more information on DDMTD phase/time measurement techniques please refer to @ref{book:toms_msc}.
-
-@chapter Long term stability
 
 @chapter Carrier implementation example
 
