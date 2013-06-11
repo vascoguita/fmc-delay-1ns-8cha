@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-05-22
+-- Last update: 2013-06-11
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -78,6 +78,12 @@ entity svec_top is
       clk_125m_gtp_n_i : in std_logic;
 
       rst_n_i : in std_logic;
+
+      -- SVEC Front panel LEDs
+
+      fp_led_line_oen_o : out std_logic_vector(1 downto 0);
+      fp_led_line_o     : out std_logic_vector(1 downto 0);
+      fp_led_column_o   : out std_logic_vector(3 downto 0);
 
       -------------------------------------------------------------------------
       -- VME Interface pins
@@ -297,6 +303,22 @@ architecture rtl of svec_top is
       xdone_o       : out std_logic);
   end component;
 
+  component bicolor_led_ctrl
+    generic (
+      g_NB_COLUMN    : natural;
+      g_NB_LINE      : natural;
+      g_CLK_FREQ     : natural;
+      g_REFRESH_RATE : natural);
+    port (
+      rst_n_i         : in  std_logic;
+      clk_i           : in  std_logic;
+      led_intensity_i : in  std_logic_vector(6 downto 0);
+      led_state_i     : in  std_logic_vector((g_NB_LINE * g_NB_COLUMN * 2) - 1 downto 0);
+      column_o        : out std_logic_vector(g_NB_COLUMN - 1 downto 0);
+      line_o          : out std_logic_vector(g_NB_LINE - 1 downto 0);
+      line_oen_o      : out std_logic_vector(g_NB_LINE - 1 downto 0));
+  end component;
+
   signal VME_DATA_b_out                                        : std_logic_vector(31 downto 0);
   signal VME_ADDR_b_out                                        : std_logic_vector(31 downto 1);
   signal VME_LWORD_n_b_out, VME_DATA_DIR_int, VME_ADDR_DIR_int : std_logic;
@@ -336,13 +358,13 @@ architecture rtl of svec_top is
 
   constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS + 1 downto 0) :=
     (
-     c_SLAVE_FD0      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
-     c_SLAVE_FD1      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"),
-     c_SLAVE_VIC      => f_sdb_embed_device(c_xwb_vic_sdb, x"00030000"),
-     c_SLAVE_WRCORE   => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
-     c_DESC_SYNTHESIS => f_sdb_embed_synthesis(c_sdb_synthesis_info),
-     c_DESC_REPO_URL  => f_sdb_embed_repo_url(c_sdb_repo_url)
-     );
+      c_SLAVE_FD0      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00010000"),
+      c_SLAVE_FD1      => f_sdb_embed_device(c_FD_SDB_DEVICE, x"00020000"),
+      c_SLAVE_VIC      => f_sdb_embed_device(c_xwb_vic_sdb, x"00030000"),
+      c_SLAVE_WRCORE   => f_sdb_embed_bridge(c_WRCORE_BRIDGE_SDB, x"00040000"),
+      c_DESC_SYNTHESIS => f_sdb_embed_synthesis(c_sdb_synthesis_info),
+      c_DESC_REPO_URL  => f_sdb_embed_repo_url(c_sdb_repo_url)
+      );
 
   constant c_SDB_ADDRESS : t_wishbone_address := x"00000000";
 
@@ -448,6 +470,13 @@ architecture rtl of svec_top is
   signal powerup_reset_cnt : unsigned(7 downto 0) := "00000000";
   signal powerup_rst_n     : std_logic            := '0';
   signal sys_locked        : std_logic;
+
+  signal led_state : std_logic_vector(15 downto 0);
+  signal pps_led   : std_logic;
+
+  signal led_link : std_logic;
+  signal led_act : std_logic;
+  signal vme_access : std_logic;
   
 begin
 
@@ -687,8 +716,8 @@ begin
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
 
-      led_link_o => open,
-      led_act_o  => open,
+      led_link_o => led_link,
+      led_act_o  => led_act,
 
       scl_o     => wrc_scl_out,
       scl_i     => wrc_scl_in,
@@ -730,7 +759,8 @@ begin
       tm_cycles_o          => tm_cycles,
 
       rst_aux_n_o => etherbone_rst_n,
-      pps_p_o     => pps
+      pps_p_o     => pps,
+      pps_led_o   => pps_led
       );
 
   U_DAC_Helper : spec_serial_dac
@@ -784,7 +814,7 @@ begin
 
 
   cnx_slave_in(c_MASTER_ETHERBONE).cyc <= '0';
-  
+
   U_Intercon : xwb_sdb_crossbar
     generic map (
       g_num_masters => c_NUM_WB_SLAVES,
@@ -975,7 +1005,7 @@ begin
 
 
 -------------------------------------------------------------------------------
--- FINE DELAY 0 INSTANTIATION
+-- FINE DELAY 1 INSTANTIATION
 -------------------------------------------------------------------------------
 
   cmp_fd_tdc_start1 : IBUFDS
@@ -1086,6 +1116,60 @@ begin
   fd1_onewire_b <= '0' when fd1_owr_en = '1' else 'Z';
   fd1_owr_in    <= fd1_onewire_b;
 
+  U_LED_Controller : bicolor_led_ctrl
+    generic map(
+      g_NB_COLUMN    => 4,
+      g_NB_LINE      => 2,
+      g_CLK_FREQ     => 62500000,       -- in Hz
+      g_REFRESH_RATE => 250             -- in Hz
+      )
+    port map(
+      rst_n_i => local_reset_n,
+      clk_i   => clk_sys,
+
+      led_intensity_i => "1100100",         -- in %
+
+      led_state_i => led_state,
+
+      column_o   => fp_led_column_o,
+      line_o     => fp_led_line_o,
+      line_oen_o => fp_led_line_oen_o
+      );
+
+  U_Drive_VME_Access_Led: gc_extend_pulse
+    generic map (
+      g_width => 5000000)
+    port map (
+      clk_i      => clk_sys,
+      rst_n_i    => local_reset_n,
+      pulse_i    => cnx_slave_in(c_MASTER_VME).cyc,
+      extended_o => vme_access);
+  
+  -- Drive the front panel LEDs:
+
+  -- LED 1: WR Link status
+  led_state(0) <= led_link;
+  led_state(1) <= '0';
+
+  -- LED 2: WR Link activity status
+  led_state(2) <= led_act;
+  led_state(3) <= '0';
+
+  -- LED 3: WR PPS blink
+  led_state(4) <= pps_led;
+  led_state(5) <= '0';
+
+  -- LED 4: WR Time validity
+  led_state(6) <= tm_time_valid;
+  led_state(7) <= '0';
+
+  -- LED 5: VME access
+  led_state(8) <= vme_access;
+  led_state(9) <= '0';
+  
+  led_state(15 downto 10) <= (others => '0');
+
+  -- The SFP is permanently enabled.
   sfp_tx_disable_o <= '0';
 
 end rtl;
