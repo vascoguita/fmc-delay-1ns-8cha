@@ -6,7 +6,7 @@
 #################
 
 # There is not basenames here, all *.in are considered input
-INPUT = $(wildcard *.in)
+INPUT = fine-delay.in
 
 TEXI = $(INPUT:.in=.texi)
 INFO = $(INPUT:.in=.info)
@@ -14,7 +14,7 @@ HTML = $(INPUT:.in=.html)
 TXT  = $(INPUT:.in=.txt)
 PDF  = $(INPUT:.in=.pdf)
 
-ALL    =  $(TXT) $(PDF)
+ALL    =  $(PDF)
 
 MAKEINFO ?= makeinfo
 

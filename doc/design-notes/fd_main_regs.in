@@ -1,0 +1,930 @@
+@regsection Memory map summary
+@multitable  @columnfractions .10 .15 .15 .55
+@headitem Address @tab Type @tab Prefix @tab Name
+@item @code{0x0} @tab
+REG @tab
+@code{RSTR} @tab
+Reset Register
+@item @code{0x4} @tab
+REG @tab
+@code{IDR} @tab
+ID Register
+@item @code{0x8} @tab
+REG @tab
+@code{GCR} @tab
+Global Control Register
+@item @code{0xc} @tab
+REG @tab
+@code{TCR} @tab
+Timing Control Register
+@item @code{0x10} @tab
+REG @tab
+@code{TM_SECH} @tab
+Time Register - TAI seconds (MSB)
+@item @code{0x14} @tab
+REG @tab
+@code{TM_SECL} @tab
+Time Register - TAI seconds (LSB)
+@item @code{0x18} @tab
+REG @tab
+@code{TM_CYCLES} @tab
+Time Register - sub-second 125 MHz clock cycles 
+@item @code{0x1c} @tab
+REG @tab
+@code{TDR} @tab
+Host-driven TDC Data Register.
+@item @code{0x20} @tab
+REG @tab
+@code{TDCSR} @tab
+Host-driven TDC Control/Status
+@item @code{0x24} @tab
+REG @tab
+@code{CALR} @tab
+Calibration register
+@item @code{0x28} @tab
+REG @tab
+@code{DMTR_IN} @tab
+DMTD Input Tag Register
+@item @code{0x2c} @tab
+REG @tab
+@code{DMTR_OUT} @tab
+DMTD Output Tag Register
+@item @code{0x30} @tab
+REG @tab
+@code{ADSFR} @tab
+Acam Scaling Factor Register
+@item @code{0x34} @tab
+REG @tab
+@code{ATMCR} @tab
+Acam Timestamp Merging Control Register
+@item @code{0x38} @tab
+REG @tab
+@code{ASOR} @tab
+Acam Start Offset Register
+@item @code{0x3c} @tab
+REG @tab
+@code{IECRAW} @tab
+Raw Input Events Counter Register
+@item @code{0x40} @tab
+REG @tab
+@code{IECTAG} @tab
+Tagged Input Events Counter Register
+@item @code{0x44} @tab
+REG @tab
+@code{IEPD} @tab
+Input Event Processing Delay Register
+@item @code{0x48} @tab
+REG @tab
+@code{SCR} @tab
+SPI Control Register
+@item @code{0x4c} @tab
+REG @tab
+@code{RCRR} @tab
+Reference Clock Rate Register
+@item @code{0x50} @tab
+REG @tab
+@code{TSBCR} @tab
+Timestamp Buffer Control Register
+@item @code{0x54} @tab
+REG @tab
+@code{TSBIR} @tab
+Timestamp Buffer Interrupt Register
+@item @code{0x58} @tab
+REG @tab
+@code{TSBR_SECH} @tab
+Timestamp Buffer Readout Seconds Register (MSB)
+@item @code{0x5c} @tab
+REG @tab
+@code{TSBR_SECL} @tab
+Timestamp Buffer Readout Seconds Register (LSB)
+@item @code{0x60} @tab
+REG @tab
+@code{TSBR_CYCLES} @tab
+Timestamp Buffer Readout Cycles Register
+@item @code{0x64} @tab
+REG @tab
+@code{TSBR_FID} @tab
+Timestamp Buffer Readout Fine/Channel/Sequence ID Register
+@item @code{0x68} @tab
+REG @tab
+@code{I2CR} @tab
+I2C bitbanged IO register
+@item @code{0x6c} @tab
+REG @tab
+@code{TDER1} @tab
+Test/Debug register 1
+@item @code{0x70} @tab
+REG @tab
+@code{TDER2} @tab
+Test/Debug register 1
+@item @code{0x74} @tab
+REG @tab
+@code{TSBR_DEBUG} @tab
+Timestamp Buffer Debug Values Register
+@item @code{0x78} @tab
+REG @tab
+@code{TSBR_ADVANCE} @tab
+Timestamp Buffer Advance Register
+@item @code{0x80} @tab
+REG @tab
+@code{EIC_IDR} @tab
+Interrupt disable register
+@item @code{0x84} @tab
+REG @tab
+@code{EIC_IER} @tab
+Interrupt enable register
+@item @code{0x88} @tab
+REG @tab
+@code{EIC_IMR} @tab
+Interrupt mask register
+@item @code{0x8c} @tab
+REG @tab
+@code{EIC_ISR} @tab
+Interrupt status register
+@end multitable 
+@regsection @code{RSTR} - Reset Register
+Controls software reset of the Fine Delay core and the mezzanine connected to it. Both reset lines are driven @* indepentently, there is also an unlock word provided to prevent resetting the board/core by accidentally accessing this register.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{RST_FMC}
+@tab @code{0} @tab 
+State of the reset Line of the Mezzanine (EXT_RST_N pin)
+@item @code{1}
+@tab W/O @tab
+@code{RST_CORE}
+@tab @code{0} @tab 
+State of the reset of the Fine Delay Core
+@item @code{31...16}
+@tab W/O @tab
+@code{LOCK}
+@tab @code{0} @tab 
+Reset magic value
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{RST_FMC} @tab write 0: FMC is held in reset@* write 1: Normal FMC operation
+@item @code{RST_CORE} @tab write 0: FD Core is held in reset@* write 1: Normal FD Core operation
+@item @code{LOCK} @tab Protection field - the state of FMC and core lines will@* only be updated if LOCK is written with 0xdead together with the new state of the reset lines.
+@end multitable
+@regsection @code{IDR} - ID Register
+Magic identification value (for detecting FD cores by the driver). Even though now enumeration is handled through SDB, but the register is kept for compatibility with older software.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{IDR}
+@tab @code{X} @tab 
+ID Magic Value
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{IDR} @tab Equal to @code{0xf19ede1a}
+@end multitable
+@regsection @code{GCR} - Global Control Register
+Common control bits used throughout the core.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab R/W @tab
+@code{BYPASS}
+@tab @code{0} @tab 
+Bypass Hardware TDC/Delay Controller
+@item @code{1}
+@tab R/W @tab
+@code{INPUT_EN}
+@tab @code{0} @tab 
+Enable trigger input
+@item @code{2}
+@tab R/O @tab
+@code{DDR_LOCKED}
+@tab @code{X} @tab 
+PLL Lock status
+@item @code{3}
+@tab R/O @tab
+@code{FMC_PRESENT}
+@tab @code{X} @tab 
+Mezzanine Present
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{BYPASS} @tab Descides who is in charge of the TDC and delay lines:@* write 0: TDC and delay lines are controlled by the HDL core (normal operation mode)@* write 1: TDC and delay lines controlled from the host via @code{TDR} and @code{TDCSR} registers (calibration and testing mode)
+@item @code{INPUT_EN} @tab write 1: trigger input is enabled@* write 0: trigger input is disabled.@* @b{Note:} state of @code{INPUT_EN} is relevant only in normal operation mode (i.e. when @code{GCR.BYPASS} == 0). Warning! enabling the input in @code{INPUT_EN}@* does not mean it will be automatically enabled in the ACAM TDC - one must pre-program its registers first.
+@item @code{DDR_LOCKED} @tab read 1: AD9516 and internal DDR PLLs are locked@* read 0: AD9516 or internal DDR PLL not (yet) locked
+@item @code{FMC_PRESENT} @tab Mirrors the state of the FMC's PRSNT_L hardware pin: @* read 1: FMC card is present (@code{PRSNT_L == 0})@* read 0: no FMC card in the slot (@code{PRSNT_L == 1})
+@end multitable
+@regsection @code{TCR} - Timing Control Register
+Controls time setting and White Rabbit/local time base selection.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab R/O @tab
+@code{DMTD_STAT}
+@tab @code{X} @tab 
+DMTD Clock Status
+@item @code{1}
+@tab R/W @tab
+@code{WR_ENABLE}
+@tab @code{0} @tab 
+WR Timing Enable
+@item @code{2}
+@tab R/O @tab
+@code{WR_LOCKED}
+@tab @code{X} @tab 
+WR Timing Locked
+@item @code{3}
+@tab R/O @tab
+@code{WR_PRESENT}
+@tab @code{X} @tab 
+WR Core Present
+@item @code{4}
+@tab R/O @tab
+@code{WR_READY}
+@tab @code{X} @tab 
+WR Core Time Ready
+@item @code{5}
+@tab R/O @tab
+@code{WR_LINK}
+@tab @code{X} @tab 
+WR Core Link Up
+@item @code{6}
+@tab W/O @tab
+@code{CAP_TIME}
+@tab @code{0} @tab 
+Capture Current Time
+@item @code{7}
+@tab W/O @tab
+@code{SET_TIME}
+@tab @code{0} @tab 
+Set Current Time
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{DMTD_STAT} @tab Status of the DMTD (helper) clock, used for DDMTD calibration purposes by the test suite.@* read 0: DMTD clock is not available or has been lost since last read operation of @code{TCR} register@* read 1: DMTD has been OK since previous read of @code{TCR} register
+@item @code{WR_ENABLE} @tab Enables/disables WR synchronization.@* write 1: WR synchronization is enabled. Poll the @code{TCR.WR_LOCKED} bit to check if the WR Core is still locked.@* write 0: WR synchronization is disabled, the card is in free running mode.@* @b{Note:} enabling WR synchronization will cause a jump in the time base counter of the core. This may lead to lost pulses, therefore it is strongly@* recommended do disable the inputs/outputs before entering WR mode. When WR mode is disabled, the core will continue counting without a jump.
+@item @code{WR_LOCKED} @tab Status of WR synchronization. @* read 0: local oscillator/time base is not locked to WR (or a transient delock event occured since last read of WR_TCR register).@* read 1: local oscillator is syntonized to WR and local timebase is aligned with WR time. 
+@item @code{WR_PRESENT} @tab Indicates whether we have a WR Core associated with this Fine Delay Core. Reflects the state@* of the @code{g_with_wr_core} generic HDL parameter. @* read 0: No WR Core present. Enabling WR will have no effect.@* read 1: WR Core available.
+@item @code{WR_READY} @tab Indicates the status of synchronization of the associated WR core. Valid only if @code{TCR.WR_PRESENT} bit is set.@* read 0: WR Core is not synchronzied yet: there is no link, no PTP master in the network or synchronization is in progress.@* read 1: WR Core time is ready. User may enable WR reference by setting @code{TCR.WR_ENABLE} bit.@* @b{Note:} it is allowed to enable the WR mode even if @code{TCR.WR_READY} or @code{TCR.WR_LINK} bits are not set. Time base will@* be synced to WR as soon as the core gets correct PTP time from the master.
+@item @code{WR_LINK} @tab Reflects the state of the WR Core's Ethernet link. Provided as an additional diagnostic feature.@* read 0: Ethernet link is down.@* read 1: Ethernet link is up.
+@item @code{CAP_TIME} @tab Performs an atomic read of the core's current time.@* write 1: transfers the current value of seconds/cycles counters to @code{TM_xxx} registers.@* write 0: no effect.
+@item @code{SET_TIME} @tab Sets internal time base counter to a given time in an atomic way:@* write 1: transfers the current value of @code{TM_x} to the timebase counters.@* write 0: no effect.@* @b{Note 1:} Internal time counters must be always initialized to a known value (e.g. zeroes), after every reset/power cycle.@* @b{Note 2:} Writing to @code{TCR.SET_TIME} while WR mode is active is forbidden. If you do so, prepare for unforeseen consequences.
+@end multitable
+@regsection @code{TM_SECH} - Time Register - TAI seconds (MSB)
+Seconds counter, most significant part@* read: value of internal seconds counter taken upon last write to @code{TCR.CAP_TIME} bit.@* write: new value of seconds counter (loaded to the time base counter by writing @code{TCR.SET_TIME} bit)
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{7...0}
+@tab R/W @tab
+@code{TM_SECH}
+@tab @code{X} @tab 
+TAI seconds (MSB)
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TM_SECL} - Time Register - TAI seconds (LSB)
+Seconds counter, least significant part@* read: value of internal seconds counter taken upon last write to @code{TCR.CAP_TIME} bit.@* write: new value of seconds counter (loaded to the time base counter by writing @code{TCR.SET_TIME} bit)
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/W @tab
+@code{TM_SECL}
+@tab @code{X} @tab 
+TAI seconds (LSB)
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TM_CYCLES} - Time Register - sub-second 125 MHz clock cycles 
+Number of 125 MHz reference clock cycles from the beginning of the current second. @* read: value of cycles counter taken upon last write to @code{TCR.CAP_TIME} bit.@* write: new value of cycles counter (loaded to the time base counter by writing @code{TCR.SET_TIME} bit)
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{27...0}
+@tab R/W @tab
+@code{TM_CYCLES}
+@tab @code{X} @tab 
+Reference clock cycles (0...124999999)
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TDR} - Host-driven TDC Data Register.
+Holds the 28-bit data word read from/to be written to the ACAM TDC, when the core is configured in bypass mode (@code{GCR.BYPASS == 1}).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{27...0}
+@tab R/W @tab
+@code{TDR}
+@tab @code{X} @tab 
+TDC Data
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TDCSR} - Host-driven TDC Control/Status
+Allows controlling the TDC directly from the host (when @code{GCR.BYPASS == 1}).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{WRITE}
+@tab @code{0} @tab 
+Write to TDC
+@item @code{1}
+@tab W/O @tab
+@code{READ}
+@tab @code{0} @tab 
+Read from TDC
+@item @code{2}
+@tab R/O @tab
+@code{EMPTY}
+@tab @code{X} @tab 
+Empty flag
+@item @code{3}
+@tab W/O @tab
+@code{STOP_EN}
+@tab @code{0} @tab 
+Stop enable
+@item @code{4}
+@tab W/O @tab
+@code{START_DIS}
+@tab @code{0} @tab 
+Start disable
+@item @code{5}
+@tab W/O @tab
+@code{START_EN}
+@tab @code{0} @tab 
+Start enable
+@item @code{6}
+@tab W/O @tab
+@code{STOP_DIS}
+@tab @code{0} @tab 
+Stop disable
+@item @code{7}
+@tab W/O @tab
+@code{ALUTRIG}
+@tab @code{0} @tab 
+Pulse <code>Alutrigger</code> line
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{WRITE} @tab Writes the data word from @code{TDR}register to the ACAM TDC.@* write 1: write the data word programmed in @code{TDR} TDR register to the TDC. The TDC address must be set via the SPI I/O expander.@* write 0: no effect.
+@item @code{READ} @tab Reads a data word from the TDC and puts it in @code{TDR} register.@* write 1: read a data word from the TDC. The read word will be put in the @code{TDR} register. The TDC address must be set via the SPI I/O expander.@* write 0: no effect.
+@item @code{EMPTY} @tab Raw status of the @code{EF} (FIFO empty) pin of the TDC.@* read 0: there is one (or more) pending timestamp(s) in the ACAM's internal FIFO.@* read 1: the internal TDC FIFO is empty (no timestamps to read).
+@item @code{STOP_EN} @tab Controls the @code{StopDis} input of the TDC.@* write 1: enables the TDC stop input.@* write 0: no effect.
+@item @code{START_DIS} @tab Controls the @code{StartDis} input of the TDC.@* write 1: disables the TDC start input.@* write 0: no effect.
+@item @code{START_EN} @tab Controls the @code{StartDis} input of the TDC.@* write 1: enables the TDC start input.@* write 0: no effect.
+@item @code{STOP_DIS} @tab Controls the @code{StopDis} input of the TDC.@* write 1: disables the TDC stop input.@* write 0: no effect.
+@item @code{ALUTRIG} @tab Controls the TDC's @code{Alutrigger} line. Depending on the TDC's configuration, it can be used as a reset/FIFO clear/trigger signal.@* write 1: generates a pulse ACAM's @code{Alutrigger} line@* write 0: no effect.
+@end multitable
+@regsection @code{CALR} - Calibration register
+Controls calibration logic.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{CAL_PULSE}
+@tab @code{0} @tab 
+Generate calibration pulses (type 1 calibration)
+@item @code{1}
+@tab R/W @tab
+@code{CAL_PPS}
+@tab @code{0} @tab 
+PPS Calibration output enable.
+@item @code{2}
+@tab R/W @tab
+@code{CAL_DMTD}
+@tab @code{0} @tab 
+Produce DDMTD calibration pattern (type 2 calibration)
+@item @code{6...3}
+@tab R/W @tab
+@code{PSEL}
+@tab @code{0} @tab 
+Calibration pulse output select/mask
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{CAL_PULSE} @tab Triggers generation of a calibration pulse on selected channels. Used to determine the exact 4/8ns setting tap of the fine delay line.@* write 1: Immediately generates a single calibration pulse on the TDC start input and the output channels selected in the PSEL field.@* write 0: no effect.@* @b{Note:} In order for the pulse to be tagged by the TDC, it must be driven in the BYPASS mode and properly configured (I-mode, see driver/test program).
+@item @code{CAL_PPS} @tab Drives the TDC stop input with a PPS signal synchronous to the FD core's timebase:@* write 1: Feeds TDC input with internally generated PPS signal.@* write 0: PPS generation disabled.@* @b{Note:} Input multiplexer must be configured to drive the TDC trigger from the FPGA calibration output instead of the trigger input.
+@item @code{CAL_DMTD} @tab Controls DDMTD test pattern generation:@* write 1: Enables DMTD test pattern on the TDC input and DDMTD sampling clock for the calibration flip-flops.@* write 0: DMTD pattern generation disabled.@* @b{Note:} Input multiplexer must be configured to drive the TDC trigger from the FPGA calibration output instead of the trigger input.
+@item @code{PSEL} @tab 1: enable generation of type 1 calibration pulses (@code{CALR.CAL_PULSE}) on the output corresponding to the written bit@* 0: disable pulse generation for the corresponding output 
+@end multitable
+@regsection @code{DMTR_IN} - DMTD Input Tag Register
+Provides the DDMTD tag value for the input channel (type 2 calibration).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{30...0}
+@tab R/O @tab
+@code{TAG}
+@tab @code{X} @tab 
+DMTD Tag
+@item @code{31}
+@tab R/O @tab
+@code{RDY}
+@tab @code{X} @tab 
+DMTD Tag Ready
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{TAG} @tab The tag value.
+@item @code{RDY} @tab Tag ready flag (clear-on-read):@* 1: a new DDMTD tag is available.@* 0: tag not ready yet.
+@end multitable
+@regsection @code{DMTR_OUT} - DMTD Output Tag Register
+Provides the DDMTD tag value for a selected output channel (type 2 calibration).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{30...0}
+@tab R/O @tab
+@code{TAG}
+@tab @code{X} @tab 
+DMTD Tag
+@item @code{31}
+@tab R/O @tab
+@code{RDY}
+@tab @code{X} @tab 
+DMTD Tag Ready
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{TAG} @tab The tag value.
+@item @code{RDY} @tab Tag ready flag (clear-on-read):@* 1: a new DDMTD tag is available.@* 0: tag not ready yet.
+@end multitable
+@regsection @code{ADSFR} - Acam Scaling Factor Register
+Scaling factor between the FD's internal time scale and the ACAM's format. Used only in normal operating mode (@code{GCR.BYPASS == 0}).@* Formula (for G-Mode): @code{ADFSR = round(2097.152 * ACAM_bin_size [ps])}
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{17...0}
+@tab R/W @tab
+@code{ADSFR}
+@tab @code{0} @tab 
+ADFSR Value
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{ATMCR} - Acam Timestamp Merging Control Register
+Controls merging of fine timestamps prouced by Acam with coarse timestamps obtained by the FPGA. See developers' manual for explanation. 
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{7...0}
+@tab R/W @tab
+@code{C_THR}
+@tab @code{0} @tab 
+Coarse Threshold
+@item @code{30...8}
+@tab R/W @tab
+@code{F_THR}
+@tab @code{0} @tab 
+Fine Threshold
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{ASOR} - Acam Start Offset Register
+ACAM timestamp start offset. Value that gets subtracted from ACAM's timestamps (due to ACAM's ALU architecture that does not support negative numbers). See developers' manual for explanation.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{22...0}
+@tab R/W @tab
+@code{OFFSET}
+@tab @code{0} @tab 
+Start Offset
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{IECRAW} - Raw Input Events Counter Register
+TDC debugging & statistics register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{IECRAW}
+@tab @code{X} @tab 
+Number of raw events.
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{IECRAW} @tab Number of all input pulses detected by the timestamper.
+@end multitable
+@regsection @code{IECTAG} - Tagged Input Events Counter Register
+TDC debugging & statistics register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{IECTAG}
+@tab @code{X} @tab 
+Number of tagged events
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{IECTAG} @tab Number of all input pulses which passed the width checks and resulted with valid timestamps.
+@end multitable
+@regsection @code{IEPD} - Input Event Processing Delay Register
+TDC debugging & statistics register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{RST_STAT}
+@tab @code{0} @tab 
+Reset stats
+@item @code{8...1}
+@tab R/O @tab
+@code{PDELAY}
+@tab @code{X} @tab 
+Processing delay
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{RST_STAT} @tab Write 1: resets the delay/pulse count counters (@code{IECRAW}, @code{IECTAG} and @code{IEPD_WDELAY})@* write 0: no effect
+@item @code{PDELAY} @tab Worst-case delay between the input event and the generation of its timestamp. Expressed as a number of 125 MHz clock cycles.
+@end multitable
+@regsection @code{SCR} - SPI Control Register
+Single control register for the SPI Controller, allowing for atomic updates of the DAC, GPIO and PLL.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{23...0}
+@tab R/W @tab
+@code{DATA}
+@tab @code{X} @tab 
+Data
+@item @code{24}
+@tab R/W @tab
+@code{SEL_DAC}
+@tab @code{0} @tab 
+Select DAC
+@item @code{25}
+@tab R/W @tab
+@code{SEL_PLL}
+@tab @code{0} @tab 
+Select PLL
+@item @code{26}
+@tab R/W @tab
+@code{SEL_GPIO}
+@tab @code{0} @tab 
+Select GPIO
+@item @code{27}
+@tab R/O @tab
+@code{READY}
+@tab @code{X} @tab 
+Ready flag
+@item @code{28}
+@tab R/W @tab
+@code{CPOL}
+@tab @code{0} @tab 
+Clock Polarity
+@item @code{29}
+@tab W/O @tab
+@code{START}
+@tab @code{0} @tab 
+Transfer Start
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{DATA} @tab Data to be read/written from/to the SPI bus
+@item @code{SEL_DAC} @tab write 1: selects the DAC as the target peripheral of the transfer@* write 0: no effect
+@item @code{SEL_PLL} @tab write 1: selects the AD9516 PLL as the target peripheral of the transfer@* write 0: no effect
+@item @code{SEL_GPIO} @tab write 1: selects the MCP23S17 GPIO as the target peripheral of the transfer@* write 0: no effect
+@item @code{READY} @tab read 0: SPI controller is busy performing a transfer@* read 1: SPI controller has finished its previous transfer. Read-back data is available in @code{SCR.DATA}
+@item @code{CPOL} @tab 0: SPI clock is not inverted (data valid on rising edge)@* 1: SPI clock is inverted (data valid on falling edge)
+@item @code{START} @tab write 1: Starts SPI transfer from/to the selected peripheral@* write 0: no effect
+@end multitable
+@regsection @code{RCRR} - Reference Clock Rate Register
+Provides the momentary value of the internal clock rate counter. Can be used in conjunction with the DAC to roughly syntonize the card's reference clock with a clock coming from an external master installed in the same host (e.g. a CTRV/CTRP) in a software-only way or to measure tuning range of the local VCXO.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{RCRR}
+@tab @code{X} @tab 
+Frequency
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{RCRR} @tab Reference clock frequency, in Hz
+@end multitable
+@regsection @code{TSBCR} - Timestamp Buffer Control Register
+Controls timestamp readout from the core's circular buffer
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{4...0}
+@tab R/W @tab
+@code{CHAN_MASK}
+@tab @code{0} @tab 
+Channel Mask
+@item @code{5}
+@tab R/W @tab
+@code{ENABLE}
+@tab @code{0} @tab 
+Buffer enable
+@item @code{6}
+@tab W/O @tab
+@code{PURGE}
+@tab @code{0} @tab 
+Buffer purge
+@item @code{7}
+@tab W/O @tab
+@code{RST_SEQ}
+@tab @code{0} @tab 
+Reset timestamp sequence number
+@item @code{8}
+@tab R/O @tab
+@code{FULL}
+@tab @code{X} @tab 
+Buffer full
+@item @code{9}
+@tab R/O @tab
+@code{EMPTY}
+@tab @code{X} @tab 
+Buffer empty
+@item @code{21...10}
+@tab R/O @tab
+@code{COUNT}
+@tab @code{X} @tab 
+Buffer entries count
+@item @code{22}
+@tab R/W @tab
+@code{RAW}
+@tab @code{0} @tab 
+RAW readout mode enable
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{CHAN_MASK} @tab Selects which channels' time tags shall be written to the buffer. @* bit @code{0}: TDC input@* bits @code{1..4}: = Delay outputs
+@item @code{ENABLE} @tab Enables/disables timestamp readout:@* 1: timestamp buffer is enabled. Readout is possible.@* 0: timestamp buffer is disabled. Timestamps are processed (if set in delay mode), but discarded for readout.
+@item @code{PURGE} @tab write 1: clear timestamp buffer.@* write 0: no effect
+@item @code{RST_SEQ} @tab write 1: reset timestamp sequence number counter@* write 0: no effect
+@item @code{FULL} @tab read 1: buffer is full. Old timestamps (at the end of the buffer) will be discarded when new ones will come
+@item @code{EMPTY} @tab read 1: buffer is empty
+@item @code{COUNT} @tab Number of timestamps currently stored in the readout buffer
+@item @code{RAW} @tab Enables raw timestamp readout mode (i.e. bypassing postprocessing). Used only for debugging purposes.@* write 1: enable raw mode@* write 0: disable raw mode (normal operation)
+@end multitable
+@regsection @code{TSBIR} - Timestamp Buffer Interrupt Register
+Controls the behaviour of the core's readout interrupt (coalescing).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{9...0}
+@tab R/W @tab
+@code{TIMEOUT}
+@tab @code{0} @tab 
+IRQ timeout [milliseconds]
+@item @code{21...10}
+@tab R/W @tab
+@code{THRESHOLD}
+@tab @code{0} @tab 
+Interrupt threshold
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{TIMEOUT} @tab The IRQ line will be asserted after @code{TSBIR.TIMEOUT} milliseconds even if the amount of data in the buffer is below @code{TSBIR.THRESHOLD}.
+@item @code{THRESHOLD} @tab Minimum number of samples (timestamps) in the buffer that immediately triggers an interrupt.
+@end multitable
+@regsection @code{TSBR_SECH} - Timestamp Buffer Readout Seconds Register (MSB)
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{7...0}
+@tab R/O @tab
+@code{TSBR_SECH}
+@tab @code{X} @tab 
+Timestamps TAI Seconds (bits 39-32)
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TSBR_SECL} - Timestamp Buffer Readout Seconds Register (LSB)
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{TSBR_SECL}
+@tab @code{X} @tab 
+Timestamps TAI Seconds (bits 31-0)
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TSBR_CYCLES} - Timestamp Buffer Readout Cycles Register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{27...0}
+@tab R/O @tab
+@code{TSBR_CYCLES}
+@tab @code{X} @tab 
+Timestamps Cycles Count [in 8 ns ticks]
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{TSBR_FID} - Timestamp Buffer Readout Fine/Channel/Sequence ID Register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{3...0}
+@tab R/O @tab
+@code{CHANNEL}
+@tab @code{X} @tab 
+Channel ID
+@item @code{15...4}
+@tab R/O @tab
+@code{FINE}
+@tab @code{X} @tab 
+Fine Value (in phase units)
+@item @code{31...16}
+@tab R/O @tab
+@code{SEQID}
+@tab @code{X} @tab 
+Timestamp Sequence ID
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{CHANNEL} @tab ID of the originating channel:@* @code{0}: TDC input@* @code{1..4}: outputs 1..4
+@end multitable
+@regsection @code{I2CR} - I2C bitbanged IO register
+Controls state of the mezzanine's I2C bus lines by means of bitbanging
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab R/W @tab
+@code{SCL_OUT}
+@tab @code{1} @tab 
+SCL Line out
+@item @code{1}
+@tab R/W @tab
+@code{SDA_OUT}
+@tab @code{1} @tab 
+SDA Line out
+@item @code{2}
+@tab R/O @tab
+@code{SCL_IN}
+@tab @code{X} @tab 
+SCL Line in
+@item @code{3}
+@tab R/O @tab
+@code{SDA_IN}
+@tab @code{X} @tab 
+SDA Line in
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{SCL_OUT} @tab write 0: drive SCL to 0 @* write 1: drive SCL to weak 1 (pullup)
+@item @code{SDA_OUT} @tab write 0: drive SDA to 0 @* write 1: drive SDA to weak 1 (pullup)
+@item @code{SCL_IN} @tab State of the SCL line.
+@item @code{SDA_IN} @tab State of the SDA line.
+@end multitable
+@regsection @code{TDER1} - Test/Debug register 1
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{VCXO_FREQ}
+@tab @code{X} @tab 
+VCXO Frequency
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{VCXO_FREQ} @tab Mezzanine VCXO frequency in Hz, measured using the DMTD clock as a reference. Used during factory test only.
+@end multitable
+@regsection @code{TDER2} - Test/Debug register 1
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/W @tab
+@code{PELT_DRIVE}
+@tab @code{0} @tab 
+Peltier PWM drive
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{PELT_DRIVE} @tab Peltier module PWM drive. Lab-only feature for measuring temperature characteristics of the board.
+@end multitable
+@regsection @code{TSBR_DEBUG} - Timestamp Buffer Debug Values Register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/O @tab
+@code{TSBR_DEBUG}
+@tab @code{X} @tab 
+Debug value
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{TSBR_DEBUG} @tab Additional register for holding timestamp debug data (used only in raw readout mode). Content format is not specified.
+@end multitable
+@regsection @code{TSBR_ADVANCE} - Timestamp Buffer Advance Register
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{ADV}
+@tab @code{0} @tab 
+Advance buffer readout
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@end multitable
+@regsection @code{EIC_IDR} - Interrupt disable register
+Writing 1 disables handling of the interrupt associated with corresponding bit. Writin 0 has no effect.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{TS_BUF_NOTEMPTY}
+@tab @code{0} @tab 
+Timestamp Buffer interrupt.
+@item @code{1}
+@tab W/O @tab
+@code{DMTD_SPLL}
+@tab @code{0} @tab 
+DMTD SoftPLL interrupt
+@item @code{2}
+@tab W/O @tab
+@code{SYNC_STATUS}
+@tab @code{0} @tab 
+Sync Status Changed
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{ts_buf_notempty} @tab write 1: disable interrupt 'Timestamp Buffer interrupt.'@*write 0: no effect
+@item @code{dmtd_spll} @tab write 1: disable interrupt 'DMTD SoftPLL interrupt'@*write 0: no effect
+@item @code{sync_status} @tab write 1: disable interrupt 'Sync Status Changed'@*write 0: no effect
+@end multitable
+@regsection @code{EIC_IER} - Interrupt enable register
+Writing 1 enables handling of the interrupt associated with corresponding bit. Writin 0 has no effect.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab W/O @tab
+@code{TS_BUF_NOTEMPTY}
+@tab @code{0} @tab 
+Timestamp Buffer interrupt.
+@item @code{1}
+@tab W/O @tab
+@code{DMTD_SPLL}
+@tab @code{0} @tab 
+DMTD SoftPLL interrupt
+@item @code{2}
+@tab W/O @tab
+@code{SYNC_STATUS}
+@tab @code{0} @tab 
+Sync Status Changed
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{ts_buf_notempty} @tab write 1: enable interrupt 'Timestamp Buffer interrupt.'@*write 0: no effect
+@item @code{dmtd_spll} @tab write 1: enable interrupt 'DMTD SoftPLL interrupt'@*write 0: no effect
+@item @code{sync_status} @tab write 1: enable interrupt 'Sync Status Changed'@*write 0: no effect
+@end multitable
+@regsection @code{EIC_IMR} - Interrupt mask register
+Shows which interrupts are enabled. 1 means that the interrupt associated with the bitfield is enabled
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab R/O @tab
+@code{TS_BUF_NOTEMPTY}
+@tab @code{X} @tab 
+Timestamp Buffer interrupt.
+@item @code{1}
+@tab R/O @tab
+@code{DMTD_SPLL}
+@tab @code{X} @tab 
+DMTD SoftPLL interrupt
+@item @code{2}
+@tab R/O @tab
+@code{SYNC_STATUS}
+@tab @code{X} @tab 
+Sync Status Changed
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{ts_buf_notempty} @tab read 1: interrupt 'Timestamp Buffer interrupt.' is enabled@*read 0: interrupt 'Timestamp Buffer interrupt.' is disabled
+@item @code{dmtd_spll} @tab read 1: interrupt 'DMTD SoftPLL interrupt' is enabled@*read 0: interrupt 'DMTD SoftPLL interrupt' is disabled
+@item @code{sync_status} @tab read 1: interrupt 'Sync Status Changed' is enabled@*read 0: interrupt 'Sync Status Changed' is disabled
+@end multitable
+@regsection @code{EIC_ISR} - Interrupt status register
+Each bit represents the state of corresponding interrupt. 1 means the interrupt is pending. Writing 1 to a bit clears the corresponding interrupt. Writing 0 has no effect.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab R/W @tab
+@code{TS_BUF_NOTEMPTY}
+@tab @code{X} @tab 
+Timestamp Buffer interrupt.
+@item @code{1}
+@tab R/W @tab
+@code{DMTD_SPLL}
+@tab @code{X} @tab 
+DMTD SoftPLL interrupt
+@item @code{2}
+@tab R/W @tab
+@code{SYNC_STATUS}
+@tab @code{X} @tab 
+Sync Status Changed
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{ts_buf_notempty} @tab read 1: interrupt 'Timestamp Buffer interrupt.' is pending@*read 0: interrupt not pending@*write 1: clear interrupt 'Timestamp Buffer interrupt.'@*write 0: no effect
+@item @code{dmtd_spll} @tab read 1: interrupt 'DMTD SoftPLL interrupt' is pending@*read 0: interrupt not pending@*write 1: clear interrupt 'DMTD SoftPLL interrupt'@*write 0: no effect
+@item @code{sync_status} @tab read 1: interrupt 'Sync Status Changed' is pending@*read 0: interrupt not pending@*write 1: clear interrupt 'Sync Status Changed'@*write 0: no effect
+@end multitable
