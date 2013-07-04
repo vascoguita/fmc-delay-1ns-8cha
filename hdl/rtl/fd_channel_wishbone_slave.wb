@@ -48,14 +48,15 @@ peripheral {
   
    reg {
       name = "Delay Control Register";
+      description = "Main control registers of the particular output channel of the Fine Delay Core.";
       prefix = "DCR";
       align = 8;
 
       field {
          name = "Enable channel";
          prefix = "ENABLE";
-         description = "0: channel is disabled\
-                        1: channel is enabled";
+         description = "write 0: channel is disabled. Output is driven LOW.\
+                        write 1: channel is enabled. Output may produce pulses.";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -65,9 +66,9 @@ peripheral {
       field {
          name = "Delay mode select";
          prefix = "MODE";
-         description = "0: Channel will work as a delay generator, producing delayed copies of pulses comming to the trigger input\
-1: Channel will work as a programmable pulse generator - producing a pulse which begins at UTC time [U_START, C_START, F_START] and ends at [U_END, C_END, F_END].\
-   <b>Warning:</b> MODE_DLY bit can be safely set only when the TDC and the delay logic are disabled (i.e. when GCR.BYPASS = 1)";
+         description = "0: Channel will work as a delay generator, producing delayed copies of pulses coming to the trigger input. Start/End registers shall contain delays of respectively, the rising and falling edge.\
+         1: Channel will work as a programmable pulse generator - producing a pulse which begins and ends at absolute TAI times stored in Start/End registers.\
+   <b>Note:</b> <code>MODE</code> bit can be safely set only when the delay logic are disabled (i.e. when <code>DCR.ENABLE == 0</code>)";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -78,7 +79,7 @@ peripheral {
          prefix = "PG_ARM";
          description = "write 1: arms the pulse generator. \
          write 0: no effect.\
-         Note that the time written to [U/C/F]START must be bigger by at least 200 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much bigger, as it's affected by the non-determinism of the operating system."; 
+            <b>Note:</b> The values written to <code>[U/C/F]_START</code> and <code>[U/C/F]_END</code> must be bigger by at least 300 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much higher, as it's affected by the non-determinism of the operating system."; 
          type = MONOSTABLE;
          clock = "clk_ref_i";
       };
@@ -95,18 +96,19 @@ peripheral {
       };
 
       field {
-         name = "Start Delay Update";
+         name = "Update delay/absolute trigger time";
          prefix = "UPDATE";
-         description = "write 1: Starts delay update procedure. The start and end times from [U/C/F][START/END] will be transferred in an atomic way to the internal delay/pulse generator registers\
-        write 0: no effect.";
+         description = "write 1: Starts the update procedure. The start and end times from <code>[U/C/F][START/END]</code> will be transferred in an atomic way to the internal delay/pulse generator registers.\
+        write 0: no effect.\
+         <b>Note:</b> Care must be taken when updating the delay value - if the channel gets stuck due to invalid control values written, the only way to bring it back alive is to disable and re-enable it by toggling <code>DCR.ENABLE</code> bit.";
          type = MONOSTABLE;
          clock = "clk_ref_i";
       };
       
       field {
-         name = "Delay Update Done";
+         name = "Delay update done flag";
          prefix = "UPD_DONE";
-         description = "read 1: The delays from [U/C/F][START/END] have been loaded into internal registers\
+         description = "read 1: the delays from <code>[U/C/F][START/END]</code> have been loaded into internal registers. Subsequent triggers will be delayed by the newly programmed value.\
         read 0: update operation in progress";
          type = BIT;
          access_bus = READ_ONLY;
@@ -115,10 +117,11 @@ peripheral {
       };
 
       field {
-         name = "Force Calibration Delay";
+         name = "Force calibration delay";
          prefix = "FORCE_DLY";
-         description = "write 1: preloads the delay line with the contents of FRR register. Used for self-calibration purposes.\
-      write 0: no effect";
+         description = "Used in type 1 calibration.\
+         write 1: preloads the SY89295 delay line with the contents of FRR register.\
+         write 0: no effect";
 
          type = MONOSTABLE;
          clock = "clk_ref_i";
@@ -126,10 +129,11 @@ peripheral {
 
 
       field {
-         name = "Disable Fine Part update";
+         name = "Disable fine part update";
          prefix = "NO_FINE";
-         description = "write 1: disables updating of the fine part of the pulse delay to allow for producing faster signals (i.e. pulse width/spacing < 200 ns), at the cost of less accurate width/spacing control (multiple of 4 ms). \
-write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
+         description = "write 1: disables updating of the fine part of the pulse delay to allow for producing faster signals (i.e. pulse width/spacing < 200 ns), at the cost of less accurate width/spacing control (multiple of 4 ns). \
+write 0: normal operation. Pulse width/spacing must be at least 200 ns, width/spacing resolution is 10 ps.\
+<b>Note:</b> A typical use case for <code>NO_FINE</code> bit is producing a 10 MHz clock.";
 
          type = BIT;
          access_bus = READ_WRITE;
@@ -137,10 +141,10 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
       };
 
       field {
-         name = "Force Output High";
+         name = "Force output high";
          prefix = "FORCE_HI";
-         description = "write 1: Forces constant 1 on the output when the channel is disabled\
-         write 0: Forces constant 0 on the output when the channel is disabled\
+         description = "write 1: forces constant 1 on the output when the channel is disabled\
+         write 0: forces constant 0 on the output when the channel is disabled\
          Used for testing/calibration purposes.";
 
          type = BIT;
@@ -154,10 +158,10 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    reg {
       name = "Fine Range Register";
       prefix = "FRR";
-      description = "Delay line tap setting at which the line generates an 8 ns (one cycle) longer delay than when set to 0.";
+      description = "Delay line tap setting at which the line generates an 8 ns (one cycle) longer delay than when set to 0. Used by type 1 calibration logic.";
 
       field {
-         name = "Fine Range";
+         name = "Fine range in SY89825 taps.";
          size = 10;
          type = SLV;
          access_bus = READ_WRITE;
@@ -211,9 +215,9 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    };
 
    reg {
-      name = "Pulse start time / offset (sub-cycle fine part)";
+      name = "Pulse start time / offset (fine part)";
       prefix = "F_START";
-      description = "Sub-clock cycle part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
+      description = "Sub-clock cycle part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).";
 
       field {
          name = "Fractional part";
@@ -258,7 +262,7 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    reg {
       name = "Pulse end time / offset (8 ns cycles)";
       prefix = "C_END";
-      description = "Sub-second part of the pulse endabsolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
+      description = "Sub-second part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.";
 
       field {
          name = "Reference clock cycles";
@@ -270,9 +274,9 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    };
 
    reg {
-      name = "Pulse end time / offset (sub-cycle fine part)";
+      name = "Pulse end time / offset (fine part)";
       prefix = "F_END";
-      description = "Sub-clock cycle part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Scales linearly to <0..8 ns>: 0 = 0 ps, 4095 = 7999 ps.";
+      description = "Sub-clock cycle part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). ";
 
       field {
          name = "Fractional part";
@@ -289,7 +293,7 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
  reg {
       name = "Pulse spacing (TAI seconds)";
       prefix = "U_DELTA";
-      description = "TAI seconds between rising edges of subsequent output pulses.";
+      description = "TAI seconds between the rising edges of subsequent output pulses.";
 
       field {
          name = "TAI seconds";
@@ -303,7 +307,7 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    reg {
       name = "Pulse spacing (8 ns cycles)";
       prefix = "C_DELTA";
-      description = "Reference clock cycles between rising edges of subsequent output pulses.";
+      description = "Reference clock cycles between the rising edges of subsequent output pulses.";
 
       field {
          name = "Reference clock cycles";
@@ -315,9 +319,9 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    };
 
    reg {
-      name = "Pulse spacing (sub-cycle fine part)";
+      name = "Pulse spacing (fine part)";
       prefix = "F_DELTA";
-      description = "Sub-cycle part of spacing between rising edges of subsequent output pulses.";
+      description = "Sub-cycle part of spacing between the rising edges of subsequent output pulses.";
 
       field {
          name = "Fractional part";
@@ -331,11 +335,11 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
    reg {
       name = "Repeat Count Register";
       prefix = "RCR";
-      description = "Register controlling the number of output pulses to be generated upon reception of a trigger pulse.";
+      description = "Register controlling the number of output pulses to be generated upon reception of a trigger pulse or triggering the channel in PG mode.";
 
       field {
          name = "Repeat Count";
-         descriptions = "Number of pulses - 1 (0 = 1 pulse, 0xffff = 65536 pulses)";
+         description = "Equal to desired number of pulses minus 1 (0 = 1 pulse, 0xffff = 65536 pulses)";
          prefix = "REP_CNT";
          size = 16;
          type = SLV;
@@ -346,8 +350,8 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns.";
       field {
          name = "Continuous Waveform Mode";
          prefix = "CONT";
-         description = "write 1: output will produce a contiguous square wave upon receptio of trigger pulse. The generation can be aborted by disabling the channel (DCRx.ENABLE = 0)\
-         write 0: output will produce trains of  REP_CNT+1 pulses.";
+         description = "write 1: output will produce a contiguous square wave upon reception of trigger pulse. The generation can be aborted only disabling the channel (clearing <code>DCR.ENABLE</code>)\
+         write 0: each trigger will produce <code>RCR.REP_CNT+1</code> pulses.";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;

@@ -48,9 +48,10 @@ peripheral {
    reg {
       name = "Reset Register";
       prefix = "RSTR";
+      description = "Controls software reset of the Fine Delay core and the mezzanine connected to it. Both reset lines are driven indepentently, there is also an unlock word provided to prevent resetting the board/core by accidentally accessing this register.";
 
       field {
-         name = "State of the reset Line of the FMC Card";
+         name = "State of the reset Line of the Mezzanine (EXT_RST_N pin)";
          description = "write 0: FMC is held in reset\
                         write 1: Normal FMC operation";
          type = PASS_THROUGH;
@@ -59,7 +60,7 @@ peripheral {
       };
 
       field {
-         name = "State of the reset of the Fine Delay HDL Core";
+         name = "State of the reset of the Fine Delay Core";
          description = "write 0: FD Core is held in reset\
                         write 1: Normal FD Core operation";
          type = PASS_THROUGH;
@@ -69,8 +70,8 @@ peripheral {
 
       field {
          name = "Reset magic value";
-         description = "Protection field - the state of RST_FMC/RST_CORE lines will\
-                        only be updated if LOCK is written with 0xdead together with the new state of the reset lines.";
+         description = "Protection field - the state of FMC and core lines will\
+                        only be updated if <code>LOCK</code> is written with 0xdead together with the new state of the reset lines.";
          type = PASS_THROUGH;
          prefix = "LOCK";
          align = 16;
@@ -80,12 +81,12 @@ peripheral {
 
    reg {
       name = "ID Register";
-      description = "Magic identification value (for detecting FD cores by the driver). Now the enumeration is handled through SDB, but the register is kept for compatibility with older software.";
+      description = "Magic identification value (for detecting FD cores by the driver). Even though now enumeration is handled through SDB, the <code>IDR</code> register is kept for compatibility with older software.";
       prefix = "IDR";
 
       field {
          name = "ID Magic Value";
-         description = "Always 0xf19ede1a";
+         description = "Equal to <code>0xf19ede1a</code>";
          size = 32;
          type = CONSTANT;
          value = 0xf19ede1a;
@@ -100,11 +101,11 @@ peripheral {
       field {
          clock = "clk_ref_i";
 
-         name = "Bypass Hardware TDC/Delay Controller";
+         name = "Bypass hardware TDC controller";
          prefix = "BYPASS";
          description = "Descides who is in charge of the TDC and delay lines:\
-         write 0: TDC and delay lines are controlled by the HDL core (normal operation)\
-         write 1: TDC and delay lines controlled from the host (calibration and testing)";
+         write 0: TDC and delay lines are controlled by the HDL core (normal operation mode)\
+         write 1: TDC and delay lines controlled from the host via <code>TDR</code> and <code>TDCSR</code> registers (calibration and testing mode)";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -116,7 +117,8 @@ peripheral {
          name = "Enable trigger input";
          description = "write 1: trigger input is enabled\
                         write 0: trigger input is disabled.\
-         Note: state of INPUT_EN is relevant only in normal operation mode (i.e. when GCR.BYPASS == 0).";
+         <b>Note 1:</b> state of <code>INPUT_EN</code> is relevant only in normal operation mode (i.e. when <code>GCR.BYPASS</code> == 0). \
+         <b>Note 2:</b> enabling the input in <code>INPUT_EN</code> does not mean it will be automatically enabled in the ACAM TDC - one must pre-program its registers first.";
          prefix = "INPUT_EN";
          type = BIT;
          access_bus = READ_WRITE;
@@ -125,9 +127,9 @@ peripheral {
 
 
       field {
-         name = "PLL Locked";
-         description = "read 1: AD9516 and internal DDR PLLs locked\
-         read 0: PLL(s) not locked";
+         name = "PLL lock status";
+         description = "read 1: AD9516 and internal DDR PLLs are locked\
+         read 0: AD9516 or internal DDR PLL not (yet) locked";
          prefix = "DDR_LOCKED";
          type = BIT;
          access_bus = READ_ONLY;
@@ -135,9 +137,10 @@ peripheral {
       };
 
       field {
-         name = "Mezzanine Present";
-         description = "read 1: FMC card is present (PRSNT_L == 0)\
-         read 0: no FMC card in the slot (PRSNT_L == 1)";
+         name = "Mezzanine present";
+         description = "Mirrors the state of the FMC's <code>PRSNT_L</code> hardware pin: \
+         read 1: FMC card is present (<code>PRSNT_L == 0</code>)\
+         read 0: no FMC card in the slot (<code>PRSNT_L == 1</code>)";
          prefix = "FMC_PRESENT";
          type = BIT;
          access_bus = READ_ONLY;
@@ -150,17 +153,14 @@ peripheral {
       description = "Controls time setting and White Rabbit/local time base selection.";
       prefix = "TCR";
       
-      
-    
-
       field {
          ack_read = "tcr_rd_ack_o";
 
          name = "DMTD Clock Status";
          prefix = "DMTD_STAT";
-         description = "Status of the DMTD (helper) clock, used for calibration purposes.\
-         read 0: DMTD clock is not available or has been lost since last read operation of WR_TCR register\
-         read 1: DMTD clock is OK and has been like this since previous read of WR_TCR register";
+         description = "Status of the DMTD (helper) clock, used for DDMTD calibration purposes by the test suite.\
+         read 0: DMTD clock is not available or has been lost since last read operation of <code>TCR</code> register\
+         read 1: DMTD clock has been OK since previous read of <code>TCR</code> register";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
@@ -170,10 +170,9 @@ peripheral {
          name = "WR Timing Enable";
          prefix = "WR_ENABLE";
          description = "Enables/disables WR synchronization.\
-         write 1: WR synchronization is enabled. Poll the WR_LOCKED bit to check if the WR Core is still locked.\
+         write 1: WR synchronization is enabled. Poll the <code>TCR.WR_LOCKED</code> bit to check if the WR Core is still locked.\
          write 0: WR synchronization is disabled, the card is in free running mode.\
-         Note: enabling WR synchronization will cause a jump in the time base counter of the core. This may lead to lost pulses, therefore it is strongly\
-         recommended do disable the trigger input before entering WR mode. When WR mode is disabled, the core will continue with the last known WR time, counted with the local oscillator (no jump).";
+         <b>Note:</b> enabling WR synchronization will cause a jump in the time base counter of the core. This may lead to lost pulses, therefore it is strongly recommended do disable the inputs/outputs before entering WR mode. When WR mode is disabled, the core will continue counting without a jump.";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -184,8 +183,8 @@ peripheral {
          name = "WR Timing Locked";
          prefix = "WR_LOCKED";
          description = "Status of WR synchronization. \
-         read 0: local oscillator/time base is not locked to WR (or has lost its lock since last read of WR_TCR register)\
-         read 1: local oscillator is syntonized to WR and local timebase is aligned with WR time.";
+         read 0: local oscillator/time base is not locked to WR (or a transient delock event occured since last read of <code>TCR</code> register).\
+         read 1: local oscillator is syntonized to WR and local timebase is aligned with WR time. ";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
@@ -194,8 +193,7 @@ peripheral {
      field {
         name = "WR Core Present";
         prefix = "WR_PRESENT";
-        description = "Indicates whether we have a WR Core associated with this Fine Delay Core. Reflects the state\
-        of 'g_with_wr_core' generic HDL parameter. \
+        description = "Indicates whether we have a WR Core associated with this Fine Delay Core. Reflects the state of the <code>g_with_wr_core</code> generic HDL parameter. \
         read 0: No WR Core present. Enabling WR will have no effect.\
         read 1: WR Core available.";
         type = BIT;
@@ -206,8 +204,10 @@ peripheral {
      field {
         name = "WR Core Time Ready";
         prefix = "WR_READY";
-        description = "read 0: WR Core is not synchronied yet: there is no link, no PTP master in the network or synchronization is in progress.\
-        read 1: WR Core time is ready. User may enable WR reference by setting TCR.WR_ENABLE bit.";
+        description = "Indicates the status of synchronization of the associated WR core. Valid only if <code>TCR.WR_PRESENT</code> bit is set.\
+        read 0: WR Core is not synchronzied yet: there is no link, no PTP master in the network or synchronization is in progress.\
+        read 1: WR Core time is ready. User may enable WR reference by setting <code>TCR.WR_ENABLE</code> bit.\
+        <b>Note:</b> it is allowed to enable the WR mode even if <code>TCR.WR_READY</code> or <code>TCR.WR_LINK</code> bits are not set. Time base will be synced to WR as soon as the core gets correct PTP time from the master.";
         type = BIT;
         access_bus = READ_ONLY;
         access_dev = WRITE_ONLY;
@@ -216,7 +216,8 @@ peripheral {
      field {
         name = "WR Core Link Up";
         prefix = "WR_LINK";
-        description = "read 0: Ethernet link is down.\
+        description = "Reflects the state of the WR Core's Ethernet link. Provided as an additional diagnostic feature.\
+        read 0: Ethernet link is down.\
         read 1: Ethernet link is up.";
         type = BIT;
         access_bus = READ_ONLY;
@@ -226,8 +227,8 @@ peripheral {
      field {
         name = "Capture Current Time";
         prefix = "CAP_TIME";
-        description = "Controls the readout of <code>TM_xxx</code> registers.\
-        write 1: transfers the current value of seconds/cycles counters to <code>TM_xxx</code> registers.\
+        description = "Performs an atomic read of the core's current time.\
+        write 1: transfers the current value of seconds/cycles counters to <code>TM_</code> registers.\
         write 0: no effect.";
         type = MONOSTABLE;
         clock = "clk_ref_i";
@@ -236,11 +237,11 @@ peripheral {
      field {
         name = "Set Current Time";
         prefix = "SET_TIME";
-        description = "Controls transfer of <code>TM_x</code> registers to the internal time counter.\
-        write 1: transfers the current value of <code>TM_x</code> to the timebase counters.\
+        description = "Sets internal time base counter to a given time in an atomic way:\
+        write 1: transfers the current value of <code>TM_</code> registers to the timebase counter.\
         write 0: no effect.\
-        <b>Note:</b> Setting time also resynchronizes internal timebase counters, therefore \
-        time registers must be set after every reset/power cycle. ";
+        <b>Note 1:</b> Internal time counters must be always initialized to a known value (e.g. zeroes), after every reset/power cycle.\
+        <b>Note 2:</b> Writing to <code>TCR.SET_TIME</code> while WR mode is active is forbidden. If you do so, prepare for unforeseen consequences.";
         type = MONOSTABLE;
         clock = "clk_ref_i";
      };
@@ -250,8 +251,9 @@ peripheral {
    reg {
       name = "Time Register - TAI seconds (MSB)";
       prefix = "TM_SECH";
-      description = "read: value of internal seconds counter taken during write to <code>TCR.CAP_TIME</code> bit.\
-      write: new value of time (acked by writing <code>TCR.SET_TIME</code> bit)";
+      description = "Seconds counter, most significant part\
+      read: value of internal seconds counter taken upon last write to <code>TCR.CAP_TIME</code> bit.\
+      write: new value of seconds counter (loaded to the time base counter by writing <code>TCR.SET_TIME</code> bit)";
       field {
          name = "TAI seconds (MSB)";
          size = 8;
@@ -266,8 +268,9 @@ peripheral {
    reg {
       name = "Time Register - TAI seconds (LSB)";
       prefix = "TM_SECL";
-      description = "read: value of internal seconds counter taken during write to <code>TCR.CAP_TIME</code> bit.\
-      write: new value of time (acked by writing <code>TCR.SET_TIME</code> bit)";
+      description = "Seconds counter, least significant part\
+      read: value of internal seconds counter taken upon last write to <code>TCR.CAP_TIME</code> bit.\
+      write: new value of seconds counter (loaded to the time base counter by writing <code>TCR.SET_TIME</code> bit)";
       field {
          name = "TAI seconds (LSB)";
          size = 32;
@@ -282,8 +285,11 @@ peripheral {
    reg {
       name = "Time Register - sub-second 125 MHz clock cycles ";
       prefix = "TM_CYCLES";
-      description = "read: value of internal 125 MHz cycles counter taken during write to <code>TCR.CAP_TIME</code> bit.\
-      write: new value of time (acked by writing <code>TCR.SET_TIME</code> bit)";
+
+      description = "Number of 125 MHz reference clock cycles from the beginning of the current second. \
+      read: value of cycles counter taken upon last write to <code>TCR.CAP_TIME</code> bit.\
+      write: new value of cycles counter (loaded to the time base counter by writing <code>TCR.SET_TIME</code> bit)";
+
       field {
          name = "Reference clock cycles (0...124999999)";
          size = 28;
@@ -296,8 +302,8 @@ peripheral {
    };
 
    reg {
-      name = "Host-driven TDC Data Register";
-      description = "28-bit data value read from / to be written to the ACAM. Used when bypass (host-driven) mode is active.";
+      name = "Host-driven TDC Data Register.";
+      description = "Holds the 28-bit data word read from/to be written to the ACAM TDC, when the core is configured in bypass mode (<code>GCR.BYPASS == 1</code>).";
       prefix = "TDR";
       
       field {
@@ -319,8 +325,9 @@ peripheral {
 
       field {
          name = "Write to TDC";
-         description = "write 1: write the data word programmed in <code>TDR</code> TDR register to the TDC. The TDC address must be set via the SPI I/O expander.\
-                        write 0: no effect.";
+         description = "Writes the data word from <code>TDR</code> register to the ACAM TDC.\
+         write 1: write the data word programmed in <code>TDR</code> register to the TDC. The TDC address must be set via the SPI I/O expander.\
+         write 0: no effect.";
          prefix = "WRITE";
          clock = "clk_ref_i";
          type = MONOSTABLE;
@@ -328,8 +335,9 @@ peripheral {
 
       field {
          name = "Read from TDC";
-         description = "write 1: read a data word from the TDC. The read word will be put in the <code>TDR</code> register. The TDC address must be set via the SPI I/O expander.\
-                        write 0: no effect.";
+         description = "Reads a data word from the TDC and puts it in <code>TDR</code> register.\
+         write 1: read a data word from the TDC. The read word will be put in <code>TDR</code> register. The TDC address must be set via the SPI I/O expander.\
+         write 0: no effect.";
          prefix = "READ";
          clock = "clk_ref_i";
          type = MONOSTABLE;
@@ -338,7 +346,9 @@ peripheral {
       field {
          clock = "clk_ref_i";
          name = "Empty flag";
-         description = "Raw status of the EMPTY pin of the TDC. When zero, the internal TDC FIFO is empty (no timestamps to read)";
+         description = "Raw status of the <code>EF</code> (FIFO empty) pin of the TDC.\
+         read 0: there is one (or more) pending timestamp(s) in the ACAM's internal FIFO.\
+         read 1: the internal TDC FIFO is empty (no timestamps to read).";
          prefix = "EMPTY";
          type = BIT;
          access_bus = READ_ONLY;
@@ -349,7 +359,7 @@ peripheral {
          clock = "clk_ref_i";
          name = "Stop enable";
          description = "Controls the <code>StopDis</code> input of the TDC.\
-         write 1: disables the TDC stop input.\
+         write 1: enables the TDC stop input.\
          write 0: no effect.";
          prefix = "STOP_EN";
          type = MONOSTABLE;
@@ -379,7 +389,7 @@ peripheral {
          clock = "clk_ref_i";
          name = "Stop disable";
          description = "Controls the <code>StopDis</code> input of the TDC.\
-         write 1: enables the TDC stop input.\
+         write 1: disables the TDC stop input.\
          write 0: no effect.";
          prefix = "STOP_DIS";
          type = MONOSTABLE;
@@ -389,7 +399,7 @@ peripheral {
          clock = "clk_ref_i";
          name = "Pulse <code>Alutrigger</code> line";
          description = "Controls the TDC's <code>Alutrigger</code> line.\ Depending on the TDC's configuration, it can be used as a reset/FIFO clear/trigger signal.\
-         write 1: generates a pulse the <code>Alutrigger</code> line\
+         write 1: generates a pulse ACAM's <code>Alutrigger</code> line\
          write 0: no effect.";
          prefix = "ALUTRIG";
          type = MONOSTABLE;
@@ -399,22 +409,26 @@ peripheral {
    reg {
       prefix = "CALR";
       name = "Calibration register";
-      description = "Controls calibration-related activities";
+      description = "Controls calibration logic.";
 
       field {
          clock = "clk_ref_i";
          name = "Generate calibration pulses (type 1 calibration)";
-         description = "write 1: Generates a single calibration pulse on the TDC start input and the channels selected in the PSEL field.\
-         write 0: no effect.";
+         description = "Triggers generation of a calibration pulse on selected channels. Used to determine the exact 4/8ns setting tap of the fine delay line.\
+         write 1: immediately generates a single calibration pulse on the TDC start input and the output channels selected in the PSEL field.\
+         write 0: no effect.\
+         <b>Note:</b> In order for the pulse to be tagged by the TDC, it must be driven in the BYPASS mode and properly configured (I-mode, see driver/test program).";
          prefix = "CAL_PULSE";
          type = MONOSTABLE;
       };
 
       field {
          clock = "clk_ref_i";
-         name = "PPS Calibration output enable";
-         description = "write 1: Feeds TDC input with internally generated PPS signal.\
-         write 0: PPS generation disabled.";
+         name = "PPS calibration output enable.";
+         description = "Drives the TDC stop input with a PPS signal synchronous to the FD core's timebase:\
+         write 1: feeds TDC input with internally generated PPS signal.\
+         write 0: PPS generation disabled.\
+         <b>Note:</b> Input multiplexer must be configured to drive the TDC trigger from the FPGA calibration output instead of the trigger input.";
          prefix = "CAL_PPS";
          type = BIT;
          access_dev = READ_ONLY;
@@ -423,8 +437,10 @@ peripheral {
 
       field {
          name = "Produce DDMTD calibration pattern (type 2 calibration)";
-         description = "write 1: Enables DMTD test pattern generation on Delay chain input and output selected in PSEL.\
-         write 0: DMTD pattern generation disabled.";
+         description = "Controls DDMTD test pattern generation:\
+         write 1: enables DMTD test pattern on the TDC input and DDMTD sampling clock for the calibration flip-flops.\
+         write 0: DMTD pattern generation disabled.\
+         <b>Note:</b> Input multiplexer must be configured to drive the TDC trigger from the FPGA calibration output instead of the trigger input.";
          prefix = "CAL_DMTD";
          type = BIT;
          access_dev = READ_ONLY;
@@ -434,8 +450,8 @@ peripheral {
       field {
          clock = "clk_ref_i";
          name = "Calibration pulse output select/mask";
-         description = "1: enable generation of calibration pulses on the output corresponding to the written bit\
-         0: disable generation on the corresponding output";
+         description = "1: enable generation of type 1 calibration pulses (<code>CALR.CAL_PULSE</code>) on the output corresponding to the written bit\
+         0: disable pulse generation for the corresponding output ";
          prefix = "PSEL";
          type = SLV;
          size = 4;
@@ -448,10 +464,13 @@ peripheral {
       prefix = "DMTR_IN";
       name = "DMTD Input Tag Register";
       
+      description = "Provides the DDMTD tag value for the input channel (type 2 calibration).";
+
       field {
          ack_read = "dmtr_in_rd_ack_o";
 
          name = "DMTD Tag";
+         description = "The tag value.";
          prefix = "TAG";
          size = 31;
          type = SLV;
@@ -461,6 +480,10 @@ peripheral {
 
       field {
          name = "DMTD Tag Ready";
+         description = "Tag ready flag (clear-on-read):\
+         1: a new DDMTD tag is available.\
+         0: tag not ready yet.";
+
          prefix = "RDY";
          type = BIT;
          access_bus = READ_ONLY;
@@ -471,11 +494,14 @@ peripheral {
   reg {
       prefix = "DMTR_OUT";
       name = "DMTD Output Tag Register";
+
+      description = "Provides the DDMTD tag value for a selected output channel (type 2 calibration).";
       
       field {
          ack_read = "dmtr_out_rd_ack_o";
 
          name = "DMTD Tag";
+         description = "The tag value.";
          prefix = "TAG";
          size = 31;
          type = SLV;
@@ -485,6 +511,11 @@ peripheral {
 
       field {
          name = "DMTD Tag Ready";
+
+         description = "Tag ready flag (clear-on-read):\
+         1: a new DDMTD tag is available.\
+         0: tag not ready yet.";
+
          prefix = "RDY";
          type = BIT;
          access_bus = READ_ONLY;
@@ -494,11 +525,12 @@ peripheral {
 
    reg {
       prefix = "ADSFR";
-      name = "Acam to Delay line fractional part Scale Factor Register";
-      description = "Coefficient used to re-scale the fine part of the timestamp produced by Acam. Contains the number of Delay line bins per one Acam bin. Its value can be calculated with the following formula: <code>ADFSR = 2097.2 * ACAM bin size [ps]</code>";
+      name = "Acam Scaling Factor Register";
+      description = "Scaling factor between the FD's internal time scale and the ACAM's format. Used only in normal operating mode (<code>GCR.BYPASS == 0</code>).\
+      Formula (for G-Mode): <code>ADSFR = round(2097.152 * ACAM_bin_size [ps])</code>";
 
       field {
-         name = "ADFSR Value";
+         name = "ADSFR Value";
          size = 18;
          type = SLV;
          clock = "clk_ref_i";
@@ -510,10 +542,10 @@ peripheral {
    reg {
       prefix = "ATMCR";
       name = "Acam Timestamp Merging Control Register";
-      description = "Register controlling the merging of the fine timestamps prouced by Acam with the coarse timestamps gatheret by the FPGA. These values are hardware-specific. The register should be loaded with the paramete 'ATMCR' from the mezzanine's configuration EEPROM";
+      description = "Controls merging of fine timestamps prouced by Acam with coarse timestamps obtained by the FPGA. See developers' manual for explanation. ";
 
       field {
-         name = "Wraparound Coarse Threshold";
+         name = "Coarse threshold";
          prefix = "C_THR";
          size = 8;
          type = SLV;
@@ -523,7 +555,7 @@ peripheral {
       };
       
       field {
-         name = "Wraparound Fine Threshold";
+         name = "Fine threshold";
          prefix = "F_THR";
          size = 23;
          type = SLV;
@@ -536,7 +568,7 @@ peripheral {
    reg {
       prefix = "ASOR";
       name = "Acam Start Offset Register";
-      description = "";
+      description = "ACAM timestamp start offset. Value that gets subtracted from ACAM's timestamps (due to ACAM's ALU architecture that does not support negative numbers). See developers' manual for explanation.";
 
       field {
          name = "Start Offset";
@@ -550,12 +582,13 @@ peripheral {
    };
 
    reg {
-      name = "Raw Input Events Counter Register ";
+      name = "Raw Input Events Counter Register";
+      description = "TDC debugging & statistics register";
       prefix = "IECRAW";
 
       field {
-         name = "Number of raw events";
-         description = "Number of all input pulses detected by the timestamper";
+         name = "Number of raw events.";
+         description = "Number of all input pulses detected by the timestamper.";
          type = SLV;
          size = 32;
          clock = "clk_ref_i";
@@ -566,12 +599,13 @@ peripheral {
    };
 
    reg {
-      name = "Tagged Input Events Counter Register ";
+      name = "Tagged Input Events Counter Register";
+      description = "TDC debugging & statistics register";
       prefix = "IECTAG";
 
       field {
          name = "Number of tagged events";
-         description = "Number of all input pulses which passed the width checks and have produced valid timestamps.";
+         description = "Number of all input pulses which passed width/glitch checks and were correctly timestamped.";
          type = SLV;
          size = 32;
          clock = "clk_ref_i";
@@ -583,11 +617,12 @@ peripheral {
    reg {
       name = "Input Event Processing Delay Register";
       prefix = "IEPD";
+      description = "TDC debugging & statistics register";
 
       field {
          name = "Reset stats";
          prefix = "RST_STAT";
-         description = "Write 1: resets the delay/pulse count counters (IECRAW, IECTAG and IEPD_WDELAY)\
+         description = "Write 1: resets the delay/pulse count counters (<code>IECRAW</code>, <code>IECTAG</code> and <code>IEPD.PDELAY</code>)\
          write 0: no effect";
          type = MONOSTABLE;
          clock = "clk_ref_i";
@@ -595,7 +630,7 @@ peripheral {
 
       field {
          name = "Processing delay";
-         description = "Worst-case delay between the input event and the generation of its timestamp. Expressed as a number of 125 MHz clock cycles.";
+         description = "Worst-case delay between an input event and its timestamp being available. Expressed as a number of 125 MHz clock cycles.";
          prefix = "PDELAY";
          type = SLV;
          size = 8;
@@ -608,7 +643,8 @@ peripheral {
     reg {
        name = "SPI Control Register";
        prefix = "SCR";
-       description = "Single control register for the SPI Controller, allowing for single-cycle (non-waiting) updates of the DAC, GPIO & PLL.";
+       description = "Single control register for the SPI Controller, allowing for atomic updates of the DAC, GPIO and PLL.";
+
        field {
           name = "Data";
           prefix = "DATA";
@@ -624,7 +660,8 @@ peripheral {
           name = "Select DAC";
           prefix = "SEL_DAC";
           type = BIT;
-          description = "write 1: selects the DAC as the target peripheral of the transfer";
+          description = "write 1: selects the DAC as the target peripheral of the transfer\
+          write 0: no effect";
           access_bus = READ_WRITE;
           access_dev = READ_ONLY;
        };
@@ -632,7 +669,8 @@ peripheral {
           name = "Select PLL";
           prefix = "SEL_PLL";
           type = BIT;
-          description = "write 1: selects the AD9516 PLL as the target peripheral of the transfer";
+          description = "write 1: selects the AD9516 PLL as the target peripheral of the transfer\
+          write 0: no effect";
           access_bus = READ_WRITE;
           access_dev = READ_ONLY;
        };
@@ -640,7 +678,8 @@ peripheral {
           name = "Select GPIO";
           prefix = "SEL_GPIO";
           type = BIT;
-          description = "write 1: selects the MCP23S17 GPIO as the target peripheral of the transfer";
+          description = "write 1: selects the MCP23S17 GPIO as the target peripheral of the transfer\
+          write 0: no effect";
           access_bus = READ_WRITE;
           access_dev = READ_ONLY;
        };
@@ -650,15 +689,15 @@ peripheral {
           prefix = "READY";
           type = BIT;
           description = "read 0: SPI controller is busy performing a transfer\
-          read 1: SPI controller has finished its previous transfer. Read-back data is available in the DATA field";
+          read 1: SPI controller has finished its previous transfer. Read-back data is available in <code>SCR.DATA</code>";
           access_bus = READ_ONLY;
           access_dev = WRITE_ONLY;
        };
 
        field {
           name = "Clock Polarity";
-          description = "0: SPI clock is not inverted\
-                         1: SPI clock is inverted";
+          description = "0: SPI clock is not inverted (data valid on rising edge)\
+          1: SPI clock is inverted (data valid on falling edge)";
           prefix = "CPOL";
           type = BIT;
           access_bus = READ_WRITE;
@@ -669,7 +708,7 @@ peripheral {
           name = "Transfer Start";
           prefix = "START";
           type = MONOSTABLE;
-          description = "write 1: Starts transfer to the selected peripheral\
+          description = "write 1: starts SPI transfer from/to the selected peripheral\
           write 0: no effect";
        };
     };
@@ -678,11 +717,12 @@ peripheral {
    reg {
       name = "Reference Clock Rate Register";
       prefix = "RCRR";
-      description = "Provides the momentary value of the internal clock rate counter. Can be used in conjunction with the DAC to roughly syntonize the card's reference clock with a clock coming from an external master installed in the same host (e.g. a CTRV/CTRP) in a software-only way.";
+      description = "Provides the momentary value of the internal clock rate counter. Can be used in conjunction with the DAC to roughly syntonize the card's reference clock with a clock coming from an external master installed in the same host (e.g. a CTRV/CTRP) in a software-only way or to measure tuning range of the local VCXO.";
 
 
       field {
-         name = "Rate";
+         name = "Frequency";
+         description = "Reference clock frequency, in Hz";
          type = SLV;
          size = 32;
          clock = "clk_ref_i";
@@ -695,13 +735,14 @@ peripheral {
    reg {
       name = "Timestamp Buffer Control Register";
       prefix = "TSBCR";
-
+      description = "Controls timestamp readout from the core's circular buffer";
 
       field {
-         name = "Channel Mask";
+         name = "Channel mask";
          prefix = "CHAN_MASK";
          description = "Selects which channels' time tags shall be written to the buffer. \
-                        bit 0 = TDC input, bits 1..4 = Delay outputs";
+                        bit <code>0</code>: TDC input\
+                        bits <code>1..4</code>: = Delay outputs";
 
          type = SLV;
          size = 5;
@@ -713,6 +754,9 @@ peripheral {
       field {
          name = "Buffer enable";
          prefix = "ENABLE";
+         description = "Enables/disables timestamp readout:\
+         1: timestamp buffer is enabled. Readout is possible.\
+         0: timestamp buffer is disabled. Timestamps are processed (if set in delay mode), but discarded for readout.";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -720,12 +764,16 @@ peripheral {
 
       field {
          name = "Buffer purge";
+         description = "write 1: clear timestamp buffer.\
+         write 0: no effect";
          prefix = "PURGE";
          type = MONOSTABLE;
       };
 
       field {
-         name = "Reset TS Sequence Numbers";
+         name = "Reset timestamp sequence number";
+         description = "write 1: reset timestamp sequence number counter\
+         write 0: no effect";
          prefix = "RST_SEQ";
          clock = "clk_ref_i";
          type = MONOSTABLE;
@@ -734,6 +782,7 @@ peripheral {
       field {
          name = "Buffer full";
          prefix = "FULL";
+         description = "read 1: buffer is full. Oldest timestamps (at the end of the buffer) are discarded as the new ones are coming.";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
@@ -742,6 +791,8 @@ peripheral {
       field {
          name = "Buffer empty";
          prefix = "EMPTY";
+         description = "read 1: buffer is empty.\
+         read 0: there is some data in the buffer.";
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
@@ -751,6 +802,7 @@ peripheral {
       field {
          name = "Buffer entries count";
          prefix = "COUNT";
+         description = "Number of timestamps currently stored in the readout buffer";
          type = SLV;
          size = 12;
          access_bus = READ_ONLY;
@@ -760,6 +812,9 @@ peripheral {
       field {
          name = "RAW readout mode enable";
          prefix = "RAW";
+         description = "Enables raw timestamp readout mode (i.e. bypassing postprocessing). Used only for debugging purposes.\
+         write 1: enable raw mode\
+         write 0: disable raw mode (normal operation)";
          type = BIT;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
@@ -770,9 +825,11 @@ peripheral {
       name = "Timestamp Buffer Interrupt Register";
       prefix = "TSBIR";
 
+      description = "Controls the behaviour of the core's readout interrupt (coalescing).";
+
       field {
          name = "IRQ timeout [milliseconds]";
-         description = "The IRQ line will be asserted after TIMEOUT milliseconds even if the amount of data in the buffer is below the THRESHOLD.";
+         description = "The IRQ line will be asserted after <code>TSBIR.TIMEOUT</code> milliseconds even if the amount of data in the buffer is below <code>TSBIR.THRESHOLD</code>.";
          prefix = "TIMEOUT";
          type = SLV;
          size = 10;
@@ -782,7 +839,7 @@ peripheral {
 
       field {
          name = "Interrupt threshold";
-         description = "Number of samples (timestamps) in the buffer, which will immediately trigger an interrupt.";
+         description = "Minimum number of samples (timestamps) in the buffer that immediately triggers an interrupt.";
          prefix = "THRESHOLD";
          type = SLV;
          size = 12;
@@ -823,7 +880,7 @@ peripheral {
       prefix = "TSBR_CYCLES";
 
       field {
-         name = "Cycles Value [in 8 ns ticks]";
+         name = "Timestamps cycles count (in 8 ns ticks)";
          size = 28;
          type = SLV;
          access_bus = READ_ONLY;
@@ -832,14 +889,15 @@ peripheral {
    };
 
    reg {
-      name = "Timestamp Buffer Readout Fine / Channel / Seq ID Register";
+      name = "Timestamp Buffer Readout Fine/Channel/Sequence ID Register";
       prefix = "TSBR_FID";
 
       field {
          name = "Channel ID";
          prefix = "CHANNEL";
-         description = "ID of the originating channel):\
-                        0 = TDC input, 1..4 = delay outputs";
+         description = "ID of the originating channel:\
+         <code>0</code>: TDC input\
+         <code>1..4</code>: outputs 1..4";
          size = 4;
          type = SLV;
          access_bus = READ_ONLY;
@@ -847,7 +905,7 @@ peripheral {
       };
 
       field {
-         name = "Fine Value [in phase units]";
+         name = "Fine Value (in phase units)";
          prefix = "FINE";
          size = 12;
          type = SLV;
@@ -868,11 +926,16 @@ peripheral {
    };
 
    reg {
-      name = "I2C bitbanged IO register";
+      name = "I2C Bit-banged IO Register";
+      description = "Controls state of the mezzanine's I2C bus lines by means of bitbanging";
+
       prefix = "I2CR";
+
       field {
          name = "SCL Line out";
          prefix = "SCL_OUT";
+         description = "write 0: drive SCL to 0 \
+         write 1: drive SCL to weak 1 (pullup)";
          type = BIT;
          reset_value = 1;
          access_bus = READ_WRITE;
@@ -881,21 +944,29 @@ peripheral {
       field {
          name = "SDA Line out";
          prefix = "SDA_OUT";
+         description = "write 0: drive SDA to 0 \
+         write 1: drive SDA to weak 1 (pullup)";
          type = BIT;
          reset_value = 1;
          access_bus = READ_WRITE;
          access_dev = READ_ONLY;
       };
+
       field {
          name = "SCL Line in";
          prefix = "SCL_IN";
+         description = "State of the SCL line.";
+
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
       };
+
       field {
          name = "SDA Line in";
          prefix = "SDA_IN";
+         description = "State of the SDA line.";
+
          type = BIT;
          access_bus = READ_ONLY;
          access_dev = WRITE_ONLY;
@@ -904,11 +975,12 @@ peripheral {
 
 
    reg {
-      name = "Test/Debug register 1";
+      name = "Test/Debug Register 1";
       prefix = "TDER1";
       
       field {
          name = "VCXO Frequency";
+         description = "Mezzanine VCXO frequency in Hz, measured using the system clock as a reference. Used during factory test only.";
          prefix = "VCXO_FREQ";
          size = 32;
          type = SLV;
@@ -918,11 +990,12 @@ peripheral {
    };
 
    reg {
-      name = "Test/Debug register 1";
+      name = "Test/Debug Register 1";
       prefix = "TDER2";
       
       field {
          name = "Peltier PWM drive";
+         description = "Peltier module PWM drive. Lab-only feature for measuring temperature characteristics of the board.";
          prefix = "PELT_DRIVE";
          size = 32;
          type = SLV;
@@ -937,6 +1010,7 @@ peripheral {
 
       field {
          name = "Debug value";
+         description = "Additional register for holding timestamp debug data (used only in raw readout mode). Content format is not specified.";
          size = 32;
          type = SLV;
          access_bus = READ_ONLY;
@@ -950,7 +1024,7 @@ peripheral {
 
       field {
          name = "Advance buffer readout";
-         descriptor = "write 1: transfer the latest sample from the ring buffer to TSBR_SEC/CYCLES/FID registers,\
+         descriptor = "write 1: transfer the latest sample from the ring buffer to <code>TSBR_SECH</code>, <code>TSBR_SECL</code>, <code>TSBR_CYCLES</code> and <code>TSBR_FID</code> registers,\
          write 0: no effect";
          type = MONOSTABLE;
          prefix = "ADV";
@@ -959,19 +1033,22 @@ peripheral {
 
 
    irq {
-      name = "TS Buffer not empty.";
+      name = "Timestamp Buffer interrupt.";
+      description = "Triggers when there are timestamps in the readout buffer";
       trigger = LEVEL_1;
       prefix = "ts_buf_notempty";
    };
 
    irq {
-      name = "DMTD Softpll interrupt";
+      name = "DMTD SoftPLL interrupt";
+      description = "Unused in current design";
       trigger = EDGE_RISING;
       prefix = "dmtd_spll";
    };
 
    irq {
       name = "Sync Status Changed";
+      description = "Triggers when the synchronization source status has changed (usually: loss/acquisition of WR clock)";
       trigger = EDGE_RISING;
       prefix = "sync_status";
    };

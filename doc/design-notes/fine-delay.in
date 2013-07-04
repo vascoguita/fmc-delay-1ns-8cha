@@ -838,7 +838,7 @@ The main register block controls all subsystems of the FD core excluding the One
 @section Output stage registers
 @node{Output stage registers}
 
-The output stage register blocks control independently, the 4 outputs of the FD Core.
+The output stage register block controls a single FD output stage.
 
     @include fd_channel_regs.in
 
@@ -866,6 +866,10 @@ The output stage register blocks control independently, the 4 outputs of the FD 
 @item ACAM TDC-GPX datasheet
 
 @url{http://www.acam.de/fileadmin/Download/pdf/English/DB_GPX_e.pdf‎}
+
+@item Sockit 1-Wire master project page
+
+@url{http://opencores.org/project,sockit_owm}
 @end itemize
 
 @bye

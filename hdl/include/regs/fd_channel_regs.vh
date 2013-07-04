@@ -15,6 +15,8 @@
 `define FD_DCR_FORCE_DLY 32'h00000040
 `define FD_DCR_NO_FINE_OFFSET 7
 `define FD_DCR_NO_FINE 32'h00000080
+`define FD_DCR_FORCE_HI_OFFSET 8
+`define FD_DCR_FORCE_HI 32'h00000100
 `define ADDR_FD_FRR                    6'h4
 `define ADDR_FD_U_STARTH               6'h8
 `define ADDR_FD_U_STARTL               6'hc

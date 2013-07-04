@@ -75,9 +75,9 @@
 `define ADDR_FD_ADSFR                  8'h30
 `define ADDR_FD_ATMCR                  8'h34
 `define FD_ATMCR_C_THR_OFFSET 0
-`define FD_ATMCR_C_THR 32'h0000000f
-`define FD_ATMCR_F_THR_OFFSET 4
-`define FD_ATMCR_F_THR 32'h07fffff0
+`define FD_ATMCR_C_THR 32'h000000ff
+`define FD_ATMCR_F_THR_OFFSET 8
+`define FD_ATMCR_F_THR 32'h7fffff00
 `define ADDR_FD_ASOR                   8'h38
 `define FD_ASOR_OFFSET_OFFSET 0
 `define FD_ASOR_OFFSET 32'h007fffff
