@@ -72,10 +72,10 @@ It is not very useful for the FD's users and it is certainly not formal.
 Its target are driver developers, carrier/hardware integrators,
 people interested in building similar devices and looking for hints and inspiration
 or the folks curious why something was done in that and not another way. It also explains
-things that are not obvious in the VHDL/test program code, such as the calibration mechainsms
+things that are not obvious in the VHDL/test program code, such as the calibration mechanisms
 and ACAM's TDC quirks.
 
-The hardware/HDL description contains very frequent references the card's schematics, PCB design and VHDL sources. It is a good idea to print or open them before continuing reading.
+The hardware/HDL description contains very frequent references the card's schematics, PCB design and VHDL sources. It is a good idea to print or open them before continuing reading (@xref{References}).
 
 @page
 @chapter The Hardware
@@ -169,7 +169,7 @@ for the PCB designer (the board is packed quite tightly) and ease power dissipat
 R76 ensures calibration mode is off by default. 
 @item PIN diodes D6 (BAR66) and resistor R57 form a fast overvoltage clamping circuit. 
 R57 reduces the D6's clamping current (~200 mA) for small overloads, clamping currents 
-above 200 mA will anyway blow the fuse F5. R108 pulls down the input, lowering it's impedance 
+above 200 mA will anyway blow the fuse F5. R108 pulls down the input, lowering its impedance 
 and preventing an unconnected input from taking glitches/EMI as legitimate trigger pulses.
 @item FET switch IC18 (TS3USB221) selects the signal that drives the TDC input 
 between the trigger input and a calibration line driven by the FPGA (the calibration process
@@ -317,7 +317,7 @@ adapting 2.5 V LVCMOS levels from the FPGA to 3.3 V LVTTL,
 @item Buffers (IC32, IC31 - LVC1G125): boost output current & voltage levels of the FPGA for driving calibration
 inputs (DDMTD clock and calibration TDC pulses), 
 @item 1-Wire temperature sensor (IC13, DS18B20U+): measures the temperature of the output delay lines 
-(used by on-the-fly delay drift compensation) and gives each board an unique ID number.
+(used by on-the-fly delay drift compensation) and gives each board a unique ID number.
 @item Two LEDs and a configiuration EEPROM (IC22) - standard components of every FMC card. The EEPROM is also used for storage of calibration parameters.
 @item Power supply: the FD includes two switching PSUs: a buck converter IC11 for +8 V / 600 mA supply and an inverting converter IC30, producing -2 V @ 600 mA. Both converters are solely for
 powering the output stage opamps. 
@@ -330,7 +330,7 @@ powering the output stage opamps.
 @page
 @chapter The VHDL
 
-This chapter provides a brief description of the VHDL design of the FD core. For more detailed explanations, you may need to refer to the comments in the source code. 
+This chapter provides a brief description of the VHDL design of the FD core. For more detailed explanations, you may need to refer to the comments in the source code (see @xref{References}). 
 
 @section Core interface
 
@@ -429,7 +429,7 @@ The top level diagram of the FD core is shown in @ref{fig:hdl_top}. Its major co
 @end itemize
 All of these are accessible from the host via a Wishbone bus. There are 6 Wishbone slaves in the design: 4 output register banks (one per each channel driver),
 the main register bank (shared between all other sub-cores) and a 3rd-party OneWire core. Custom register banks were generated using the @code{wbgen2} tool. 
-An SDB descriptor is provided for plug&play integration on the carrier with other cores. 
+An SDB descriptor is provided for plug&play integration on the carrier with other cores. @xref{References} for more information on @code{wbgen2} and SDB. 
 
 Aside from the Wishbone registers, the FD core provides direct timestamp I/O ports, which can be used to easily collect timestamps and trigger output pulses from other cores in your design. Note that in order to use the direct I/O it is still necessary to program the core and the TDC via Wishbone. 
 
@@ -463,7 +463,7 @@ and the delay accuracy is as good as of the local oscillator (±2.5 ppm),
 which means worst case error of 2.5 ns for a delay setting of 1 ms.
 @item @b{White Rabbit time base} mode, in which the reference clock is phase-locked to the WR master clock (by means of the SoftPLL
 inside the WR Core) and the time base signals are following the second/cycles counters provided by the WR Core 
-(all @code{tm_} prefixed signals in the top level). WR provides inter-card synchronization better than 1 ns. 
+(all @code{tm_} prefixed signals in the top level). WR provides inter-card synchronization better than 1 ns. In this mode the accuracy of the delays and timestamps is determined by that of the WR Master clock.
 @ref{fig:wr_pll} shows interactions between the hardware and the cores while in White Rabbit mode.
 @end itemize
 
@@ -477,7 +477,7 @@ which also informs driver about the status of WR/local operation and can generat
 of the synchronization source changes. When the WR link goes down, the FSM automatically
 switches the card to local time base mode, retaining the previous value of time base counters 
 (so the time will slowly drift away from the WR time scale, but not ``jump''). There is no 
-automatic local-to-WR switchover available yet.
+automatic local-to-WR switchover available yet, it must be done manually from the host. Loss or acquisition of WR synchronization is signalled to the host via @code{TCR} status bits and an interrupt.
 
 @section The TDC block
 Relevant files: @code{fd_acam_timestamper.vhd}, @code{fd_acam_timestamp_postprocessor.vhd}, @code{fd_timestamper_stat_unit.vhd}.
@@ -558,13 +558,13 @@ input is not enabled in the middle of a rising edge of the 7.125 MHz start clock
 The postprocessor combines the fine value read from the ACAM with the coarse value captured using a counter into a WR-compatible timestamp and aligns it to selected time base. Postprocessing is done in the @code{p_postprocess_tags} process. It consists of 4 pipelined stages:
 @itemize
 
-@item Subtract the start offset value from the fine part. ACAM's ALU can't handle negative numbers, therefore each timestamp is internally adjusted by a value defined in the @code{StartOff[1,2]} ACAM's control registers. This step subtracts this value (programmable via @code{ASOR} register}, so that a pulse that occured in phase with a start pulse gets a fine value near to 0. Some timestamps may have negative fine values after start offsest subtraction. This results from the internal ACAM's delays - sometimes it may reference a stop event to a start event 
+@item Subtract the start offset value from the fine part. ACAM's ALU can't handle negative numbers, therefore each timestamp is internally adjusted by a value defined in the @code{StartOff[1,2]} ACAM's control registers. This step subtracts this value (programmable via @code{ASOR} register, so that a pulse that occured in phase with a start pulse gets a fine value near to 0. Some timestamps may have negative fine values after start offsest subtraction. This results from the internal ACAM's delays - sometimes it may reference a stop event to a start event 
  that occured afterwards. The range of fine values is therefore wider than the start period - an event occuring 250 ns after a start pulse can be either timestamped as 250 or -6 ns. 
 
 @item Rescale the fine value from ACAM (expressed as a number of 41 ps bins) to WR time format (where 1 ps = 8 ns / 4096). This is done by simply multiplying by a constant scalefactor (programmable via @code{ADSFR} register).
 @item Check consistency between the coarse counter @code{coarse_count} and the fine part. In ideal case, the final timestamp should be a simple sum of @code{coarse_count} * 256 ns and the fine part. In @i{The Real World}, transitions of the fine value (i.e. 256 ns to 0 ns) in the ACAM are not consistent with transitions of the coarse counter in the FPGA. ACAM's internal start is shifted forward with respect to the FPGA's start signal. In certain cases, the fine part may have already flipped the 256 ns boundary, while the coarse counter has not counted up yet, producing a timestamp with an error of 256 ns (see @ref{fig:tdc_merge}). Also, big fine values at the the end of the range may be interleaved with negative ones, depending on ACAM's mood.
 
-The postprocessor mitigates this problem by using the @code{start_count} counter. If @code{start_count} value is low (indicating that we are close to the beginning of an FPGA start cycle), while the fine part is high (meaning that the TDC has not yet noticed the ``fresh'' start pulse), the timestamp's @code{coarse_count} need to be adjusted by subtracting one start period. Thresholds for the comparisons are programmable via @codee{ATMCR} register, their values were obtained experimentally.
+The postprocessor mitigates this problem by using the @code{start_count} counter. If @code{start_count} value is low (indicating that we are close to the beginning of an FPGA start cycle), while the fine part is high (meaning that the TDC has not yet noticed the ``fresh'' start pulse), the timestamp's @code{coarse_count} need to be adjusted by subtracting one start period. Thresholds for the comparisons are programmable via @code{ATMCR} register, their values were obtained experimentally.
 
 @item Align the timestamp to our local/WR timebase, by simply adding the @code{timebase_offset} value obtained during time base counter resynchronization.
 
@@ -669,7 +669,7 @@ Access to the delay lines is multiplexed by a round-robin arbiter (@code{fd_dela
 
 @subsection OneWire
 
-The FD core incorporates a dedicated Dallas's 1-Wire bus master core for accessing the temperature sensor/ID chip from a non-deterministic Linux CPU (1-Wire requires tight timing to operate correctly). The core's documentation is available at the @url{http://opencores.org/project,sockit_owm,Opencores project page}.
+The FD core incorporates a dedicated Dallas's 1-Wire bus master core for accessing the temperature sensor/ID chip from a non-deterministic Linux CPU (1-Wire requires tight timing to operate correctly). The core's documentation is available at the Opencores project page (@xref{References}).
 
 @subsection I2C
 
@@ -709,7 +709,7 @@ Since initialization of the FD mezzanine is not simple and straightforward, a br
 @item Program the TDC in G-Mode. Disable bypass and trigger input.
 @item Load timestamp postprocessor configuration (@code{ADSFR}, @code{ASOR}, @code{ATMCR} values). Use values
 provided in the test program.
-@item Set board time to 0 via @{TCR} register.
+@item Set board time to 0 via @code{TCR} register.
 @item Purge timestamp readout buffer (@code{TSBCR.PURGE} bit).
 @item Enable trigger input via @code{GCR} register.
 @end enumerate
@@ -721,7 +721,7 @@ Now the card should be ready for timestamp readout and output programming. For c
 
 Relevant files: @code{svec_top.vhd}.
 
-An example FD VHDL core implementation on a SVEC FMC carrier is shown in @ref{fig:svec_top_block}.
+An example FD VHDL core implementation on a SVEC FMC carrier (@xref{References}) is shown in @ref{fig:svec_top_block}.
 
 @float Figure,fig:svec_top_block
 @center @image{drawings/svec_top_block, 16cm,,,.pdf}
@@ -750,10 +750,14 @@ For more details, refer to the source files and comments inside.
 
 @node{Output stage calibration}
 
-The role of this calibration mechanism is to minimize jitter of the output delay lines. 
-Jitter is introduced when the delay added by an '89295 chip is different from the desired tap setting.
-For example, when the core requests a fine adjustment value of 8 ns, and the actual one is 7 ns, output pulses will
-exhibit non-gaussian jitter of 1 ns (see @ref{fig:calib_why}), which is far too high to meet the design specifications. PVT-induced drifts of 1 ns have been observed for SY89295 chips used in our production cards.
+The role of this calibration mechanism is to ensure linearity of the output stages. FDs output pulses are generated by a coarse counter (with 8 ns granularity) that is further delayed by an SY99295 chip. The timestamp of the output pulse is therefore equal to:
+
+@code{t_actual = floor(t_out / 8ns) + alpha * (t_out mod 8ns)}
+
+
+where @code{t_actual} is the measured timestamp, and @code{t_out} is the requested one. The @code{alpha} parameter relates the fractional part with the number of fine delay line taps required to produce it. In @i{The Ideal World}, it should be 100 taps/ns, as the typical tap size of SY89259 is 10 ps. 
+
+In reality, tap size depends on PVT effects and can cause severe nonlinearity in output stage response, illustrated in @ref{fig:calib_why}. For example, when the core requests a fine adjustment of 8 ns, and the actual one is 7 ns, output pulses will exhibit non-gaussian jitter of 1 ns , which is far too high to meet the design specifications. Process-specific drifts of 1 ns have been observed for SY89295 chips used in our production cards. Therefore, we need to calibrate the @i{alpha} value for each SY89295. This is done everytime the card starts up.
 
 @float Figure,fig:calib_why
 @center @image{drawings/calib_why, 10cm,,,.pdf}
@@ -774,11 +778,11 @@ This calibration is performed by the device driver every time the card is initia
 @end float
 
 Note that while the calibration in progress, the output switch is disabled to stop our calibration pulses from reaching devices driven by the card. This unfortunately prevents
-executing the calibration during runtime without risk of losing pulses (or accidentally, burning a hole in the accelerator cavity...). We provided an alternative mechanism to overcome this limitation, which
+executing the calibration during runtime without risk of losing pulses. We provided an alternative mechanism to overcome this limitation, which
 exploits the fact that since process and supply voltage remain constant during operation, only temperature has significant impact on the output stage delay.
 A function of 8 ns tap delay error vs temperature was measured in the lab by cooling/heating up the card to temperatures between 30 and 90 degrees C with a Peltier cell
  and is used to relate the temperature and 8ns tap setting measured at the card startup with its' current temperature. Simple 2nd order polynomial fitting allows for updating
-the output stage scalefactor without disturbing the outputs with extra calibration pulses.
+the output stage scale factor without disturbing the outputs with extra calibration pulses.
 
 The same method (with full range sweeping instead of divide-and-conquer) is used to measure linearity (INL/DNL) of the delay lines during production test.
 
@@ -807,11 +811,11 @@ Note that this method is still not ideal - it is prone to PVT differences betwee
 the output cutoff and input selection switches. Therefore, production tests involve calibration with an external time interval meter. Tests performed on a batch of 80 cards
 have shown that the error between DDMTD calibration mechanism and the external TIM did not exceed 800 ps.
 
-More information on DDMTD phase/time measurement techniques is available in Tom's MSc thesis.
+More information on DDMTD phase/time measurement techniques is available in Tom's MSc thesis (@xref{References}).
 
 
 @page
-@appendix Registers description
+@chapter Registers description
 
 @section Memory layout
 
@@ -843,7 +847,9 @@ The output stage register block controls a single FD output stage.
     @include fd_channel_regs.in
 
 @page
-@appendix References
+
+@chapter References
+@node{References}
 
 @itemize
 @item Official schematics and PCB design (CERN EDMS)
@@ -869,7 +875,23 @@ The output stage register block controls a single FD output stage.
 
 @item Sockit 1-Wire master project page
 
-@url{http://opencores.org/project,sockit_owm}
+@url{http://opencores.org/}
+
+@item Git repository with VHDL & test program sources
+
+@url{http://ohwr.org/projects/fmc-delay-1ns-8cha/repository}
+@item SVEC FMC Carrier project
+
+@url{http://ohwr.org/projects/svec}
+
+@item Software Described Bus (SDB) project
+
+@url{http://www.ohwr.org/projects/fpga-config-space}
+
+@item Fine Delay Production Test System
+
+@url{http://www.ohwr.org/projects/pts}
+
 @end itemize
 
 @bye
