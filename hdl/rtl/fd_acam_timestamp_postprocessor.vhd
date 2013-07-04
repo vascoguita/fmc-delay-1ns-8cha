@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2013-02-06
+-- Last update: 2013-07-02
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ entity fd_acam_timestamp_postprocessor is
     -- Offset between the actual timescale and the ACAM fixed start signal generated
     -- by the AD9516 PLL. Used to align the timestamps to the externally
     -- provided time base (e.g. by White Rabbit).
-    acam_subcycle_offset_i : in std_logic_vector(5 downto 0);
+    acam_timebase_offset_i : in std_logic_vector(5 downto 0);
 
     ---------------------------------------------------------------------------
     -- Post-processed timestamp. WARNING! DE-NORMALIZED!
@@ -195,7 +195,7 @@ begin  -- behavioral
         -- 16 at the AD9516 PLL). So, every time there's a counter resync event
         -- (from associated WR PTP Core or an internal one), we simply count
         -- the number of ref clock cycles between the 1-PPS and the nearest TDC
-        -- start edge and store it in acam_subcycle_offset_i.
+        -- start edge and store it in acam_timebase_offset_i.
         --
         -- This value is added here to align the result to our timescale
         -- without messing around with the PLL.
@@ -207,7 +207,7 @@ begin  -- behavioral
           tag_utc_o <= std_logic_vector(post_tag_utc);
           tag_coarse_o <= std_logic_vector(
             signed(post_tag_coarse)     -- index of start pulse (mod 16 = 0)
-            + signed(acam_subcycle_offset_i)  -- start-to-timescale offset
+            + signed(acam_timebase_offset_i)  -- start-to-timescale offset
             + signed(post_frac_multiplied_d0(post_frac_multiplied_d0'left downto c_SCALER_SHIFT + g_frac_bits))); 
           -- extra coarse counts from ACAM's frac part after rescaling
 
@@ -221,10 +221,10 @@ begin  -- behavioral
           tag_coarse_o                <= raw_coarse_i & raw_start_offset_i;
           tag_frac_o                  <= raw_frac_i(11 downto 0);
           tag_dbg_raw_o(10 downto 0)  <= raw_frac_i(22 downto 12);
-          tag_dbg_raw_o(15 downto 11) <= acam_subcycle_offset_i(4 downto 0);
+          tag_dbg_raw_o(15 downto 11) <= acam_timebase_offset_i(4 downto 0);
           tag_dbg_raw_o(23 downto 16) <= raw_coarse_i(7 downto 0);
           tag_dbg_raw_o(30 downto 24) <= raw_utc_i(6 downto 0);
-          tag_dbg_raw_o(31)           <= acam_subcycle_offset_i(5);
+          tag_dbg_raw_o(31)           <= acam_timebase_offset_i(5);
 
           tag_valid_o <= '1';
         else

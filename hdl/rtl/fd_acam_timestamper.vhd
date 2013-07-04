@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-02-12
+-- Last update: 2013-07-02
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -168,7 +168,7 @@ architecture behavioral of fd_acam_timestamper is
       raw_coarse_i           : in  std_logic_vector(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
       raw_frac_i             : in  std_logic_vector(22 downto 0);
       raw_start_offset_i     : in  std_logic_vector(4 downto 0);
-      acam_subcycle_offset_i : in  std_logic_vector(5 downto 0);
+      acam_timebase_offset_i : in  std_logic_vector(5 downto 0);
       tag_valid_o            : out std_logic;
       tag_utc_o              : out std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
       tag_coarse_o           : out std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
@@ -225,7 +225,7 @@ architecture behavioral of fd_acam_timestamper is
   signal start_count     : unsigned(4 downto 0);
   signal coarse_count    : unsigned(c_TIMESTAMP_COARSE_BITS-5-1 downto 0);
   signal utc_count       : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
-  signal subcycle_offset : signed(5 downto 0);
+  signal timebase_offset : signed(5 downto 0);
 
   signal gcr_input_en_d0 : std_logic;
 
@@ -482,7 +482,7 @@ begin  -- behave
       
       if rst_n_i = '0' or regs_i.gcr_bypass_o = '1' then
         start_count     <= (others => '0');
-        subcycle_offset <= (others => '0');
+        timebase_offset <= (others => '0');
         advance_coarse  <= '0';
       else
 
@@ -492,7 +492,7 @@ begin  -- behave
         -- between the current start count and the LSBs of the new time value
         -- and correct the timestamps later on.
         if(csync_p1_i = '1') then
-          subcycle_offset <= signed('0' & csync_coarse_i(4 downto 0)) - signed('0' & start_count) - 1;
+          timebase_offset <= signed('0' & csync_coarse_i(4 downto 0)) - signed('0' & start_count) - 1;
         end if;
 
         -- Rising edge on TDC_START? Resynchronize the counter, to go to zero
@@ -856,7 +856,7 @@ begin  -- behave
       raw_coarse_i           => std_logic_vector(raw_tag_coarse),
       raw_frac_i             => std_logic_vector(raw_tag_frac),
       raw_start_offset_i     => std_logic_vector(raw_tag_start_offset),
-      acam_subcycle_offset_i => std_logic_vector(subcycle_offset),
+      acam_timebase_offset_i => std_logic_vector(timebase_offset),
       tag_valid_o            => tag_valid_int,
       tag_utc_o              => tag_utc_o,
       tag_coarse_o           => tag_coarse,
