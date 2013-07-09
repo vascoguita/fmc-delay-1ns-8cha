@@ -6,7 +6,7 @@
 #################
 
 # There is not basenames here, all *.in are considered input
-INPUT = fine-delay.in
+INPUT = fine-delay-design-notes.in
 
 TEXI = $(INPUT:.in=.texi)
 INFO = $(INPUT:.in=.info)

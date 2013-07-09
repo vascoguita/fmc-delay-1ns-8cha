@@ -1,0 +1,262 @@
+@regsection Memory map summary
+@multitable  @columnfractions .10 .15 .15 .55
+@headitem Address @tab Type @tab Prefix @tab Name
+@item @code{0x0} @tab
+REG @tab
+@code{DCR} @tab
+Delay Control Register
+@item @code{0x4} @tab
+REG @tab
+@code{FRR} @tab
+Fine Range Register
+@item @code{0x8} @tab
+REG @tab
+@code{U_STARTH} @tab
+Pulse start time / offset (MSB TAI seconds)
+@item @code{0xc} @tab
+REG @tab
+@code{U_STARTL} @tab
+Pulse start time / offset (LSB TAI seconds)
+@item @code{0x10} @tab
+REG @tab
+@code{C_START} @tab
+Pulse start time / offset (8 ns cycles)
+@item @code{0x14} @tab
+REG @tab
+@code{F_START} @tab
+Pulse start time / offset (fine part)
+@item @code{0x18} @tab
+REG @tab
+@code{U_ENDH} @tab
+Pulse end time / offset (MSB TAI seconds)
+@item @code{0x1c} @tab
+REG @tab
+@code{U_ENDL} @tab
+Pulse end time / offset (LSB TAI seconds)
+@item @code{0x20} @tab
+REG @tab
+@code{C_END} @tab
+Pulse end time / offset (8 ns cycles)
+@item @code{0x24} @tab
+REG @tab
+@code{F_END} @tab
+Pulse end time / offset (fine part)
+@item @code{0x28} @tab
+REG @tab
+@code{U_DELTA} @tab
+Pulse spacing (TAI seconds)
+@item @code{0x2c} @tab
+REG @tab
+@code{C_DELTA} @tab
+Pulse spacing (8 ns cycles)
+@item @code{0x30} @tab
+REG @tab
+@code{F_DELTA} @tab
+Pulse spacing (fine part)
+@item @code{0x34} @tab
+REG @tab
+@code{RCR} @tab
+Repeat Count Register
+@end multitable 
+@regsection @code{DCR} - Delay Control Register
+Main control registers of the particular output channel of the Fine Delay Core.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{0}
+@tab R/W @tab
+@code{ENABLE}
+@tab @code{0} @tab 
+Enable channel
+@item @code{1}
+@tab R/W @tab
+@code{MODE}
+@tab @code{0} @tab 
+Delay mode select
+@item @code{2}
+@tab W/O @tab
+@code{PG_ARM}
+@tab @code{0} @tab 
+Pulse generator arm
+@item @code{3}
+@tab R/O @tab
+@code{PG_TRIG}
+@tab @code{X} @tab 
+Pulse generator triggered
+@item @code{4}
+@tab W/O @tab
+@code{UPDATE}
+@tab @code{0} @tab 
+Update delay/absolute trigger time
+@item @code{5}
+@tab R/O @tab
+@code{UPD_DONE}
+@tab @code{X} @tab 
+Delay update done flag
+@item @code{6}
+@tab W/O @tab
+@code{FORCE_DLY}
+@tab @code{0} @tab 
+Force calibration delay
+@item @code{7}
+@tab R/W @tab
+@code{NO_FINE}
+@tab @code{0} @tab 
+Disable fine part update
+@item @code{8}
+@tab R/W @tab
+@code{FORCE_HI}
+@tab @code{0} @tab 
+Force output high
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{ENABLE} @tab write 0: channel is disabled. Output is driven LOW.@* write 1: channel is enabled. Output may produce pulses.
+@item @code{MODE} @tab 0: Channel will work as a delay generator, producing delayed copies of pulses coming to the trigger input. Start/End registers shall contain delays of respectively, the rising and falling edge.@* 1: Channel will work as a programmable pulse generator - producing a pulse which begins and ends at absolute TAI times stored in Start/End registers.@* @b{Note:} @code{MODE} bit can be safely set only when the delay logic is disabled (i.e. when @code{DCR.ENABLE == 0})
+@item @code{PG_ARM} @tab write 1: arms the pulse generator. @* write 0: no effect.@* @b{Note:} The values written to @code{[U/C/F]_START} and @code{[U/C/F]_END} must be bigger by at least 300 ns than the value of the UTC counter at the moment of arming the pulse generator. In practice, the safety margin should be much higher, as it's affected by the non-determinism of the operating system.
+@item @code{PG_TRIG} @tab read 1: pulse generator has been triggered and produced a pulse@* read 0: pulse generator is busy or hasn't triggered yet
+@item @code{UPDATE} @tab write 1: Starts the update procedure. The start and end times from @code{[U/C/F][START/END]} will be transferred in an atomic way to the internal delay/pulse generator registers.@* write 0: no effect.@* @b{Note:} Care must be taken when updating the delay value - if the channel gets stuck due to invalid control values written, the only way to bring it back alive is to disable and re-enable it by toggling @code{DCR.ENABLE} bit.
+@item @code{UPD_DONE} @tab read 1: the delays from @code{[U/C/F][START/END]} have been loaded into internal registers. Subsequent triggers will be delayed by the newly programmed value.@* read 0: update operation in progress
+@item @code{FORCE_DLY} @tab Used in type 1 calibration.@* write 1: preloads the SY89295 delay line with the contents of FRR register.@* write 0: no effect
+@item @code{NO_FINE} @tab write 1: disables updating of the fine part of the pulse delay to allow for producing faster signals (i.e. pulse width/spacing < 200 ns), at the cost of less accurate width/spacing control (multiple of 4 ns). @*write 0: normal operation. Pulse width/spacing must be at least 200 ns, width/spacing resolution is 10 ps.@*@b{Note:} A typical use case for @code{NO_FINE} bit is producing a 10 MHz clock.
+@item @code{FORCE_HI} @tab write 1: forces constant 1 on the output when the channel is disabled@* write 0: forces constant 0 on the output when the channel is disabled@* Used for testing/calibration purposes.
+@end multitable
+@regsection @code{FRR} - Fine Range Register
+Delay line tap setting at which the line generates an 8 ns (one cycle) longer delay than when set to 0. Used by type 1 calibration logic.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{9...0}
+@tab R/W @tab
+@code{FRR}
+@tab @code{0} @tab 
+Fine range in SY89825 taps.
+@end multitable
+@regsection @code{U_STARTH} - Pulse start time / offset (MSB TAI seconds)
+TAI seconds (8 upper bits) part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{7...0}
+@tab R/W @tab
+@code{U_STARTH}
+@tab @code{0} @tab 
+TAI seconds (MSB)
+@end multitable
+@regsection @code{U_STARTL} - Pulse start time / offset (LSB TAI seconds)
+TAI seconds (32 lower bits) part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/W @tab
+@code{U_STARTL}
+@tab @code{0} @tab 
+TAI seconds (LSB)
+@end multitable
+@regsection @code{C_START} - Pulse start time / offset (8 ns cycles)
+Sub-second part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{27...0}
+@tab R/W @tab
+@code{C_START}
+@tab @code{0} @tab 
+Reference clock cycles
+@end multitable
+@regsection @code{F_START} - Pulse start time / offset (fine part)
+Sub-clock cycle part of the pulse start absolute time (when in PG mode) / offset from trigger (when in delay mode).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{11...0}
+@tab R/W @tab
+@code{F_START}
+@tab @code{0} @tab 
+Fractional part
+@end multitable
+@regsection @code{U_ENDH} - Pulse end time / offset (MSB TAI seconds)
+TAI seconds (8 upper bits) part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{7...0}
+@tab R/W @tab
+@code{U_ENDH}
+@tab @code{0} @tab 
+TAI seconds (MSB)
+@end multitable
+@regsection @code{U_ENDL} - Pulse end time / offset (LSB TAI seconds)
+TAI seconds (32 lower bits) part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{31...0}
+@tab R/W @tab
+@code{U_ENDL}
+@tab @code{0} @tab 
+TAI seconds (LSB)
+@end multitable
+@regsection @code{C_END} - Pulse end time / offset (8 ns cycles)
+Sub-second part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). Expressed as a number of 125 MHz clock cycles. Acceptable range: 0 to 124999999.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{27...0}
+@tab R/W @tab
+@code{C_END}
+@tab @code{0} @tab 
+Reference clock cycles
+@end multitable
+@regsection @code{F_END} - Pulse end time / offset (fine part)
+Sub-clock cycle part of the pulse end absolute time (when in PG mode) / offset from trigger (when in delay mode). 
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{11...0}
+@tab R/W @tab
+@code{F_END}
+@tab @code{0} @tab 
+Fractional part
+@end multitable
+@regsection @code{U_DELTA} - Pulse spacing (TAI seconds)
+TAI seconds between the rising edges of subsequent output pulses.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{3...0}
+@tab R/W @tab
+@code{U_DELTA}
+@tab @code{0} @tab 
+TAI seconds
+@end multitable
+@regsection @code{C_DELTA} - Pulse spacing (8 ns cycles)
+Reference clock cycles between the rising edges of subsequent output pulses.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{27...0}
+@tab R/W @tab
+@code{C_DELTA}
+@tab @code{0} @tab 
+Reference clock cycles
+@end multitable
+@regsection @code{F_DELTA} - Pulse spacing (fine part)
+Sub-cycle part of spacing between the rising edges of subsequent output pulses.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{11...0}
+@tab R/W @tab
+@code{F_DELTA}
+@tab @code{0} @tab 
+Fractional part
+@end multitable
+@regsection @code{RCR} - Repeat Count Register
+Register controlling the number of output pulses to be generated upon reception of a trigger pulse or triggering the channel in PG mode.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{15...0}
+@tab R/W @tab
+@code{REP_CNT}
+@tab @code{0} @tab 
+Repeat Count
+@item @code{16}
+@tab R/W @tab
+@code{CONT}
+@tab @code{0} @tab 
+Continuous Waveform Mode
+@end multitable
+@multitable @columnfractions 0.15 0.85
+@headitem Field @tab Description
+@item @code{REP_CNT} @tab Equal to desired number of pulses minus 1 (0 = 1 pulse, 0xffff = 65536 pulses)
+@item @code{CONT} @tab write 1: output will produce a contiguous square wave upon reception of trigger pulse. The generation can be aborted only disabling the channel (clearing @code{DCR.ENABLE})@* write 0: each trigger will produce @code{RCR.REP_CNT+1} pulses.
+@end multitable
