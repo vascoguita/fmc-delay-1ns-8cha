@@ -162,6 +162,7 @@ write 0: normal operation. Pulse width/spacing must be at least 200 ns, width/sp
 
       field {
          name = "Fine range in SY89825 taps.";
+         clock = "clk_ref_i";
          size = 10;
          type = SLV;
          access_bus = READ_WRITE;
