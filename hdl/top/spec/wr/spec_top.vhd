@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-05-29
+-- Last update: 2013-07-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -623,8 +623,8 @@ begin
       g_dpram_initf               => "none",
       g_dpram_size                => 90112/4,
       g_interface_mode            => PIPELINED,
-      g_address_granularity       => BYTE)
---      g_softpll_enable_debugger   => false)
+      g_address_granularity       => BYTE,
+      g_softpll_enable_debugger   => false)
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
@@ -682,9 +682,9 @@ begin
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
-      tm_dac_wr_o          => tm_dac_wr,
-      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en,
-      tm_clk_aux_locked_o  => tm_clk_aux_locked,
+      tm_dac_wr_o(0)          => tm_dac_wr,
+      tm_clk_aux_lock_en_i(0) => tm_clk_aux_lock_en,
+      tm_clk_aux_locked_o(0)  => tm_clk_aux_locked,
       tm_time_valid_o      => tm_time_valid,
       tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
