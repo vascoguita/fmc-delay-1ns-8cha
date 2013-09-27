@@ -1,7 +1,8 @@
 #ifndef __FINE_DELAY_H__
 #define __FINE_DELAY_H__
 
-#define FDELAY_GATEWARE_NAME "fmc/fine-delay.bin"
+#define FDELAY_GATEWARE_NAME_SPEC "fmc/spec-fine-delay.bin"
+#define FDELAY_GATEWARE_NAME_SVEC "fmc/svec-fine-delay.bin"
 
 #define FDELAY_VERSION		2 /* version of the layout of registers */
 /*

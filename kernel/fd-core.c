@@ -144,7 +144,13 @@ int fd_probe(struct fmc_device *fmc)
 		return -ENODEV;
 	}
 
-	fwname = FDELAY_GATEWARE_NAME;
+	fwname = "";
+
+	if (!strcmp(fmc->carrier_name, "SVEC"))
+	    fwname = FDELAY_GATEWARE_NAME_SVEC;
+	else if (!strcmp(fmc->carrier_name, "SPEC"))
+	    fwname = FDELAY_GATEWARE_NAME_SPEC;
+
 	if (fd_drv.gw_n)
 		fwname = ""; /* reprogram will pick from module parameter */
 	ret = fmc_reprogram(fmc, &fd_drv, fwname, 0 /* SDB entry point */);
