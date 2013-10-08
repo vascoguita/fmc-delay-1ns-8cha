@@ -160,6 +160,55 @@ static int fd_zio_info_output(struct device *dev, struct zio_attribute *zattr,
 		*usr_val = t ? 0x80 : 0; /* low bits will return mode */
 		return 0;
 	}
+
+	/* readout of output config delays */
+	if (zattr->id == FD_ATTR_OUT_START_H) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_STARTH);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_START_L) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_STARTL);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_START_COARSE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_C_START);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_START_FINE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_START);
+		return 0;
+	}
+
+	if (zattr->id == FD_ATTR_OUT_END_H) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_ENDH);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_END_L) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_ENDL);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_END_COARSE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_C_END);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_END_FINE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_END);
+		return 0;
+	}
+
+	if (zattr->id == FD_ATTR_OUT_DELTA_L) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_DELTA);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_DELTA_COARSE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_C_DELTA);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_DELTA_FINE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_DELTA);
+		return 0;
+	}
+
 	return 0;
 }
 
