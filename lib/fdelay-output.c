@@ -197,6 +197,32 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	return 0;
 }
 
+static void fdelay_subtract_ps(struct fdelay_time *t2,
+				   struct fdelay_time *t1, int64_t *pico)
+{
+	uint64_t pico1, pico2;
+
+	fdelay_time_to_pico(t2, &pico2);
+	fdelay_time_to_pico(t1, &pico1);
+	*pico = (int64_t)pico2 - pico1;
+}
+
+int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
+			       int channel, struct fdelay_pulse_ps *ps)
+{
+	struct fdelay_pulse pulse;
+
+	if (fdelay_get_config_pulse(userb, channel, &pulse) < 0)
+		return -1;
+	ps->mode = pulse.mode;
+	ps->rep = pulse.rep;
+	ps->start = pulse.start;
+	/* FIXME: subtraction can be < 0 */
+	fdelay_subtract_ps(&pulse.end, &pulse.start, (int64_t *)&ps->length);
+	fdelay_time_to_pico(&pulse.loop, &ps->period);
+
+	return 0;
+}
 int fdelay_has_triggered(struct fdelay_board *userb, int channel)
 {
 	__define_board(b, userb);
