@@ -91,6 +91,11 @@ extern int fdelay_check_wr_mode(struct fdelay_board *b);
 
 extern float fdelay_read_temperature(struct fdelay_board *b);
 
+extern int fdelay_get_config_pulse(struct fdelay_board *userb,
+				int channel, struct fdelay_pulse *pulse);
+extern int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
+			       int channel, struct fdelay_pulse_ps *ps);
+
 #ifdef FDELAY_INTERNAL /* Libray users should ignore what follows */
 #include <unistd.h>
 #include <fcntl.h>
