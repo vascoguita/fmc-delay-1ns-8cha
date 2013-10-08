@@ -54,7 +54,8 @@ int main(int argc, char **argv)
 	fprintf(stderr, " got %i of them\n", i);
 	for (j = 0; j < i; j++) {
 		printf("seq %5i: time %lli.%09li + %04x\n",
-		       t[j].seq_id, t[j].utc, (long)t[j].coarse * 8, t[j].frac);
+		       t[j].seq_id, (long long)t[j].utc,
+		       (long)t[j].coarse * 8, t[j].frac);
 	}
 	if (i < 0) {
 		fprintf(stderr, "%s: fdelay_read: %s\n",
@@ -68,7 +69,8 @@ int main(int argc, char **argv)
 	fprintf(stderr, " got %i of them\n", i);
 	for (j = 0; j < i; j++) {
 		printf("seq %5i: time %lli.%09li + %04x\n",
-		       t[j].seq_id, t[j].utc, (long)t[j].coarse * 8, t[j].frac);
+		       t[j].seq_id, (long long)t[j].utc,
+		       (long)t[j].coarse * 8, t[j].frac);
 	}
 
 	fdelay_close(b);
