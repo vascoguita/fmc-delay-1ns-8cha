@@ -165,7 +165,7 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	sprintf(s,"fd-ch%i/%s", channel + 1, "start-coarse");
 	if (fdelay_sysfs_get(b, s, &pulse->start.coarse) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "start-frac");
+	sprintf(s,"fd-ch%i/%s", channel + 1, "start-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->start.frac) < 0)
 		return -1;
 
@@ -179,7 +179,7 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	sprintf(s,"fd-ch%i/%s", channel + 1, "end-coarse");
 	if (fdelay_sysfs_get(b, s, &pulse->end.coarse) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "end-frac");
+	sprintf(s,"fd-ch%i/%s", channel + 1, "end-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->end.frac) < 0)
 		return -1;
 
@@ -190,7 +190,7 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-coarse");
 	if (fdelay_sysfs_get(b, s, &pulse->loop.coarse) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-frac");
+	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->loop.frac) < 0)
 		return -1;
 
