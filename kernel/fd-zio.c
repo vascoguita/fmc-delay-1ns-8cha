@@ -208,6 +208,10 @@ static int fd_zio_info_output(struct device *dev, struct zio_attribute *zattr,
 		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_DELTA);
 		return 0;
 	}
+	if (zattr->id == FD_ATTR_OUT_REP) {
+                *usr_val = FD_RCR_REP_CNT_R(fd_ch_readl(fd, ch, FD_REG_RCR));
+		return 0;
+	}
 
 	return 0;
 }
