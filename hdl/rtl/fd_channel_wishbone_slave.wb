@@ -50,7 +50,6 @@ peripheral {
       name = "Delay Control Register";
       description = "Main control registers of the particular output channel of the Fine Delay Core.";
       prefix = "DCR";
-      align = 8;
 
       field {
          name = "Enable channel";
