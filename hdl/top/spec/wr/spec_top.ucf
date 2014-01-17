@@ -180,7 +180,6 @@ NET "fmc_sda_b" IOSTANDARD =LVCMOS25;
 #net "led_n_o[3]" loc=G19;
 #net "led_n_o[3]" IOSTANDARD=LVCMOS18;
 
-
 NET "carrier_onewire_b" LOC = D4;
 NET "carrier_onewire_b" IOSTANDARD = "LVCMOS25";
 NET "fmc_PRSNT_M2C_L_i" LOC="AB14";
@@ -407,3 +406,7 @@ TIMESPEC TS_x4 = FROM "U_GTP_ch1_rx_divclk" TO "clk_sys" 10ns DATAPATHONLY;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/04/27
 TIMESPEC TS_x5 = FROM "U_DDR_PLL_clkout0" TO "clk_sys" 10ns DATAPATHONLY;
 TIMESPEC TS_x6 = FROM "clk_sys" TO "U_DDR_PLL_clkout0" 10ns  DATAPATHONLY;
+#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2014/01/16
+NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
+TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 125 MHz HIGH 50%;
+TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
