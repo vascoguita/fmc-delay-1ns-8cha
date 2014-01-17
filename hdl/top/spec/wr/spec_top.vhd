@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-07-25
+-- Last update: 2014-01-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -58,7 +58,6 @@ use UNISIM.vcomponents.all;
 entity spec_top is
   generic
     (
-      g_standalone : boolean := true;
       g_simulation : integer := 0
       );
   port
@@ -620,7 +619,7 @@ begin
       g_with_external_clock_input => false,
       g_aux_clks                  => 1,
       g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "none",
+      g_dpram_initf               => "wrc.ram",
       g_dpram_size                => 90112/4,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
