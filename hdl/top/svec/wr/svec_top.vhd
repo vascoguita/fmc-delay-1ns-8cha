@@ -354,7 +354,7 @@ architecture rtl of svec_top is
   constant c_DESC_SYNTHESIS : integer := 4;
   constant c_DESC_REPO_URL  : integer := 5;
 
-  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00070000");
+  constant c_WRCORE_BRIDGE_SDB : t_sdb_bridge := f_xwb_bridge_manual_sdb(x"0003ffff", x"00030000");
 
   constant c_INTERCONNECT_LAYOUT : t_sdb_record_array(c_NUM_WB_MASTERS + 1 downto 0) :=
     (
