@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-06-11
+-- Last update: 2014-01-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -472,7 +472,7 @@ architecture rtl of svec_top is
   signal sys_locked        : std_logic;
 
   signal led_state : std_logic_vector(15 downto 0);
-  signal pps_led   : std_logic;
+  signal pps_led, pps_ext   : std_logic;
 
   signal led_link : std_logic;
   signal led_act : std_logic;
@@ -685,17 +685,17 @@ begin
       g_phys_uart                 => true,
       g_virtual_uart              => true,
       g_with_external_clock_input => false,
-      g_aux_clks                  => 1,
+      g_aux_clks                  => 2,
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
---      g_softpll_enable_debugger   => true,
+      g_softpll_enable_debugger   => false,
       g_dpram_initf               => "none")
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
       clk_ref_i    => clk_125m_pllref,
       clk_aux_i(0) => dcm0_clk_ref_0,
---      clk_aux_i(1) => dcm1_clk_ref_0,
+      clk_aux_i(1) => dcm1_clk_ref_0,
       rst_n_i      => local_reset_n,
 
       dac_hpll_load_p1_o => dac_hpll_load_p1,
@@ -751,9 +751,9 @@ begin
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
-      tm_dac_wr_o          => tm_dac_wr(0),
-      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en(0),
-      tm_clk_aux_locked_o  => tm_clk_aux_locked(0),
+      tm_dac_wr_o          => tm_dac_wr,
+      tm_clk_aux_lock_en_i => tm_clk_aux_lock_en,
+      tm_clk_aux_locked_o  => tm_clk_aux_locked,
       tm_time_valid_o      => tm_time_valid,
       tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
@@ -811,7 +811,6 @@ begin
   --    cfg_slave_i => etherbone_cfg_in,
   --    master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
   --    master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
-
 
   cnx_slave_in(c_MASTER_ETHERBONE).cyc <= '0';
 
@@ -1084,7 +1083,7 @@ begin
       tm_clk_dmtd_locked_i => '1',  --    FIXME: fan out real signal from the
       --    --    WRCore
       tm_dac_value_i       => tm_dac_value,
-      tm_dac_wr_i          => '0',
+      tm_dac_wr_i          => tm_dac_wr(1),
 
       owr_en_o        => fd1_owr_en,
       owr_i           => fd1_owr_in,
@@ -1144,31 +1143,49 @@ begin
       rst_n_i    => local_reset_n,
       pulse_i    => cnx_slave_in(c_MASTER_VME).cyc,
       extended_o => vme_access);
+
+  U_Drive_PPS: gc_extend_pulse
+    generic map (
+      g_width => 5000000)
+    port map (
+      clk_i      => clk_125m_pllref,
+      rst_n_i    => local_reset_n,
+      pulse_i    => pps,
+      extended_o => pps_ext);
   
   -- Drive the front panel LEDs:
 
   -- LED 1: WR Link status
-  led_state(0) <= led_link;
-  led_state(1) <= '0';
-
-  -- LED 2: WR Link activity status
-  led_state(2) <= led_act;
-  led_state(3) <= '0';
-
-  -- LED 3: WR PPS blink
-  led_state(4) <= pps_led;
-  led_state(5) <= '0';
-
-  -- LED 4: WR Time validity
-  led_state(6) <= tm_time_valid;
+  led_state(6) <= led_link;
   led_state(7) <= '0';
 
+  -- LED 2: WR Link activity status
+  led_state(4) <= led_act;
+  led_state(5) <= '0';
+
+  -- LED 3: WR PPS blink
+  led_state(2) <= pps_ext;
+  led_state(3) <= '0';
+
+  -- LED 4: WR Time validity
+  led_state(0) <= tm_time_valid;
+  led_state(1) <= '0';
+
   -- LED 5: VME access
-  led_state(8) <= vme_access;
+  led_state(14) <= vme_access;
+  led_state(15) <= '0';
+
+  -- LED 6: FD0 locked to WR
+  led_state(12) <= tm_clk_aux_locked(0);
+  led_state(13) <= '0';
+
+  -- LED 6: FD1 locked to WR
+  led_state(10) <= tm_clk_aux_locked(1);
+  led_state(11) <= '0';
+  
+  led_state(8) <= '0';
   led_state(9) <= '0';
   
-  led_state(15 downto 10) <= (others => '0');
-
   -- The SFP is permanently enabled.
   sfp_tx_disable_o <= '0';
 
