@@ -1,10 +1,9 @@
-files = [ "synthesis_descriptor.vhd", "svec_top.vhd", "svec_top.ucf", "xvme64x_core.vhd", "bicolor_led_ctrl.vhd", "bicolor_led_ctrl_pkg.vhd" ]
+files = [ "synthesis_descriptor.vhd", "svec_top.vhd", "svec_top.ucf", "bicolor_led_ctrl.vhd", "bicolor_led_ctrl_pkg.vhd" ]
 
 fetchto = "../../../ip_cores"
 
 modules = {
     "local" : ["../../../rtl", "../../../platform" ],
-    "git" : [ "git://ohwr.org/hdl-core-lib/wr-cores.git" ],
-#    					"git://ohwr.org/hdl-core-lib/etherbone-core.git" ],
-    "svn" : [ "http://svn.ohwr.org/vme64x-core/trunk/hdl/vme64x-core/rtl" ]
+    "git" : [ "git://ohwr.org/hdl-core-lib/wr-cores.git",
+    					"git://ohwr.org/hdl-core-lib/vme64x-core.git" ]
     }
