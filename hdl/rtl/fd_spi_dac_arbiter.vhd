@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-02-26
+-- Last update: 2014-03-17
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -192,7 +192,7 @@ begin  -- behavioral
        rq_pll.pending <= '0';
        rq_pll.data    <= (others => '0');
      else
-       if(tm_dac_wr_i = '1' and rq_pll.pending = '0') then
+       if(tm_dac_wr_i = '1' and regs_i.tcr_wr_enable_o = '1' and rq_pll.pending = '0') then
          rq_pll.pending <= '1';
          rq_pll.data    <= tm_dac_value_i(23 downto 0);
        elsif(rq_pll.done = '1') then
