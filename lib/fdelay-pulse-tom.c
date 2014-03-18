@@ -137,8 +137,8 @@ static void parse_time(char *s, struct fdelay_time *t)
 
 void dump_ts(char *title, struct fdelay_time t)
 {
-	printf("%s: secs %lld coarse %d frac %d\n", title, t.utc, t.coarse,
-	       t.frac);
+	printf("%s: secs %lld coarse %d frac %d\n", title, (long long)t.utc,
+		t.coarse, t.frac);
 }
 
 int main(int argc, char **argv)

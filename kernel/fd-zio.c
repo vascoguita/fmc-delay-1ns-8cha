@@ -68,18 +68,18 @@ static struct zio_attribute fd_zattr_input[] = {
 /* Extended attributes for the output csets (most not-read-nor-write mode) */
 static struct zio_attribute fd_zattr_output[] = {
 	ZIO_ATTR_EXT("mode", S_IRUGO,		FD_ATTR_OUT_MODE, 0),
-	ZIO_ATTR_EXT("rep", 0,			FD_ATTR_OUT_REP, 0),
-	ZIO_ATTR_EXT("start-h", 0,		FD_ATTR_OUT_START_H, 0),
-	ZIO_ATTR_EXT("start-l", 0,		FD_ATTR_OUT_START_L, 0),
-	ZIO_ATTR_EXT("start-coarse", 0,	FD_ATTR_OUT_START_COARSE, 0),
-	ZIO_ATTR_EXT("start-fine", 0,		FD_ATTR_OUT_START_FINE, 0),
-	ZIO_ATTR_EXT("end-h", 0,		FD_ATTR_OUT_END_H, 0),
-	ZIO_ATTR_EXT("end-l", 0,		FD_ATTR_OUT_END_L, 0),
-	ZIO_ATTR_EXT("end-coarse", 0,		FD_ATTR_OUT_END_COARSE, 0),
-	ZIO_ATTR_EXT("end-fine", 0,		FD_ATTR_OUT_END_FINE, 0),
-	ZIO_ATTR_EXT("delta-l", 0,		FD_ATTR_OUT_DELTA_L, 0),
-	ZIO_ATTR_EXT("delta-coarse", 0,	FD_ATTR_OUT_DELTA_COARSE, 0),
-	ZIO_ATTR_EXT("delta-fine", 0,		FD_ATTR_OUT_DELTA_FINE, 0),
+	ZIO_ATTR_EXT("rep", S_IRUGO,		FD_ATTR_OUT_REP, 0),
+	ZIO_ATTR_EXT("start-h", S_IRUGO,	FD_ATTR_OUT_START_H, 0),
+	ZIO_ATTR_EXT("start-l", S_IRUGO,	FD_ATTR_OUT_START_L, 0),
+	ZIO_ATTR_EXT("start-coarse", S_IRUGO,	FD_ATTR_OUT_START_COARSE, 0),
+	ZIO_ATTR_EXT("start-fine", S_IRUGO,	FD_ATTR_OUT_START_FINE, 0),
+	ZIO_ATTR_EXT("end-h", S_IRUGO,		FD_ATTR_OUT_END_H, 0),
+	ZIO_ATTR_EXT("end-l", S_IRUGO,		FD_ATTR_OUT_END_L, 0),
+	ZIO_ATTR_EXT("end-coarse", S_IRUGO,	FD_ATTR_OUT_END_COARSE, 0),
+	ZIO_ATTR_EXT("end-fine", S_IRUGO,	FD_ATTR_OUT_END_FINE, 0),
+	ZIO_ATTR_EXT("delta-l", S_IRUGO,	FD_ATTR_OUT_DELTA_L, 0),
+	ZIO_ATTR_EXT("delta-coarse", S_IRUGO,	FD_ATTR_OUT_DELTA_COARSE, 0),
+	ZIO_ATTR_EXT("delta-fine", S_IRUGO,	FD_ATTR_OUT_DELTA_FINE, 0),
 	ZIO_ATTR_EXT("delay-offset", _RW_,	FD_ATTR_OUT_DELAY_OFF, 0),
 	ZIO_ATTR_EXT("user-offset", _RW_,	FD_ATTR_OUT_USER_OFF, 0),
 };
@@ -160,6 +160,59 @@ static int fd_zio_info_output(struct device *dev, struct zio_attribute *zattr,
 		*usr_val = t ? 0x80 : 0; /* low bits will return mode */
 		return 0;
 	}
+
+	/* readout of output config delays */
+	if (zattr->id == FD_ATTR_OUT_START_H) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_STARTH);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_START_L) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_STARTL);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_START_COARSE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_C_START);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_START_FINE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_START);
+		return 0;
+	}
+
+	if (zattr->id == FD_ATTR_OUT_END_H) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_ENDH);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_END_L) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_ENDL);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_END_COARSE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_C_END);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_END_FINE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_END);
+		return 0;
+	}
+
+	if (zattr->id == FD_ATTR_OUT_DELTA_L) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_U_DELTA);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_DELTA_COARSE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_C_DELTA);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_DELTA_FINE) {
+		*usr_val = fd_ch_readl(fd, ch, FD_REG_F_DELTA);
+		return 0;
+	}
+	if (zattr->id == FD_ATTR_OUT_REP) {
+                *usr_val = FD_RCR_REP_CNT_R(fd_ch_readl(fd, ch, FD_REG_RCR)) + 1;
+		return 0;
+	}
+
 	return 0;
 }
 
