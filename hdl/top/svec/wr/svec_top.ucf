@@ -384,10 +384,10 @@ TIMESPEC TS_gen_with_phy_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "gen_with_phy.U_GT
 
 
 
-TIMESPEC ts_ignore_xclock1 = FROM "pllout_clk_sys" TO "clk_125m_pllref_p_i" 10 ns DATAPATHONLY;
-TIMESPEC ts_ignore_xclock2 = FROM "clk_125m_pllref_p_i" TO "pllout_clk_sys" 10 ns DATAPATHONLY;
-TIMESPEC ts_x3 = FROM "pllout_clk_sys" TO "gen_with_phy_U_GTP_ch1_rx_divclk" 10 ns DATAPATHONLY;
-TIMESPEC TS_x4 = FROM "gen_with_phy_U_GTP_ch1_rx_divclk" TO "pllout_clk_sys" 10 ns DATAPATHONLY;
+TIMESPEC ts_ignore_xclock1 = FROM "pllout_clk_sys" TO "clk_125m_pllref_p_i" 16 ns DATAPATHONLY;
+TIMESPEC ts_ignore_xclock2 = FROM "clk_125m_pllref_p_i" TO "pllout_clk_sys" 16 ns DATAPATHONLY;
+TIMESPEC ts_x3 = FROM "pllout_clk_sys" TO "gen_with_phy_U_GTP_ch1_rx_divclk" 16 ns DATAPATHONLY;
+TIMESPEC TS_x4 = FROM "gen_with_phy_U_GTP_ch1_rx_divclk" TO "pllout_clk_sys" 16 ns DATAPATHONLY;
 
 TIMESPEC ts_x5 = FROM "clk_125m_pllref_p_i" TO "gen_with_phy_U_GTP_ch1_rx_divclk" 10 ns DATAPATHONLY;
 TIMESPEC TS_x6 = FROM "gen_with_phy_U_GTP_ch1_rx_divclk" TO "clk_125m_pllref_p_i" 10 ns DATAPATHONLY;
