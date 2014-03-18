@@ -1,7 +1,8 @@
 #ifndef __FINE_DELAY_H__
 #define __FINE_DELAY_H__
 
-#define FDELAY_GATEWARE_NAME "fmc/fine-delay.bin"
+#define FDELAY_GATEWARE_NAME_SPEC "fmc/spec-fine-delay.bin"
+#define FDELAY_GATEWARE_NAME_SVEC "fmc/svec-fine-delay.bin"
 
 #define FDELAY_VERSION		2 /* version of the layout of registers */
 /*
@@ -187,7 +188,6 @@ struct fd_dev {
 	unsigned long flags;
 	int fd_regs_base;		/* sdb_find_device(cern, f19ede1a) */
 	int fd_owregs_base;		/* regs_base + 0x500 */
-	int fd_vic_base;		/* sdb_find_device(cern, 00000013) */
 	struct fmc_device *fmc;
 	struct zio_device *zdev, *hwzdev;
 	struct timer_list fifo_timer;

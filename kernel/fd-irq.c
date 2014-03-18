@@ -1,4 +1,4 @@
-/*
+/*\
  * ZIO interface for the fine-delay driver
  *
  * Copyright (C) 2012 CERN (www.cern.ch)
@@ -29,7 +29,6 @@
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
 #include "hw/fd_channel_regs.h"
-#include "hw/vic_regs.h"
 
 static int fd_sw_fifo_len = FD_SW_FIFO_LEN;
 module_param_named(fifo_len, fd_sw_fifo_len, int, 0444);
@@ -284,32 +283,13 @@ out_unexpected:
 	 * up, entering the interrupt again and again
 	 */
 	fmc->op->irq_ack(fmc);
-	fmc_writel(fmc, 0, fd->fd_vic_base + VIC_REG_EOIR);
 	return IRQ_HANDLED;
 }
-
-/* Unfortunately, on the spec this is GPIO9, i.e. IRQ(1) */
-static struct fmc_gpio fd_gpio_on[] = {
-	{
-		.gpio = FMC_GPIO_IRQ(1),
-		.mode = GPIOF_DIR_IN,
-		.irqmode = IRQF_TRIGGER_RISING,
-	}
-};
-
-static struct fmc_gpio fd_gpio_off[] = {
-	{
-		.gpio = FMC_GPIO_IRQ(1),
-		.mode = GPIOF_DIR_IN,
-		.irqmode = 0,
-	}
-};
-
 
 int fd_irq_init(struct fd_dev *fd)
 {
 	struct fmc_device *fmc = fd->fmc;
-	uint32_t vic_ctl;
+	int rv;
 
 	/* Check that the sw fifo size is a power of two */
 	if (fd_sw_fifo_len & (fd_sw_fifo_len - 1)) {
@@ -338,27 +318,27 @@ int fd_irq_init(struct fd_dev *fd)
 		mod_timer(&fd->fifo_timer, jiffies + fd_timer_period_jiffies);
 	} else {
 		dev_info(fd->fmc->hwdev, "Using interrupts for input\n");
-		fmc->op->irq_request(fmc, fd_irq_handler, "fine-delay",
-				     IRQF_SHARED);
+
+		fmc->irq = fd->fd_regs_base;
+		rv = fmc->op->irq_request(fmc, fd_irq_handler, "fine-delay", 0);
+
+		if (rv < 0) {
+			dev_err(&fd->fmc->dev,
+				"Failed to request the VIC interrupt\n");
+			return rv;
+		}
 
 		/*
 		 * Then, configure the hardware: first fine delay,
 		 * then vic, and finally the carrier
 		 */
 
-		/* current VHDL has a buglet: timeout is 8ns, not 1ms each */
-		fd_writel(fd, FD_TSBIR_TIMEOUT_W(10) /* should be ms */
-			  | FD_TSBIR_THRESHOLD_W(15), /* samples */
+		fd_writel(fd, FD_TSBIR_TIMEOUT_W(10)	/* milliseconds */
+			  |FD_TSBIR_THRESHOLD_W(15),	/* samples */
 			  FD_REG_TSBIR);
+
+		fd_writel(fd, ~0, FD_REG_EIC_IDR);
 		fd_writel(fd, FD_EIC_IER_TS_BUF_NOTEMPTY, FD_REG_EIC_IER);
-
-		/* 4us edge emulation timer (counts in 16ns steps) */
-		vic_ctl = VIC_CTL_EMU_EDGE | VIC_CTL_EMU_LEN_W(4000 / 16);
-		fmc_writel(fmc, vic_ctl | VIC_CTL_ENABLE | VIC_CTL_POL,
-			   fd->fd_vic_base + VIC_REG_CTL);
-		fmc_writel(fmc, 1, fd->fd_vic_base + VIC_REG_IER);
-
-		fmc->op->gpio_config(fmc, fd_gpio_on, ARRAY_SIZE(fd_gpio_on));
 	}
 
 	/* let it run... */
@@ -374,11 +354,7 @@ void fd_irq_exit(struct fd_dev *fd)
 	if (fd_timer_period_ms) {
 		del_timer_sync(&fd->fifo_timer);
 	} else {
-		/* disable interrupts: first carrier, than vic, then fd */
-		fmc->op->gpio_config(fmc, fd_gpio_off, ARRAY_SIZE(fd_gpio_off));
-		fmc_writel(fmc, 1, fd->fd_vic_base + VIC_REG_IDR);
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
-		fmc_writel(fmc, VIC_CTL_POL, fd->fd_vic_base + VIC_REG_CTL);
 		fmc->op->irq_free(fmc);
 	}
 	kfree(fd->sw_fifo.t);
