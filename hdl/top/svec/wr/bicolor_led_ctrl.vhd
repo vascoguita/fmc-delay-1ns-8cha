@@ -230,7 +230,7 @@ begin
     led_state(I) <= '0' when led_state_i(2 * I + 1 downto 2 * I) = c_LED_RED else
                     '1'                               when led_state_i(2 * I + 1 downto 2 * I) = c_LED_GREEN else
                     (line_ctrl and intensity_ctrl)    when led_state_i(2 * I + 1 downto 2 * I) = c_LED_OFF   else
-                    not(line_ctrl and intensity_ctrl) when led_state_i(2 * I + 1 downto 2 * I) = c_LED_RED_GREEN;
+                    not(line_ctrl and intensity_ctrl) when led_state_i(2 * I + 1 downto 2 * I) = c_LED_RED_GREEN else '0';
   end generate f_led_state;
 
   f_column_o : for C in 0 to g_NB_COLUMN - 1 generate
