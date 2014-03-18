@@ -22,6 +22,12 @@ extern "C" {
 #include <stdint.h>
 #include "fine-delay.h"
 
+/* Convenience macro for converting the physical output connector
+   numbers (as seen on the mezzanine's front panel) to convention used
+   by the drive (0..3). We keep 0..3 indexing to maintain library
+   compatibility. */
+#define FDELAY_OUTPUT(out) ((out) + 1)
+
 /* Opaque data type used as token */
 struct fdelay_board;
 
