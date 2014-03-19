@@ -13,13 +13,19 @@ int main(int argc, char **argv)
 	struct __fdelay_board *b;
 	struct fdelay_board *ub;
 
+	if (argc > 1) {
+		fprintf(stderr, "%s: too many arguments (none expected)\n",
+			argv[0]);
+		exit(1);
+	}
+
 	i = fdelay_init();
 	if (i < 0) {
 		fprintf(stderr, "%s: fdelay_init(): %s\n", argv[0],
 			strerror(errno));
 		exit(1);
 	}
-	printf("%s: found %i boards\n", argv[0], i);
+	printf("%s: found %i board%s\n", argv[0], i, i ? "" : "s");
 
 	for (j = 0; j < i; j++) {
 		ub = fdelay_open(j, -1);

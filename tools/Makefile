@@ -2,11 +2,11 @@
 
 M = $(shell /bin/pwd)/../kernel
 
-HOST_EXTRACFLAGS += -I$(M) -I../zio/include -Wno-trigraphs -Wall -ggdb
+HOST_EXTRACFLAGS += -I$(M) -I../lib -I../zio/include -Wno-trigraphs -Wall -ggdb
 
 HOSTCC ?= gcc
 
-hostprogs-y :=
+hostprogs-y := fmc-fdelay-list
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(hostprogs-y)

@@ -906,10 +906,43 @@ Example code: @code{fmc-fdelay-pulse} tool.
 @end table
 
 @c ##########################################################################
-@node Command line tools
-@chapter Command line tools
+@node Command Line Tools
+@chapter Command Line Tools
 
-This chapter describes the command line tools that come with the driver and reside in the @code{tools/} subdirectory. They are provided as diagnostic utilities and to demonstrate how to use the library.
+This chapter describes the command line tools that come with the
+driver and reside in the @code{tools/} subdirectory. They are provided
+as diagnostic utilities and to demonstrate how to use the library.
+
+@c ==========================================================================
+@node General Command Line Conventions
+@section General Command Line Conventions
+
+Most tools accept the following command-line options, in a
+consistent way:
+
+@table @code
+
+@item -d <devid>
+@itemx -i <index>
+
+	Used to select one board among several. See the description 
+        of @i{fdelay_open} in @ref{Initialization and Cleanup}. If no
+        argument is given, the ``first'' board is used (index is 0).
+
+@end table
+
+@c ==========================================================================
+@node fmc-fdelay-list
+@section fmc-fdelay-list
+
+The command takes no arguments. It reports the list of available
+boards in the current system:
+
+@smallexample
+   spusa# ./tools/fmc-fdelay-list
+   ./tools/fmc-fdelay-list: found 1 board
+     dev_id 0200, /dev/zio/zio-fd-0200, /sys/bus/zio/devices/zio-fd-0200
+@end smallexample
 
 @c ##########################################################################
 @node Troubleshooting

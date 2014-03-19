@@ -2,7 +2,7 @@
 .PHONY: all clean modules install modules_install
 .PHONY: gitmodules prereq prereq_install prereq_install_warn
 
-DIRS = kernel tools lib
+DIRS = kernel lib tools
 
 all clean modules install modules_install: gitmodules
 	@if echo $@ | grep -q install; then $(MAKE) prereq_install_warn; fi

@@ -9,7 +9,7 @@ LOBJ += fdelay-output.o
 CFLAGS = -Wall -ggdb -O2 -I../kernel -I../zio/include
 LDFLAGS = -L. -lfdelay
 
-DEMOSRC := fdelay-list.c
+DEMOSRC :=
 DEMOSRC += fdelay-board-time.c
 DEMOSRC += fdelay-term.c
 DEMOSRC += fdelay-read.c
