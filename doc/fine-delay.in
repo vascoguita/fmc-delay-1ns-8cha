@@ -944,6 +944,22 @@ boards in the current system:
      dev_id 0200, /dev/zio/zio-fd-0200, /sys/bus/zio/devices/zio-fd-0200
 @end smallexample
 
+@c ==========================================================================
+@node fmc-fdelay-term
+@section fmc-fdelay-term
+
+The command can be used to activate or deactivate the 50 ohm
+termination resistor.  In addition to the @t{-i} or @t{-d}
+arguments, mandatory if more than one board is found on the
+host system, the command receives one mandatory argument, either
+@t{1} (activate termination) or @t{0} (deactivate termination).
+
+@smallexample
+   spusa# ./tools/fmc-fdelay-term 1
+   ./tools/fmc-fdelay-term: termination is on
+@end smallexample
+
+
 @c ##########################################################################
 @node Troubleshooting
 @appendix Troubleshooting
