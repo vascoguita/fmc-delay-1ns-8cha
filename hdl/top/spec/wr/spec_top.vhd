@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-01-15
+-- Last update: 2014-03-19
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -18,7 +18,7 @@
 -- - Interrupts (via WR VIC)
 -------------------------------------------------------------------------------
 --
--- Copyright (c) 2011 - 2012 CERN / BE-CO-HT
+-- Copyright (c) 2011 - 2014 CERN / BE-CO-HT
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
@@ -47,7 +47,7 @@ use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
-use work.etherbone_pkg.all;
+--use work.etherbone_pkg.all;
 use work.wr_xilinx_pkg.all;
 
 use work.synthesis_descriptor.all;
@@ -618,9 +618,7 @@ begin
       g_virtual_uart              => true,
       g_with_external_clock_input => false,
       g_aux_clks                  => 1,
-      g_ep_rxbuf_size             => 1024,
-      g_dpram_initf               => "wrc.ram",
-      g_dpram_size                => 90112/4,
+      g_dpram_initf               => "wrc-release.ram", 
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
       g_softpll_enable_debugger   => false)
@@ -671,13 +669,13 @@ begin
       slave_i => cnx_master_out(c_SLAVE_WRCORE),
       slave_o => cnx_master_in(c_SLAVE_WRCORE),
 
-      aux_master_o => etherbone_cfg_in,
-      aux_master_i => etherbone_cfg_out,
+      --aux_master_o => etherbone_cfg_in,
+      --aux_master_i => etherbone_cfg_out,
 
-      wrf_src_o => etherbone_snk_in,
-      wrf_src_i => etherbone_snk_out,
-      wrf_snk_o => etherbone_src_in,
-      wrf_snk_i => etherbone_src_out,
+      --wrf_src_o => etherbone_snk_in,
+      --wrf_src_i => etherbone_snk_out,
+      --wrf_snk_o => etherbone_src_in,
+      --wrf_snk_i => etherbone_src_out,
 
       tm_link_up_o         => tm_link_up,
       tm_dac_value_o       => tm_dac_value,
@@ -688,8 +686,8 @@ begin
       tm_tai_o             => tm_utc,
       tm_cycles_o          => tm_cycles,
 
-      btn1_i => '1',
-      btn2_i => '1',
+      btn1_i => '0',
+      btn2_i => '0',
 
       rst_aux_n_o => etherbone_rst_n,
       pps_p_o     => pps
@@ -737,21 +735,22 @@ begin
       pad_rxn1_i         => sfp_rxn_i,
       pad_rxp1_i         => sfp_rxp_i);
 
-  U_Etherbone : eb_slave_core
-    generic map (
-      g_sdb_address => f_resize_slv(c_sdb_address, 64))
-    port map (
-      clk_i       => clk_sys,
-      nRst_i      => etherbone_rst_n,
-      src_o       => etherbone_src_out,
-      src_i       => etherbone_src_in,
-      snk_o       => etherbone_snk_out,
-      snk_i       => etherbone_snk_in,
-      cfg_slave_o => etherbone_cfg_out,
-      cfg_slave_i => etherbone_cfg_in,
-      master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
-      master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
+  --U_Etherbone : eb_slave_core
+  --  generic map (
+  --    g_sdb_address => f_resize_slv(c_sdb_address, 64))
+  --  port map (
+  --    clk_i       => clk_sys,
+  --    nRst_i      => etherbone_rst_n,
+  --    src_o       => etherbone_src_out,
+  --    src_i       => etherbone_src_in,
+  --    snk_o       => etherbone_snk_out,
+  --    snk_i       => etherbone_snk_in,
+  --    cfg_slave_o => etherbone_cfg_out,
+  --    cfg_slave_i => etherbone_cfg_in,
+  --    master_o    => cnx_slave_in(c_MASTER_ETHERBONE),
+  --    master_i    => cnx_slave_out(c_MASTER_ETHERBONE));
 
+  cnx_slave_in(c_MASTER_ETHERBONE).cyc <= '0';
 
   U_DAC_ARB : spec_serial_dac_arb
     generic map (

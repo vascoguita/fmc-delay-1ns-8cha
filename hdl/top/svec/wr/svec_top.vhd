@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-01-20
+-- Last update: 2014-03-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -689,7 +689,7 @@ begin
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
       g_softpll_enable_debugger   => false,
-      g_dpram_initf               => "none")
+      g_dpram_initf               => "wrc-release.ram")
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
