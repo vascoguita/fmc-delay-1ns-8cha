@@ -1,7 +1,7 @@
 target = "xilinx"
 action = "synthesis"
 
-fetchto = "../../../ip_cores"
+fetchto = "../../ip_cores"
 
 syn_device = "xc6slx150t"
 syn_grade = "-3"
@@ -10,4 +10,4 @@ syn_top = "svec_top"
 syn_project = "svec_fine_delay.xise"
 
 files = [ "wrc-release.ram" ]
-modules = { "local" : [ "../../../top/svec/wr", "../../../platform" ] }
+modules = { "local" : [ "../../top/svec", "../../platform" ] }

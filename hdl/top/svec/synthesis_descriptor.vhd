@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2013-04-16
--- Last update: 2013-04-16
+-- Last update: 2014-03-18
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -42,11 +42,11 @@ package synthesis_descriptor is
   
 constant c_sdb_synthesis_info : t_sdb_synthesis :=
   (
-    syn_module_name => "fine-delay-svec ",
-    syn_commit_id => "00000000000000000000000000000000",
+    syn_module_name => "svec-fine-delay ",              
+    syn_commit_id => "70c0e0331fcf94f3067f5f677c01b59e",
     syn_tool_name => "ISE     ",
     syn_tool_version => x"00000133",
-    syn_date => x"00000000",
+    syn_date => x"20140318",
     syn_username => "twlostow       ");
 
 constant c_sdb_repo_url : t_sdb_repo_url :=

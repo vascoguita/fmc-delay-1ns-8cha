@@ -42,11 +42,11 @@ package synthesis_descriptor is
   
 constant c_sdb_synthesis_info : t_sdb_synthesis :=
   (
-    syn_module_name => "fine-delay-spec ",
+    syn_module_name => "spec-fine-delay ",
     syn_commit_id => "00000000000000000000000000000000",
     syn_tool_name => "ISE     ",
     syn_tool_version => x"00000133",
-    syn_date => x"00000000",
+    syn_date => x"20140318",
     syn_username => "twlostow       ");
 
 constant c_sdb_repo_url : t_sdb_repo_url :=
