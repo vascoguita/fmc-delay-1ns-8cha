@@ -125,13 +125,7 @@ void fdelay_exit(void)
 struct fdelay_board *fdelay_open(int offset, int dev_id)
 {
 	struct __fdelay_board *b = NULL;
-	uint32_t nsamples;
 	int i;
-	char name[64], **np, *channels[] = {
-		"fd-input",
-		"fd-ch1", "fd-ch2", "fd-ch3", "fd-ch4",
-		NULL
-	};
 
 	if (offset >= fd_nboards) {
 		errno = ENODEV;
