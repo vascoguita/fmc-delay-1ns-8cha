@@ -908,59 +908,6 @@ This chapter describes the command line tools that come with the driver and resi
 (fixme: about the tools commandline)
 
 @c ##########################################################################
-@node Known Bugs and Missing Features
-@appendix Known Bugs and Missing Features
-
-This package is still work in progress, and unfortunately the same
-applies to the packages it depends on -- @i{zio} and @i{fmc-bus}.
-
-@c ==========================================================================
-@node Bugs in Related Packages
-@section Bugs in Related Packages
-
-The current package set (i.e., @i{zio}, @i{fmc-bus} and this one) has
-the following known issues exposed by @i{fine-delay}:
-
-@itemize @bullet
-@item The auto-loading of @i{fmc} modules is not yet working:
-
-@item The @i{user} trigger of @sc{zio} is really user-driven, so the driver
-can't push stuff to the buffer until asked to. Also, a related buglet
-prevents to return data immediately when asked. This will be fixed,
-but it currently results in the @i{read} function only returning one
-sample, and an immediately-following non-blocking @i{read} will say
-nothing is there, yet.
-
-@end itemize
-
-@c ==========================================================================
-@node Bugs in This Package
-@section Bugs in This Package
-
-This is the list of known bugs and missing features over what hardware
-allows:
-
-@itemize @bullet
-@end itemize
-
-@c ==========================================================================
-@node Wish List
-@section Wish List
-
-Other less important issues may be dealt with over time, but are not
-urgent as I write this:
-
-@itemize 
-
-@item The driver should register its own @sc{zio} trigger, or use the new
-attribute for ``greedy-input'' planned in new versions of @sc{zio}
-(thank you Federico). Currently there's no buffering and reading is
-slower than it could be.
-
-@end itemize
-
-
-@c ##########################################################################
 @node Troubleshooting
 @appendix Troubleshooting
 
