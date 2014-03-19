@@ -634,14 +634,18 @@ to access library internals from a user file just define
 
 @item The driver header is called @code{fine-delay.h} while the user one
 is @code{fdelay-lib.h}. The latter includes the former, which user
-programs should not refer to.  Both are different from the original
-implementation (@code{fdelay_lib.h}) to avoid trying to compile older
-code with new headers.
+programs should not refer to.
+
+@item The @i{tools} directory hosts the suggested command-line tools
+to use the device for testing and quick access. They demonstrate use
+of the library functions.
 
 @item The @i{oldtools} directory includes tools that access @sc{zio}
-directly. Their name begins with @code{fd-raw-} (but there is a
-non-fine-delay tool to generate pulses on the parallel port, which has
-a different name pattern).
+directly; they are not built by default any more because they are now
+deprecated; we also removed documentation for them, for the same
+reason.  We keep them for our previous users, in case they still want
+to run previous scripts the saved in the past.  The old tools use
+an @code{fd-raw-} name pattern.
 
 @item The @i{lib} directory contains the userspace library, providing a
 simple C API to access the driver.
