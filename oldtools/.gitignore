@@ -4,3 +4,5 @@ fd-raw-gettime
 fd-raw-settime
 fd-raw-output
 fd-raw-perf
+fdelay-list
+fdelay-term

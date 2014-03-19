@@ -638,14 +638,17 @@ programs should not refer to.
 
 @item The @i{tools} directory hosts the suggested command-line tools
 to use the device for testing and quick access. They demonstrate use
-of the library functions.
+of the library functions using internally-consistent command line
+conventions. All command names begin with @t{fmc-fdelay-}
 
 @item The @i{oldtools} directory includes tools that access @sc{zio}
 directly; they are not built by default any more because they are now
 deprecated; we also removed documentation for them, for the same
 reason.  We keep them for our previous users, in case they still want
-to run previous scripts the saved in the past.  The old tools use
-an @code{fd-raw-} name pattern.
+to run previous scripts the saved in the past. The directory
+also includes tools that used to be built withing @t{lib/} and
+are deprecated as well. The old tools use
+the name patterns @code{fd-raw-} and @code{fdelay-}
 
 @item The @i{lib} directory contains the userspace library, providing a
 simple C API to access the driver.

@@ -2,7 +2,7 @@
 
 M = $(shell /bin/pwd)/../kernel
 
-HOST_EXTRACFLAGS += -I$(M) -I../zio/include -Wno-trigraphs -Wall -ggdb
+HOST_EXTRACFLAGS += -I$(M) -I../lib -I../zio/include -Wno-trigraphs -Wall -ggdb
 
 HOSTCC ?= gcc
 
@@ -12,6 +12,11 @@ hostprogs-y += fd-raw-settime
 hostprogs-y += parport-burst
 hostprogs-y += fd-raw-output
 hostprogs-y += fd-raw-perf
+
+# programs that used to live in lib/
+hostprogs-y += fdelay-list
+hostprogs-y += fdelay-term
+
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(hostprogs-y)
@@ -24,4 +29,4 @@ modules_install install:
 
 # we need this as we are out of the kernel
 %: %.c
-	$(HOSTCC) $(HOST_EXTRACFLAGS) -O2 -Wall $^ -o $@
+	$(HOSTCC) $(HOST_EXTRACFLAGS) -O2 -Wall $^ -L../lib -lfdelay -o $@
