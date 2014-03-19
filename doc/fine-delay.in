@@ -336,7 +336,7 @@ must talk to a specific FPGA binary file running in the device.
 
 While previous versions of this package included a gateware binary
 in the @t{binaries/} subdirectory, in Jan 2014 we decided not to do
-thst any more.  Release versions of this package are expected to
+that any more.  Release versions of this package are expected to
 point to ``current'' gateware images for different carriers.
 Clearly the driver is expected to work on any @sc{fmc} carrier,
 even those ignored to us, and we can't provide all binaries.
@@ -360,7 +360,8 @@ By default, the driver looks for a gateware file named @code{/lib/firmware/fmc/[
 
 If you have several @i{fine-delay} cards in the same host, you can
 load different binaries for different cards, using appropriate
-module parameters. Loading custom gatewares is advised only for advanced users/developers. 
+module parameters. Loading custom gateware files
+is advised only for advanced users/developers. 
 
 @c ==========================================================================
 @node Software Dependencies
@@ -603,7 +604,8 @@ SDB:       0000ce42:ff07fc47 WR-Periph-Syscon    (00060400-000604ff)
 SDB:       0000ce42:e2d13d04 WR-Periph-UART      (00060500-000605ff)
 SDB:       0000ce42:779c5443 WR-Periph-1Wire     (00060600-000606ff)
 SDB:       0000ce42:779c5445 WR-Periph-AuxWB     (00060700-000607ff)
-SDB: Bitstream 'svec-fine-delay' synthesized 20140317 by twlostow (ISE version 133), commit e95b10c776f5f7603f49fcf1330e0c07
+SDB: Bitstream 'svec-fine-delay' synthesized 20140317 by twlostow \
+              (ISE version 133), commit e95b10c776f5f7603f49fcf1330e0c07
 SDB: Synthesis repository: git://ohwr.org/fmc-projects/fmc-delay-1ns-8cha.git
 @end smallexample
 
@@ -734,12 +736,12 @@ These are the primitives the library offers for time management, including suppo
 
 	The function sets board time equal to host time. The precision
         should be in the order of 1 microsecond, but will drift over time. This function is only provided to 
-        coarsely corellate the board time with the system time. Relying on system time 
-        for synchronizing multiple @sc{fine-delays} is strongly disadvised.
+        coarsely correlate the board time with the system time. Relying on system time 
+        for synchronizing multiple @sc{fine-delays} is strongly discouraged.
 
 @item int fdelay_wr_mode(struct fdelay_board *b, int on);
 
-	The function enables/disabbles White Rabbit mode.
+	The function enables/disables White Rabbit mode.
         It may fail with @code{ENOTSUPP} if there's no White Rabbit support in the
         gateware.
 
@@ -904,8 +906,6 @@ Example code: @code{fmc-fdelay-pulse} tool.
 @chapter Command line tools
 
 This chapter describes the command line tools that come with the driver and reside in the @code{tools/} subdirectory. They are provided as diagnostic utilities and to demonstrate how to use the library.
-
-(fixme: about the tools commandline)
 
 @c ##########################################################################
 @node Troubleshooting
