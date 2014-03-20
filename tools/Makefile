@@ -2,7 +2,7 @@
 
 M = $(shell /bin/pwd)/../kernel
 
-HOST_EXTRACFLAGS += -I$(M) -I../lib -I../zio/include -Wno-trigraphs -Wall -ggdb
+HOST_EXTRACFLAGS += -I$(M) -I../lib -I$(ZIO)/include -Wno-trigraphs -Wall -ggdb
 
 HOSTCC ?= gcc
 
