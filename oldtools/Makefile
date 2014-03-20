@@ -17,6 +17,7 @@ hostprogs-y += fd-raw-perf
 hostprogs-y += fdelay-list
 hostprogs-y += fdelay-term
 hostprogs-y += fdelay-board-time
+hostprogs-y += fdelay-open-by-lun
 
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
