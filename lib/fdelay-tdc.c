@@ -97,7 +97,7 @@ int fdelay_read(struct fdelay_board *userb, struct fdelay_time *t, int n,
 			t->frac = attrs[FD_ATTR_TDC_FRAC];
 			t->seq_id = attrs[FD_ATTR_TDC_SEQ];
 			t->channel = attrs[FD_ATTR_TDC_CHAN];
-
+			t++;
 			i++;
 			continue;
 		}
