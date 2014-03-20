@@ -20,6 +20,8 @@ hostprogs-y += fdelay-board-time
 hostprogs-y += fdelay-open-by-lun
 hostprogs-y += fdelay-read
 hostprogs-y += fdelay-fread
+hostprogs-y += fdelay-pulse
+hostprogs-y += fdelay-pulse-tom
 
 
 # we are not in the kernel, so we need to piggy-back on "make modules"

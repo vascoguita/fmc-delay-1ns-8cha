@@ -9,17 +9,9 @@ LOBJ += fdelay-output.o
 CFLAGS = -Wall -ggdb -O2 -I../kernel -I$(ZIO)/include
 LDFLAGS = -L. -lfdelay
 
-DEMOSRC :=
-DEMOSRC += fdelay-pulse.c
-DEMOSRC += fdelay-pulse-tom.c
-
-DEMOS := $(DEMOSRC:.c=)
-
-modules all: lib demos
+modules all: lib
 
 lib: $(LIB)
-
-demos: $(DEMOS)
 
 %: %.c $(LIB)
 	$(CC) $(CFLAGS) $*.c $(LDFLAGS) -o $@

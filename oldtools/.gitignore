@@ -10,3 +10,5 @@ fdelay-board-time
 fdelay-open-by-lun
 fdelay-read
 fdelay-fread
+fdelay-pulse
+fdelay-pulse-tom
