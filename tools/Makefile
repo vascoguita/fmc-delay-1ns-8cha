@@ -14,9 +14,11 @@ all modules: $(hostprogs-y)
 clean:
 	rm -f $(hostprogs-y) *.o *~
 
+$(hostprogs-y): tools-common.h $(wildcard ../lib/*.[ch])
+
 # make nothing for modules_install, but avoid errors
 modules_install install:
 
 # we need this as we are out of the kernel
 %: %.c
-	$(HOSTCC) $(HOST_EXTRACFLAGS) -O2 -Wall $^ -o $@
+	$(HOSTCC) $(HOST_EXTRACFLAGS) -O2 -Wall $*.c -L../lib -lfdelay -o $@
