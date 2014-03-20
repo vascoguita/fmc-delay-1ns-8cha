@@ -952,7 +952,9 @@ boards in the current system:
 @section fmc-fdelay-term
 
 The command can be used to activate or deactivate the 50 ohm
-termination resistor.  In addition to the @t{-i} or @t{-d}
+termination resistor.
+
+In addition to the @t{-i} or @t{-d}
 arguments, mandatory if more than one board is found on the
 host system, the command receives one mandatory argument, either
 @t{1} (activate termination) or @t{0} (deactivate termination).
@@ -962,6 +964,49 @@ host system, the command receives one mandatory argument, either
    ./tools/fmc-fdelay-term: termination is on
 @end smallexample
 
+@c ==========================================================================
+@node fmc-fdelay-board-time
+@section fmc-fdelay-board-time
+
+The command is used to act on the time notion of the @sc{fine-delay} card.
+
+In addition to the @t{-i} or @t{-d}
+arguments, mandatory if more than one board is found on the
+host system, the command receives one mandatory argument, that is
+either a command or a floating point number. The number is the
+time, in seconds, to be set in the card; the command is one of
+the following ones:
+
+@table @code
+@item get
+
+	Read board time and print to @i{stdout}.
+
+@item host
+
+	Set board time from host time
+
+@item wr
+
+	Lock the boards to White Rabbit time. It may block if no White
+	Rabbit is there. No timeout is currently available.
+
+@item local
+
+	Detach the board from White Rabbit, and run local time instead.
+
+@end table
+
+Examples:
+@smallexample
+   spusa# ./lib/fdelay-board-time  25.5; ./lib/fdelay-board-time get
+   25.504007360
+   spusa# ./lib/fdelay-board-time  get
+   34.111048968
+   spusa# ./lib/fdelay-board-time  host
+   spusa# ./lib/fdelay-board-time  get
+   1335974946.493415600
+@end smallexample
 
 @c ##########################################################################
 @node Troubleshooting

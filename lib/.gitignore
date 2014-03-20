@@ -1,6 +1,5 @@
 *.a
 .depend
-fdelay-board-time
 fdelay-read
 fdelay-fread
 fdelay-pulse

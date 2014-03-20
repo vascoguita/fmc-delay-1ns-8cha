@@ -10,7 +10,6 @@ CFLAGS = -Wall -ggdb -O2 -I../kernel -I../zio/include
 LDFLAGS = -L. -lfdelay
 
 DEMOSRC :=
-DEMOSRC += fdelay-board-time.c
 DEMOSRC += fdelay-read.c
 DEMOSRC += fdelay-fread.c
 DEMOSRC += fdelay-pulse.c
