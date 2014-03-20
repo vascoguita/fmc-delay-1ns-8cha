@@ -68,17 +68,26 @@ int main(int argc, char **argv)
 	}
 
 	hwval = fdelay_get_config_tdc(b);
+	int err = 0;
+
 	switch(newval) {
 	case 1:
 		hwval |= FD_TDCF_TERM_50;
-		fdelay_set_config_tdc(b, hwval);
+		err = fdelay_set_config_tdc(b, hwval);
 		break;
 	case 0:
 		hwval &= ~FD_TDCF_TERM_50;
-		fdelay_set_config_tdc(b, hwval);
+		err = fdelay_set_config_tdc(b, hwval);
 		break;
 	}
-	printf("%s: termination is %s\n", argv[0], hwval,
+	
+	if (err)
+	{
+		fprintf(stderr, "%s: error setting termination: %s", argv[0], strerror(errno));
+		exit(1);
+	}
+
+	printf("%s: termination is %s\n", argv[0],
 	       hwval & FD_TDCF_TERM_50 ? "on" : "off");
 
 	fdelay_close(b);
