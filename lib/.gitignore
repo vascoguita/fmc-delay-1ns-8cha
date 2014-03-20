@@ -1,6 +1,4 @@
 *.a
 .depend
-fdelay-read
-fdelay-fread
 fdelay-pulse
 fdelay-pulse-tom

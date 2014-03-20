@@ -825,7 +825,8 @@ The library offers the following functions that deal with the input stamps:
 
 @end table
 
-Example code: @code{fmc-fdelay-read} tool.
+The test programs for the functions are in @i{oldtools/}, not built by
+default.
 
 @c ==========================================================================
 @node Output Configuration

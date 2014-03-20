@@ -10,8 +10,6 @@ CFLAGS = -Wall -ggdb -O2 -I../kernel -I$(ZIO)/include
 LDFLAGS = -L. -lfdelay
 
 DEMOSRC :=
-DEMOSRC += fdelay-read.c
-DEMOSRC += fdelay-fread.c
 DEMOSRC += fdelay-pulse.c
 DEMOSRC += fdelay-pulse-tom.c
 
