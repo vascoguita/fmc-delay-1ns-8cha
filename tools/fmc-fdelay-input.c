@@ -28,15 +28,24 @@ void dump_input(struct fdelay_time *t, int np, int israw)
 	int i;
 
 	for (i = 0; i < np; i++, t++) {
+		uint64_t picoseconds =
+			(uint64_t) t->coarse * 8000ULL +
+			(uint64_t) t->frac * 8000ULL / 4096ULL;
+
 		printf("seq %5i: ", t->seq_id);
 		if (israw)
 			printf("timestamps %016llx %08x %08x\n",
 			       (long long)(t->utc), t->coarse, t->frac);
 		else
-			printf("time %10lli.%09li\n",
-			       (long long)(t->utc), (long)t->coarse * 8);
+			printf ("time %10llu:%03llu,%03llu,%03llu,%03llu ps\n",
+				(long long)(t->utc),
+				picoseconds / 1000000000ULL,
+				(picoseconds / 1000000ULL) % 1000ULL,
+				(picoseconds / 1000ULL) % 1000ULL,
+				picoseconds % 1000ULL);
 	}
 }
+
 
 
 
