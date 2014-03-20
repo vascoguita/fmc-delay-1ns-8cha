@@ -219,8 +219,11 @@ static int fd_zio_info_output(struct device *dev, struct zio_attribute *zattr,
 static int fd_wr_mode(struct fd_dev *fd, int on)
 {
 	unsigned long flags;
+	uint32_t tcr;
 
 	spin_lock_irqsave(&fd->lock, flags);
+	tcr = fd_readl(fd, FD_REG_TCR);
+
 	if (on) {
 		fd_writel(fd, FD_TCR_WR_ENABLE, FD_REG_TCR);
 		set_bit(FD_FLAG_WR_MODE, &fd->flags);
@@ -231,8 +234,14 @@ static int fd_wr_mode(struct fd_dev *fd, int on)
 		fd_spi_xfer(fd, FD_CS_DAC, 24,
 			    fd->calib.vcxo_default_tune & 0xffff, NULL);
 	}
+
 	spin_unlock_irqrestore(&fd->lock, flags);
-	return 0;
+	if(! (tcr & FD_TCR_WR_PRESENT))
+		return -EOPNOTSUPP;
+	else if( ! (tcr & FD_TCR_WR_LINK))
+		return -ENOLINK;
+	else
+		return 0;
 }
 
 static int fd_wr_query(struct fd_dev *fd)
@@ -241,6 +250,8 @@ static int fd_wr_query(struct fd_dev *fd)
 
 	if (!ena)
 		return -ENODEV;
+	if (! (fd_readl(fd, FD_REG_TCR) & FD_TCR_WR_LINK))
+		return -ENOLINK;
 	if (fd_readl(fd, FD_REG_TCR) & FD_TCR_WR_LOCKED)
 		return 0;
 	return -EAGAIN;
@@ -390,6 +401,10 @@ static int fd_zio_conf_set(struct device *dev, struct zio_attribute *zattr,
 	fd = zdev->priv_d;
 
 	if (zattr->id == FD_ATTR_DEV_UTC_H) {
+		/* no changing of the time when WR is on */
+		if (test_bit(FD_FLAG_WR_MODE, &fd->flags))
+			return -EAGAIN;
+
 		/* writing utc-h calls an atomic set-time */
 		t.utc = (uint64_t)attr[FD_ATTR_DEV_UTC_H].value << 32;
 		t.utc |= attr[FD_ATTR_DEV_UTC_L].value;
@@ -404,6 +419,9 @@ static int fd_zio_conf_set(struct device *dev, struct zio_attribute *zattr,
 
 	switch(usr_val) {
 	case FD_CMD_HOST_TIME:
+		/* can't change the time when WR is on */
+		if(test_bit(FD_FLAG_WR_MODE, &fd->flags))
+			return -EAGAIN;
 		return fd_time_set(fd, NULL, NULL);
 	case FD_CMD_WR_ENABLE:
 		return fd_wr_mode(fd, 1);
