@@ -9,6 +9,7 @@ HOSTCC ?= gcc
 hostprogs-y := fmc-fdelay-list
 hostprogs-y += fmc-fdelay-term
 hostprogs-y += fmc-fdelay-board-time
+hostprogs-y += fmc-fdelay-input
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(hostprogs-y)

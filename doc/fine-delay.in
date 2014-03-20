@@ -1013,6 +1013,43 @@ Examples:
    1335974946.493415600
 @end smallexample
 
+@c ==========================================================================
+@node fmc-fdelay-input
+@section fmc-fdelay-input
+
+The tool reports input pulses to stdout.  It receives the
+usual @t{-i} or @t{-d} arguments to select one board, mandatory
+if more than one @sc{fine-delay} card is found.
+
+It receives the following options:
+
+@table @code
+
+@item -c <count>
+
+	Number of pulses to print. Default (0) means run forever.
+
+@item -n
+
+	Nonblocking mode: just print what is pending in the buffer.
+
+@item -r
+
+	Raw output: printf the hex timestamps.
+
+@item -f
+
+	Floading point (human-readable).
+        This is the default, but the option overrides a
+        previous ``-r'' if any was there.
+
+@end table
+
+In a future release we'll support reading concurrently from several
+boards.
+
+
+
 @c ##########################################################################
 @node Troubleshooting
 @appendix Troubleshooting
