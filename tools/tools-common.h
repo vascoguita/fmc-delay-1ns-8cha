@@ -1,5 +1,8 @@
+/*
+ * Simple code that is repeated over several tools
+ */
 
-/* Simple code that is repeated over several tools */
+static void help(char *name); /* This is mandatory in all tools */
 
 static inline void tools_getopt_d_i(int argc, char **argv,
 				    int *dev, int *index)
@@ -7,7 +10,7 @@ static inline void tools_getopt_d_i(int argc, char **argv,
 	char *rest;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:i:")) != -1) {
+	while ((opt = getopt(argc, argv, "d:i:h")) != -1) {
 		switch (opt) {
 		case 'i':
 			*index = strtol(optarg, &rest, 0);
@@ -25,6 +28,17 @@ static inline void tools_getopt_d_i(int argc, char **argv,
 				exit(1);
 			}
 			break;
+		case 'h':
+			help(argv[0]);
 		}
 	}
+}
+
+static inline int tools_need_help(int argc, char **argv)
+{
+	if (argc != 2)
+		return 0;
+	if (!strcmp(argv[1], "--help"))
+		return 1;
+	return 0;
 }

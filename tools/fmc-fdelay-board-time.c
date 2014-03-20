@@ -8,6 +8,15 @@
 
 #include "tools-common.h"
 
+static void help(char *name)
+{
+	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] <cmd>\"\n",
+		name, name);
+	fprintf(stderr, "   cmd is one of \"get\", \"host\", "
+		"\"local\", \"wr\" or a floating point time in secs\n");
+		exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
@@ -18,6 +27,9 @@ int main(int argc, char **argv)
 
 
 	/* Standard part of the file (repeated code) */
+	if (tools_need_help(argc, argv))
+		help(argv[0]);
+
 	nboards = fdelay_init();
 
 	if (nboards < 0) {
@@ -41,13 +53,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Parse the mandatory extra argument */
-	if (optind != argc - 1) {
-		fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] <cmd>\"\n",
-			argv[0], argv[0]);
-		fprintf(stderr, "   cmd is one of \"get\", \"host\", "
-			"\"local\", \"wr\" or a floating point time in secs\n");
-		exit(1);
-	}
+	if (optind != argc - 1)
+		help(argv[0]);
 	s = argv[optind];
 	/* Crappy parser */
 	if (!strcmp(s, "get"))

@@ -8,6 +8,13 @@
 
 #include "tools-common.h"
 
+static void help(char *name)
+{
+	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] 1|0\n",
+		name, name);
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
@@ -16,6 +23,9 @@ int main(int argc, char **argv)
 
 
 	/* Standard part of the file (repeated code) */
+	if (tools_need_help(argc, argv))
+		help(argv[0]);
+
 	nboards = fdelay_init();
 
 	if (nboards < 0) {
@@ -39,11 +49,8 @@ int main(int argc, char **argv)
 	}
 
 	/* Parse the mandatory extra argument */
-	if (optind != argc - 1) {
-		fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] 1|0\n",
-			argv[0], argv[0]);
-		exit(1);
-	}
+	if (optind != argc - 1)
+		help(argv[0]);
 	newval = -1;
 	if (!strcmp(argv[optind], "0"))
 		newval = 0;

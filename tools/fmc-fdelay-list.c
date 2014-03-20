@@ -7,11 +7,22 @@
 #define FDELAY_INTERNAL /* hack... */
 #include "fdelay-lib.h"
 
+#include "tools-common.h"
+
+static void help(char *name)
+{
+	fprintf(stderr, "%s: Lists boards, takes no arguments\n", name);
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	int i, j;
 	struct __fdelay_board *b;
 	struct fdelay_board *ub;
+
+	if (tools_need_help(argc, argv))
+		help(argv[0]);
 
 	if (argc > 1) {
 		fprintf(stderr, "%s: too many arguments (none expected)\n",
