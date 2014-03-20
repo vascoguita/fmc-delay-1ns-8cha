@@ -957,13 +957,17 @@ termination resistor.
 
 In addition to the @t{-i} or @t{-d}
 arguments, mandatory if more than one board is found on the
-host system, the command receives one mandatory argument, either
-@t{1} (activate termination) or @t{0} (deactivate termination).
+host system, the command receives one optional argument, either
+@t{1} or @t{on} (activate termination) or @t{0} or @t{off}
+(deactivate termination).
 
 @smallexample
-   spusa# ./tools/fmc-fdelay-term 1
+   spusa# ./tools/fmc-fdelay-term on
    ./tools/fmc-fdelay-term: termination is on
 @end smallexample
+
+If no arguments are passed the termination status is reported back but
+not changed.
 
 @c ==========================================================================
 @node fmc-fdelay-board-time

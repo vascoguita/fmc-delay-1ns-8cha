@@ -10,7 +10,7 @@
 
 static void help(char *name)
 {
-	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] 1|0\n",
+	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] [on|off]\n",
 		name, name);
 	exit(1);
 }
@@ -48,20 +48,17 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	/* Parse the mandatory extra argument */
-	if (optind != argc - 1)
-		help(argv[0]);
+	/* Parse the extra argument, if any */
 	newval = -1;
-	if (!strcmp(argv[optind], "0"))
-		newval = 0;
-	else if (!strcmp(argv[optind], "1"))
-		newval = 1;
-	else {
-		fprintf(stderr, "%s: arg \"%s\" is not 0 nor 1\n",
-			argv[0], argv[optind]);
-		exit(1);
+	if (optind == argc - 1) {
+		char *s = argv[optind];
+		if (!strcmp(s, "0") || !strcmp(s, "off"))
+		    newval = 0;
+		else if (!strcmp(s, "1") || !strcmp(s, "on"))
+			newval = 1;
+		else
+			help(argv[0]);
 	}
-
 	/* Finally work */
 	b = fdelay_open(index, dev);
 	if (!b) {
@@ -74,14 +71,14 @@ int main(int argc, char **argv)
 	switch(newval) {
 	case 1:
 		hwval |= FD_TDCF_TERM_50;
+		fdelay_set_config_tdc(b, hwval);
 		break;
 	case 0:
 		hwval &= ~FD_TDCF_TERM_50;
+		fdelay_set_config_tdc(b, hwval);
 		break;
 	}
-	fdelay_set_config_tdc(b, hwval);
-	hwval = fdelay_get_config_tdc(b);
-	printf("%s: termination is %d %s\n", argv[0], hwval,
+	printf("%s: termination is %s\n", argv[0], hwval,
 	       hwval & FD_TDCF_TERM_50 ? "on" : "off");
 
 	fdelay_close(b);
