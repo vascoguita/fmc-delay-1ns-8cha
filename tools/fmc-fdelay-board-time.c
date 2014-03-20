@@ -10,10 +10,17 @@
 
 static void help(char *name)
 {
-	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] <cmd>\"\n",
-		name, name);
-	fprintf(stderr, "   cmd is one of \"get\", \"host\", "
-		"\"local\", \"wr\" or a floating point time in secs\n");
+
+	fprintf(stderr, "fmc-fdelay-board-time: a tool for manipulating the FMC Fine Delay time base.\n");
+	fprintf(stderr, "Use: \"%s [-i <index>] [-d <dev>] <command>\"\n",
+		name);
+	fprintf(stderr, "   where the <command> can be:\n"
+			"     get                    - shows current time and White Rabbit status.\n"
+			"     local                  - sets the time source to the card's local oscillator.\n"
+			"     wr                     - sets the time source to White Rabbit.\n"
+			"     host                   - sets the time source to local oscillator and coarsely\n"
+			"                              synchronizes the card to the system clock.\n"
+			"     seconds:[nanoseconds]: - sets local time to the given value.\n");
 		exit(1);
 }
 
@@ -93,7 +100,19 @@ int main(int argc, char **argv)
 				strerror(errno));
 			exit(1);
 		}
-		printf("%lli.%09li\n", (long long)t.utc, (long)t.coarse * 8);
+
+		int err = fdelay_check_wr_mode(b);
+		printf("WR Status: ");
+		switch(err)
+		{
+			case ENODEV: 	printf("disabled.\n"); break;
+			case ENOLINK: 	printf("link down.\n"); break;
+			case EAGAIN: 	printf("synchronization in progress.\n"); break;
+			case 0: 	printf("synchronized.\n"); break;
+			default:   	printf("error: %s\n", strerror(errno)); break;
+		}
+		printf("Time: %lli.%09li\n", (long long)t.utc, (long)t.coarse * 8);
+		
 		fdelay_close(b);
 		fdelay_exit();
 		return 0;
@@ -114,13 +133,26 @@ int main(int argc, char **argv)
 		setbuf(stdout, NULL);
 		printf("Locking the card to WR: ");
 
-		if (fdelay_wr_mode(b, 1) < 0) {
+		int err = fdelay_wr_mode(b, 1);
+
+		if(err == ENOTSUP)
+		{
+			fprintf(stderr, "%s: no support for White Rabbit (check the gateware).\n",
+				argv[0]);
+			exit(1);
+		} else if (err) {
 			fprintf(stderr, "%s: fdelay_wr_mode(): %s\n",
 				argv[0], strerror(errno));
 			exit(1);
 		}
 
-		while (fdelay_check_wr_mode(b) != 0) {
+		while ((err = fdelay_check_wr_mode(b)) != 0) {
+			if( err == ENOLINK )
+			{
+				fprintf(stderr, "%s: no White Rabbit link (check the cable and the switch).\n",
+					argv[0]);
+				exit(1);
+			}
 			printf(".");
 			sleep(1);
 		}
@@ -144,7 +176,7 @@ int main(int argc, char **argv)
 	}
 
 	if (fdelay_set_time(b, &t) < 0) {
-		fprintf(stderr, "%s: fdelay_set_host_time(): %s\n",
+		fprintf(stderr, "%s: fdelay_set_time(): %s\n",
 			argv[0], strerror(errno));
 		exit(1);
 	}
