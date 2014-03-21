@@ -8,7 +8,7 @@
 
 #include "tools-common.h"
 
-static void help(char *name)
+void help(char *name)
 {
 
 	fprintf(stderr, "fmc-fdelay-board-time: a tool for manipulating the FMC Fine Delay time base.\n");

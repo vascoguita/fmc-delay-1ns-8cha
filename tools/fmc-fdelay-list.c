@@ -9,7 +9,7 @@
 
 #include "tools-common.h"
 
-static void help(char *name)
+void help(char *name)
 {
 	fprintf(stderr, "%s: Lists boards, takes no arguments\n", name);
 	exit(1);

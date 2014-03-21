@@ -8,7 +8,7 @@
 
 #include "tools-common.h"
 
-static void help(char *name)
+void help(char *name)
 {
 	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] [on|off]\n",
 		name, name);

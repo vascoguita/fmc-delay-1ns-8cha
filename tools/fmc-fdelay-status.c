@@ -8,7 +8,7 @@
 
 #include "tools-common.h"
 
-static void help(char *name)
+void help(char *name)
 {
 
 	fprintf(stderr, "fmc-fdelay-status: reports channel programming\n");
