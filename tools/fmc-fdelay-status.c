@@ -68,7 +68,8 @@ int main(int argc, char **argv)
 				argv[0], ch, strerror(errno));
 		}
 		/* pass hw number again, as the function is low-level */
-		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch), &p);
+		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
+				    &p, TOOLS_UMODE_RAW);
 	}
 	fdelay_close(b);
 	fdelay_exit();

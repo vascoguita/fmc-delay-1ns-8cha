@@ -48,13 +48,13 @@ int tools_need_help(int argc, char **argv)
 	return 0;
 }
 
-void report_time(char *name, struct fdelay_time *t)
+void tools_report_time(char *name, struct fdelay_time *t, int umode)
 {
 	printf("   %s   utc %10lli,  coarse %9li,  frac %9li\n",
 	       name, (long long)t->utc, (long)t->coarse, (long)t->frac);
 }
 
-void tools_report_action(int channel, struct fdelay_pulse *p)
+void tools_report_action(int channel, struct fdelay_pulse *p, int umode)
 {
 	char *mode;
 	char s[80];
@@ -71,7 +71,7 @@ void tools_report_action(int channel, struct fdelay_pulse *p)
 	printf("Channel %i, mode %s, repeat %i %s\n",
 	       FDELAY_OUTPUT_HW_TO_USER(channel), mode,
 	       p->rep, p->rep == -1 ? "(infinite)" : "");
-	report_time("start", &p->start);
-	report_time("end  ", &p->end);
-	report_time("loop ", &p->loop);
+	tools_report_time("start", &p->start, umode);
+	tools_report_time("end  ", &p->end, umode);
+	tools_report_time("loop ", &p->loop, umode);
 }
