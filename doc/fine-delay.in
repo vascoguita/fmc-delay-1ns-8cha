@@ -1142,6 +1142,23 @@ options:
 
 @end table
 
+This is, for example, how verbose operation reports the request for a single pulse 300ns wide, 2 microseconds into the next second.:
+
+@smallexample
+  spusa.root# ./tools/fmc-fdelay-board-time get; \
+              ./tools/fmc-fdelay-pulse -i 0 -o 1 -m pulse -r 2u -w 300n -c 1 -t -v
+  WR Status: disabled.
+  Time: 13728.801090400
+  Channel 1, mode pulse, repeat 1
+    start  time      13729:000,002,000,000 ps
+    end    time      13729:000,002,300,000 ps
+    loop   time          0:100,000,000,000 ps
+  Channel 1, mode pulse, repeat 1
+    start   raw   utc      13729,  coarse       250,  frac         0
+    end     raw   utc      13729,  coarse       287,  frac      2048
+    loop    raw   utc          0,  coarse  12500000,  frac         0
+@end smallexample
+
 @c ==========================================================================
 @node fmc-fdelay-status
 @section fmc-fdelay-status

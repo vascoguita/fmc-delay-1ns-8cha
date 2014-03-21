@@ -352,8 +352,10 @@ int main(int argc, char **argv)
 
 	/* Done. Report verbosely and activate the information we parsed */
 	channel = FDELAY_OUTPUT_USER_TO_HW(channel);
-	if (verbose)
+	if (verbose) {
+		tools_report_action(channel, &p, TOOLS_UMODE_USER);
 		tools_report_action(channel, &p, TOOLS_UMODE_RAW);
+	}
 	if (fdelay_config_pulse(b, channel, &p) < 0) {
 		fprintf(stderr, "%s: fdelay_config_pulse(): %s\n",
 			argv[0], strerror(errno));
