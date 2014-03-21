@@ -42,3 +42,26 @@ static inline int tools_need_help(int argc, char **argv)
 		return 1;
 	return 0;
 }
+
+static inline void report_time(char *name, struct fdelay_time *t)
+{
+	printf("   %s   utc %10lli,  coarse %9li,  frac %9li\n",
+	       name, (long long)t->utc, (long)t->coarse, (long)t->frac);
+}
+
+static inline void tools_report_action(int channel, struct fdelay_pulse *p)
+{
+	char *mode;
+
+	if (p->mode == FD_OUT_MODE_DISABLED) mode = "disable";
+	else if  (p->mode == FD_OUT_MODE_PULSE) mode = "pulse";
+	else if (p->mode == FD_OUT_MODE_DELAY) mode = "delay";
+	else mode="--wrong-mode--";
+
+	printf("Channel %i, mode %s, repeat %i %s\n",
+	       FDELAY_OUTPUT_HW_TO_USER(channel), mode,
+	       p->rep, p->rep == -1 ? "(infinite)" : "");
+	report_time("start", &p->start);
+	report_time("end  ", &p->end);
+	report_time("loop ", &p->loop);
+}

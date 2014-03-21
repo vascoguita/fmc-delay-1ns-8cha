@@ -1049,6 +1049,81 @@ In a future release we'll support reading concurrently from several
 boards.
 
 
+@c ==========================================================================
+@node fmc-fdelay-pulse
+@section fmc-fdelay-pulse
+
+The program can be used to program one of the output channels to
+output a sequence of pulses.  It can parse the following command-line
+options:
+
+@table @code
+@item -o <output>
+
+	Output channels are numbered 1 to 4, as written on the device panel.
+        Each command incocation can set only one output channel; the
+        last @t{-o} specified takes precedence.
+
+@item -c <count>
+
+	Output repeat count: 0 is the default and means forever
+
+@item -m <mode>
+
+	Output mode. Can be @t{pulse}, @t{delay} or @t{disable}.
+
+@item -r <reltime>
+
+	Output pulse at a relative time in the future. The time is
+        a fraction of a second, specified as For pulse mode,
+        the program adds the current board time in seconds. Please note that
+        for pulse mode the second is relative, but the fraction is absolute.
+        So ``@t{-r 1.5}'' will activate aoutput at the middle of the
+        next second, according to board time.  For @i{delay} mode, the
+        time is a relative delay.
+
+@item -D <date>
+
+	Output pulse at a specified date. This is not currently
+        completed supported (no seconds are parsed, for example)
+@c tom says: only seconds:nano
+
+@c @item -f <frequency>
+@c
+@c	Frequency of the output signal. A trailing @t{k} or @t{M}
+@c        means kilohertz or megaherts. Floating point is allowed
+@c        but internal approximation is not accounted for. So
+@c        @t{2.5M} will work, but 2.000001M will probably not.
+@c        The last frequency or period specified takes precedence.
+@c        Default frequency is 10Hz.
+
+@item -T <period>
+@itemx -w <width>
+
+	Period and width of the output signal. A trailing @t{m},
+        @t{u}, @t{n}, @t{p} means milli, micro, nano, pico, resp.
+        The parser supports additions and subtractions, e.g.
+        @t{50m-20n}.
+        The period defaults to 100ms and the width defaults to 8us
+
+@item -t
+
+	Wait for the trigger to happen before returning. The boards reports
+        a trigger event when the requested pulse sequence is initiated,
+        either because the absolute time arrived or because an input
+        pulse was detected and the requested delay elapsed.
+
+@item -p
+@itemx -1
+
+	Pulse-per-seconds and 10MHz. These are shorthands setting many
+        parameters.
+
+@item -v
+
+	Verbose: report action to stdout before telling the driver.
+
+@end table
 
 @c ##########################################################################
 @node Troubleshooting
