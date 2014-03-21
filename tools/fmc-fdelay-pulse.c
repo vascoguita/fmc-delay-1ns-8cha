@@ -146,7 +146,7 @@ void parse_default(struct fdelay_pulse *p)
 	memset(p, 0, sizeof(*p));
 	memset(&t_width, 0, sizeof(&t_width));
 	p->mode =  FD_OUT_MODE_PULSE;
-	p->rep = -1; /* infinite */
+	p->rep = -1; /* 1 pulse */
 
 	/* Default settings are for 10Hz, 1us width */
 	p->loop.coarse = COARSE_PER_SEC / 10;
@@ -347,14 +347,14 @@ int main(int argc, char **argv)
 	p.end = ts_add(p.start, t_width);
 
 	/* In delay mode, default is one pulse only; recover if wrong */
-	if (p.mode == FD_OUT_MODE_PULSE && p.rep <= 0)
+	if (p.mode == FD_OUT_MODE_DELAY && p.rep <= 0)
 		p.rep = 1;
 
 	/* Done. Report verbosely and activate the information we parsed */
 	channel = FDELAY_OUTPUT_USER_TO_HW(channel);
 	if (verbose) {
-		tools_report_action(channel, &p, TOOLS_UMODE_USER);
-		tools_report_action(channel, &p, TOOLS_UMODE_RAW);
+		report_output_config(channel, &p, TOOLS_UMODE_USER);
+//		tools_report_action(channel, &p, TOOLS_UMODE_RAW);
 	}
 	if (fdelay_config_pulse(b, channel, &p) < 0) {
 		fprintf(stderr, "%s: fdelay_config_pulse(): %s\n",

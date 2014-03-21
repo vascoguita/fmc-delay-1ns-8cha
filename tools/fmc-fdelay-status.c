@@ -12,7 +12,8 @@ void help(char *name)
 {
 
 	fprintf(stderr, "fmc-fdelay-status: reports channel programming\n");
-	fprintf(stderr, "Use: \"%s [-i <index>] [-d <dev>]\"\n", name);
+	fprintf(stderr, "Use: \"%s [-i <index>] [-d <dev>] [-r]\"\n", name);
+	fprintf(stderr, "-r: display raw device configuration");
 	exit(1);
 }
 
@@ -68,10 +69,10 @@ int main(int argc, char **argv)
 				argv[0], ch, strerror(errno));
 		}
 		/* pass hw number again, as the function is low-level */
-		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
+		report_output_config(FDELAY_OUTPUT_USER_TO_HW(ch),
 				    &p, TOOLS_UMODE_USER);
-		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
-				    &p, TOOLS_UMODE_RAW);
+//		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
+//				    &p, TOOLS_UMODE_RAW);
 	}
 	fdelay_close(b);
 	fdelay_exit();

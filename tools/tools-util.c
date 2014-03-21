@@ -54,10 +54,10 @@ void tools_report_time(char *name, struct fdelay_time *t, int umode)
 		t->coarse * 8000ULL +
 		t->frac * 8000ULL / 4096ULL;
 
-	printf("  %s  ", name);
+	printf("%s ", name);
 	switch(umode) {
 	case TOOLS_UMODE_USER:
-		printf ("time %10llu:%03llu,%03llu,%03llu,%03llu ps\n",
+		printf ("%10llu:%03llu,%03llu,%03llu,%03llu ps\n",
 			(long long)(t->utc),
 			(picoseconds / (1000LL * 1000 * 1000)),
 			(picoseconds / (1000LL * 1000) % 1000),
@@ -65,34 +65,95 @@ void tools_report_time(char *name, struct fdelay_time *t, int umode)
 			(picoseconds % 1000LL));
 		break;
 	case TOOLS_UMODE_FLOAT:
-		printf ("time %10llu.%012llu\n", (long long)(t->utc),
+		printf ("float %10llu.%012llu\n", (long long)(t->utc),
 			picoseconds);
 		break;
 	case TOOLS_UMODE_RAW:
-		printf(" raw   utc %10lli,  coarse %9li,  frac %9li\n",
+		printf("raw   utc %10lli,  coarse %9li,  frac %9li\n",
 		       (long long)t->utc, (long)t->coarse, (long)t->frac);
 		break;
 	}
 }
 
-void tools_report_action(int channel, struct fdelay_pulse *p, int umode)
+static struct fdelay_time fd_ts_sub(struct fdelay_time a, struct fdelay_time b)
 {
-	char *mode;
-	char s[80];
+	struct fdelay_time rv;
+	int f, c = 0;
+	int64_t u = 0;
 
-	if (p->mode == FD_OUT_MODE_DISABLED) mode = "disable";
-	else if  (p->mode == FD_OUT_MODE_PULSE) mode = "pulse";
-	else if (p->mode == FD_OUT_MODE_DELAY) mode = "delay";
-	else if (p->mode == 0x80) mode = "already-triggered";
-	else {
-		sprintf(s, "%i (0x%04x)", p->mode, p->mode);
-		mode = s;
+	f = a.frac - b.frac;
+	if(f < 0)
+	{
+	    f += 4096;
+	    c--;
 	}
 
-	printf("Channel %i, mode %s, repeat %i %s\n",
-	       FDELAY_OUTPUT_HW_TO_USER(channel), mode,
-	       p->rep, p->rep == -1 ? "(infinite)" : "");
-	tools_report_time("start", &p->start, umode);
-	tools_report_time("end  ", &p->end, umode);
-	tools_report_time("loop ", &p->loop, umode);
+	c += a.coarse - b.coarse;
+	if(c < 0)
+	{
+	    c += 125 * 1000 * 1000;
+	    u--;
+	}
+
+	u += a.utc - b.utc;
+	rv.utc = u;
+	rv.coarse = c;
+	rv.frac = f;
+	return rv;
+}
+
+
+static void report_output_config_human(int channel, struct fdelay_pulse *p)
+{
+	struct fdelay_time width;
+
+	printf("Channel %i: ", FDELAY_OUTPUT_HW_TO_USER(channel));
+
+	int m = p->mode & 0x7f;
+	
+	switch(m)
+	{
+		case FD_OUT_MODE_DISABLED:
+			printf("disabled\n");
+			return;
+		case FD_OUT_MODE_PULSE:
+			printf("pulse generator mode");
+			break;
+		case FD_OUT_MODE_DELAY:
+			printf("delay mode");
+			break;
+		default:
+			printf("unknown mode\n");
+			return;
+	} 
+
+	if(p->mode & 0x80) 
+		printf("(triggered) ");
+
+	tools_report_time(m == FD_OUT_MODE_DELAY ? "\n  delay:           " : "\n  start at:        ", 
+			  &p->start, TOOLS_UMODE_USER);
+
+	width = fd_ts_sub(p->end, p->start);
+	tools_report_time("  pulse width:     ", &width, TOOLS_UMODE_USER);
+
+	if(p->rep != 1)
+	{
+    		printf("  repeat:                    ");
+		if(p->rep == -1)
+			printf("infinite\n");
+		else
+			printf("%d times\n", p->rep);
+	    	tools_report_time("  period:          ", &p->loop, TOOLS_UMODE_USER);
+	}
+}
+
+void report_output_config(int channel, struct fdelay_pulse *p, int umode)
+{
+    switch(umode)
+    {
+	case TOOLS_UMODE_USER: 
+		report_output_config_human(channel, p);
+	default: 
+	    break;
+    }
 }

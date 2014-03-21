@@ -11,6 +11,6 @@ extern int  tools_need_help(int argc, char **argv);
 #define TOOLS_UMODE_FLOAT   2
 
 extern void tools_report_time(char *name, struct fdelay_time *t, int umode);
-extern void tools_report_action(int channel, struct fdelay_pulse *p, int umode);
+extern void report_output_config(int channel, struct fdelay_pulse *p, int umode);
 
 extern void help(char *name); /* This is mandatory in all tools */
