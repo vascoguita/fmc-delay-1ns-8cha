@@ -154,10 +154,18 @@ static int fd_zio_info_output(struct device *dev, struct zio_attribute *zattr,
 		*usr_val = fd->ch_user_offset[ch];
 		return 0;
 	}
-	/* Reading the mode tells wether it triggered or not */
+	/* Reading the mode tells the current mode and whether it triggered or not */
 	if (zattr->id == FD_ATTR_OUT_MODE) {
-		int t = fd_ch_readl(fd, ch, FD_REG_DCR) & FD_DCR_PG_TRIG;
-		*usr_val = t ? 0x80 : 0; /* low bits will return mode */
+		uint32_t dcr = fd_ch_readl(fd, ch, FD_REG_DCR);
+		if(! (dcr & FD_DCR_ENABLE))
+		    *usr_val = FD_OUT_MODE_DISABLED;
+		else if(dcr & FD_DCR_MODE)
+		    *usr_val = FD_OUT_MODE_PULSE;
+		else
+		    *usr_val = FD_OUT_MODE_DELAY;
+
+		if(dcr & FD_DCR_PG_TRIG)
+			*usr_val |= 0x80;
 		return 0;
 	}
 
