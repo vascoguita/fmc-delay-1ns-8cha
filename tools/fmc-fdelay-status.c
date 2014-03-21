@@ -69,6 +69,8 @@ int main(int argc, char **argv)
 		}
 		/* pass hw number again, as the function is low-level */
 		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
+				    &p, TOOLS_UMODE_USER);
+		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
 				    &p, TOOLS_UMODE_RAW);
 	}
 	fdelay_close(b);

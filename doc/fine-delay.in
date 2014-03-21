@@ -1078,7 +1078,7 @@ options:
 @item -o <output>
 
 	Output channels are numbered 1 to 4, as written on the device panel.
-        Each command incocation can set only one output channel; the
+        Each command invocation can set only one output channel; the
         last @t{-o} specified takes precedence.
 
 @item -c <count>
@@ -1095,7 +1095,7 @@ options:
         a fraction of a second, specified as For pulse mode,
         the program adds the current board time in seconds. Please note that
         for pulse mode the second is relative, but the fraction is absolute.
-        So ``@t{-r 1.5}'' will activate aoutput at the middle of the
+        So ``@t{-r 1.5}'' will activate output at the middle of the
         next second, according to board time.  For @i{delay} mode, the
         time is a relative delay.
 
@@ -1163,29 +1163,31 @@ This is, for example, how verbose operation reports the request for a single pul
 @node fmc-fdelay-status
 @section fmc-fdelay-status
 
-The program reports the current output status of the forur channels.
-It receives no arguments besides the usual @t{-i} or @t{-d}. This
-is an example of its current output:
+The program reports the current output status of the four channels,
+both in human-readable and raw format.  The receives no arguments
+besides the usual @t{-i} or @t{-d}.
+
+Please note that the tool reads back hardware values, which are already
+fixed for calibration delays.  For example, this is the output
+I get after the previously-shown activation command, that was for
+13729 + 2 microseconds:
 
 @smallexample
-spusa.root# ./tools/fmc-fdelay-status
+  spusa.root# ./tools/fmc-fdelay-status
   Channel 1, mode already-triggered, repeat 1
-     start   utc       1470,  coarse 124999995,  frac       929
-     end     utc       1471,  coarse   1249995,  frac       929
-     loop    utc          1,  coarse         0,  frac         0
-  Channel 2, mode already-triggered, repeat 1
-     start   utc       1507,  coarse 124999995,  frac       945
-     end     utc       1508,  coarse         1,  frac       945
-     loop    utc          0,  coarse        12,  frac      2048
-  Channel 3, mode already-triggered, repeat 1
-     start   utc       3647,  coarse   6362495,  frac       949
-     end     utc       3647,  coarse    124995,  frac       949
-     loop    utc          0,  coarse    750000,  frac         0
-  Channel 4, mode disable, repeat 1
-     start   utc          0,  coarse         0,  frac         0
-     end     utc          0,  coarse         0,  frac         0
-     loop    utc          0,  coarse         0,  frac         0
+    start  time      13729:000,001,961,814 ps
+    end    time      13729:000,002,261,814 ps
+    loop   time          0:100,000,000,000 ps
+  Channel 1, mode already-triggered, repeat 1
+    start   raw   utc      13729,  coarse       245,  frac       929
+    end     raw   utc      13729,  coarse       282,  frac      2977
+    loop    raw   utc          0,  coarse  12500000,  frac         0
+  [...]
 @end smallexample
+
+The difference in value depends on the @t{delay-offset} value for
+the channel, according to calibration.
+
 
 @c ##########################################################################
 @node Troubleshooting
