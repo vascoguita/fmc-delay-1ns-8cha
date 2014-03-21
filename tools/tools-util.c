@@ -50,8 +50,29 @@ int tools_need_help(int argc, char **argv)
 
 void tools_report_time(char *name, struct fdelay_time *t, int umode)
 {
-	printf("   %s   utc %10lli,  coarse %9li,  frac %9li\n",
-	       name, (long long)t->utc, (long)t->coarse, (long)t->frac);
+	unsigned long long picoseconds =
+		t->coarse * 8000ULL +
+		t->frac * 8000ULL / 4096ULL;
+
+	printf("  %s  ", name);
+	switch(umode) {
+	case TOOLS_UMODE_USER:
+		printf ("time %10llu:%03llu,%03llu,%03llu,%03llu ps\n",
+			(long long)(t->utc),
+			(picoseconds / (1000LL * 1000 * 1000)),
+			(picoseconds / (1000LL * 1000) % 1000),
+			(picoseconds / (1000LL) % 1000),
+			(picoseconds % 1000LL));
+		break;
+	case TOOLS_UMODE_FLOAT:
+		printf ("time %10llu.%012llu\n", (long long)(t->utc),
+			picoseconds);
+		break;
+	case TOOLS_UMODE_RAW:
+		printf(" raw   utc %10lli,  coarse %9li,  frac %9li\n",
+		       (long long)t->utc, (long)t->coarse, (long)t->frac);
+		break;
+	}
 }
 
 void tools_report_action(int channel, struct fdelay_pulse *p, int umode)

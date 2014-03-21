@@ -23,26 +23,13 @@ void help(char *name)
 	exit(1);
 }
 
-void dump_input(struct fdelay_time *t, int np, int israw)
+void dump_input(struct fdelay_time *t, int np, int umode)
 {
 	int i;
 
 	for (i = 0; i < np; i++, t++) {
-		uint64_t picoseconds =
-			(uint64_t) t->coarse * 8000ULL +
-			(uint64_t) t->frac * 8000ULL / 4096ULL;
-
 		printf("seq %5i: ", t->seq_id);
-		if (israw)
-			printf("timestamps %016llx %08x %08x\n",
-			       (long long)(t->utc), t->coarse, t->frac);
-		else
-			printf ("time %10llu:%03llu,%03llu,%03llu,%03llu ps\n",
-				(long long)(t->utc),
-				picoseconds / 1000000000ULL,
-				(picoseconds / 1000000ULL) % 1000ULL,
-				(picoseconds / 1000ULL) % 1000ULL,
-				picoseconds % 1000ULL);
+		tools_report_time("", t, umode);
 	}
 }
 
@@ -54,7 +41,8 @@ int main(int argc, char **argv)
 	struct fdelay_board *b;
 	int nboards;
 	int opt, index = -1, dev = -1;
-	int nonblock = 0, raw = 0, count = 0;
+	int nonblock = 0, count = 0;
+	int umode = TOOLS_UMODE_USER;
 
 
 	/* Standard part of the file (repeated code) */
@@ -113,11 +101,11 @@ int main(int argc, char **argv)
 			break;
 
 		case 'r':
-			raw = 1;
+			umode = TOOLS_UMODE_RAW;
 			break;
 
 		case 'f':
-			raw = 0;
+			umode = TOOLS_UMODE_FLOAT;
 			break;
 		}
 	}
@@ -153,7 +141,7 @@ int main(int argc, char **argv)
 		if (!ret)
 			continue;
 
-		dump_input(pdata, ret, raw);
+		dump_input(pdata, ret, umode);
 
 		if (nonblock) /* non blocking: nothing more to do */
 			break;

@@ -1033,17 +1033,34 @@ It receives the following options:
 
 	Nonblocking mode: just print what is pending in the buffer.
 
-@item -r
-
-	Raw output: printf the hex timestamps.
-
 @item -f
 
-	Floading point (human-readable).
-        This is the default, but the option overrides a
-        previous ``-r'' if any was there.
+	Floating point: print as a floatingpoint seconds.pico value.
+        The default is a human-readable string, where the decimal part
+        is split.
+
+@item -r
+
+	Raw output: print the three hardware timestamps, in decimal.
 
 @end table
+
+This an example output, reading a pps signal through a 16ns cable:
+
+@smallexample
+   spusa.root# ./tools/fmc-fdelay-input -c 3
+   seq 10921:     time      11984:000,000,015,328 ps
+   seq 10922:     time      11985:000,000,015,410 ps
+   seq 10923:     time      11986:000,000,015,248 ps
+   spusa.root# ./tools/fmc-fdelay-input -c 3 -r
+   seq 10924:      raw   utc      11987,  coarse         1,  frac      3773
+   seq 10925:      raw   utc      11988,  coarse         1,  frac      3814
+   seq 10926:      raw   utc      11989,  coarse         1,  frac      3794
+   spusa.root# ./tools/fmc-fdelay-input -c 3 -f
+   seq 10927:     time      11990.000000015328
+   seq 10928:     time      11991.000000015410
+   seq 10929:     time      11992.000000015410
+@end smallexample
 
 In a future release we'll support reading concurrently from several
 boards.
