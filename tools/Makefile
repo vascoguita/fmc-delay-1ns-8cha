@@ -11,6 +11,7 @@ hostprogs-y += fmc-fdelay-term
 hostprogs-y += fmc-fdelay-board-time
 hostprogs-y += fmc-fdelay-input
 hostprogs-y += fmc-fdelay-pulse
+hostprogs-y += fmc-fdelay-status
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(hostprogs-y)

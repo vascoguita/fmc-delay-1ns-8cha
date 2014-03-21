@@ -1125,6 +1125,34 @@ options:
 
 @end table
 
+@c ==========================================================================
+@node fmc-fdelay-status
+@section fmc-fdelay-status
+
+The program reports the current output status of the forur channels.
+It receives no arguments besides the usual @t{-i} or @t{-d}. This
+is an example of its current output:
+
+@smallexample
+spusa.root# ./tools/fmc-fdelay-status
+  Channel 1, mode already-triggered, repeat 1
+     start   utc       1470,  coarse 124999995,  frac       929
+     end     utc       1471,  coarse   1249995,  frac       929
+     loop    utc          1,  coarse         0,  frac         0
+  Channel 2, mode already-triggered, repeat 1
+     start   utc       1507,  coarse 124999995,  frac       945
+     end     utc       1508,  coarse         1,  frac       945
+     loop    utc          0,  coarse        12,  frac      2048
+  Channel 3, mode already-triggered, repeat 1
+     start   utc       3647,  coarse   6362495,  frac       949
+     end     utc       3647,  coarse    124995,  frac       949
+     loop    utc          0,  coarse    750000,  frac         0
+  Channel 4, mode disable, repeat 1
+     start   utc          0,  coarse         0,  frac         0
+     end     utc          0,  coarse         0,  frac         0
+     loop    utc          0,  coarse         0,  frac         0
+@end smallexample
+
 @c ##########################################################################
 @node Troubleshooting
 @appendix Troubleshooting

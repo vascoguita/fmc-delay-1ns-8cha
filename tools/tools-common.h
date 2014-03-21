@@ -52,11 +52,16 @@ static inline void report_time(char *name, struct fdelay_time *t)
 static inline void tools_report_action(int channel, struct fdelay_pulse *p)
 {
 	char *mode;
+	char s[80];
 
 	if (p->mode == FD_OUT_MODE_DISABLED) mode = "disable";
 	else if  (p->mode == FD_OUT_MODE_PULSE) mode = "pulse";
 	else if (p->mode == FD_OUT_MODE_DELAY) mode = "delay";
-	else mode="--wrong-mode--";
+	else if (p->mode == 0x80) mode = "already-triggered";
+	else {
+		sprintf(s, "%i (0x%04x)", p->mode, p->mode);
+		mode = s;
+	}
 
 	printf("Channel %i, mode %s, repeat %i %s\n",
 	       FDELAY_OUTPUT_HW_TO_USER(channel), mode,
