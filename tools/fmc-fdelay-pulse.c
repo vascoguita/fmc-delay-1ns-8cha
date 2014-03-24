@@ -20,7 +20,7 @@ void help(char *name)
 		"   -o <output>     ouput channel: 1..4 (default 1)\n"
 		"   -c <count>      default is 0 and means forever\n"
 		"   -m <mode>       \"pulse\" (default), \"delay\", \"disable\"\n"
-		"   -r <reltime>    relative time\n"
+		"   -r <reltime>    relative time,  e.g. \"10m+20u\" -- use m,u,n,p and add/sub\n"
 		"   -D <date>       absolute time, <secs>:<nano>\n"
 		"   -T <period>     period, e.g. \"50m-20n\" -- use m,u,n,p and add/sub\n"
 		"   -w <width>      like period; defaults to 50%% period\n"
@@ -179,8 +179,17 @@ void parse_reltime(struct fdelay_pulse *p, char *s)
 
 void parse_abstime(struct fdelay_pulse *p, char *s)
 {
-	memset(&p->start, 0, sizeof(p->start));
-	parse_time(s, &p->start);
+	unsigned long long utc;
+	unsigned long nanos;
+	char c;
+
+	if (sscanf(s, "%llu:%lu%c", &utc, &nanos, &c) != 2) {
+		fprintf(stderr, "Wrong <sec>:<nano> string \"%s\"\n", s);
+		exit(1);
+	}
+	p->start.utc = utc;
+	p->start.coarse = nanos / 8;
+	p->start.frac = (nanos % 8) * 512;
 }
 
 void parse_period(struct fdelay_pulse *p, char *s)
