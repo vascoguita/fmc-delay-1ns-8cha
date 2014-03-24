@@ -634,14 +634,21 @@ to access library internals from a user file just define
 
 @item The driver header is called @code{fine-delay.h} while the user one
 is @code{fdelay-lib.h}. The latter includes the former, which user
-programs should not refer to.  Both are different from the original
-implementation (@code{fdelay_lib.h}) to avoid trying to compile older
-code with new headers.
+programs should not refer to.
+
+@item The @i{tools} directory hosts the suggested command-line tools
+to use the device for testing and quick access. They demonstrate use
+of the library functions using internally-consistent command line
+conventions. All command names begin with @t{fmc-fdelay-}
 
 @item The @i{oldtools} directory includes tools that access @sc{zio}
-directly. Their name begins with @code{fd-raw-} (but there is a
-non-fine-delay tool to generate pulses on the parallel port, which has
-a different name pattern).
+directly; they are not built by default any more because they are now
+deprecated; we also removed documentation for them, for the same
+reason.  We keep them for our previous users, in case they still want
+to run previous scripts the saved in the past. The directory
+also includes tools that used to be built withing @t{lib/} and
+are deprecated as well. The old tools use
+the name patterns @code{fd-raw-} and @code{fdelay-}
 
 @item The @i{lib} directory contains the userspace library, providing a
 simple C API to access the driver.
@@ -818,7 +825,8 @@ The library offers the following functions that deal with the input stamps:
 
 @end table
 
-Example code: @code{fmc-fdelay-read} tool.
+The test programs for the functions are in @i{oldtools/}, not built by
+default.
 
 @c ==========================================================================
 @node Output Configuration
@@ -902,10 +910,284 @@ Example code: @code{fmc-fdelay-pulse} tool.
 @end table
 
 @c ##########################################################################
-@node Command line tools
-@chapter Command line tools
+@node Command Line Tools
+@chapter Command Line Tools
 
-This chapter describes the command line tools that come with the driver and reside in the @code{tools/} subdirectory. They are provided as diagnostic utilities and to demonstrate how to use the library.
+This chapter describes the command line tools that come with the
+driver and reside in the @code{tools/} subdirectory. They are provided
+as diagnostic utilities and to demonstrate how to use the library.
+
+@c ==========================================================================
+@node General Command Line Conventions
+@section General Command Line Conventions
+
+Most tools accept the following command-line options, in a
+consistent way:
+
+@table @code
+
+@item -d <devid>
+@itemx -i <index>
+
+	Used to select one board among several. See the description 
+        of @i{fdelay_open} in @ref{Initialization and Cleanup}. If no
+        argument is given, the ``first'' board is used (index is 0).
+
+@end table
+
+@c ==========================================================================
+@node fmc-fdelay-list
+@section fmc-fdelay-list
+
+The command takes no arguments. It reports the list of available
+boards in the current system:
+
+@smallexample
+   spusa# ./tools/fmc-fdelay-list
+   ./tools/fmc-fdelay-list: found 1 board
+     dev_id 0200, /dev/zio/zio-fd-0200, /sys/bus/zio/devices/zio-fd-0200
+@end smallexample
+
+@c ==========================================================================
+@node fmc-fdelay-term
+@section fmc-fdelay-term
+
+The command can be used to activate or deactivate the 50 ohm
+termination resistor.
+
+In addition to the @t{-i} or @t{-d}
+arguments, mandatory if more than one board is found on the
+host system, the command receives one optional argument, either
+@t{1} or @t{on} (activate termination) or @t{0} or @t{off}
+(deactivate termination).
+
+@smallexample
+   spusa# ./tools/fmc-fdelay-term on
+   ./tools/fmc-fdelay-term: termination is on
+@end smallexample
+
+If no arguments are passed the termination status is reported back but
+not changed.
+
+@c ==========================================================================
+@node fmc-fdelay-board-time
+@section fmc-fdelay-board-time
+
+The command is used to act on the time notion of the @sc{fine-delay} card.
+
+In addition to the @t{-i} or @t{-d}
+arguments, mandatory if more than one board is found on the
+host system, the command receives one mandatory argument, that is
+either a command or a floating point number. The number is the
+time, in seconds, to be set in the card; the command is one of
+the following ones:
+
+@table @code
+@item get
+
+	Read board time and print to @i{stdout}.
+
+@item host
+
+	Set board time from host time
+
+@item wr
+
+	Lock the boards to White Rabbit time. It may block if no White
+	Rabbit is there. No timeout is currently available.
+
+@item local
+
+	Detach the board from White Rabbit, and run local time instead.
+
+@end table
+
+Examples:
+@smallexample
+   spusa# ./lib/fdelay-board-time  25.5; ./lib/fdelay-board-time get
+   25.504007360
+   spusa# ./lib/fdelay-board-time  get
+   34.111048968
+   spusa# ./lib/fdelay-board-time  host
+   spusa# ./lib/fdelay-board-time  get
+   1335974946.493415600
+@end smallexample
+
+@c ==========================================================================
+@node fmc-fdelay-input
+@section fmc-fdelay-input
+
+The tool reports input pulses to stdout.  It receives the
+usual @t{-i} or @t{-d} arguments to select one board, mandatory
+if more than one @sc{fine-delay} card is found.
+
+It receives the following options:
+
+@table @code
+
+@item -c <count>
+
+	Number of pulses to print. Default (0) means run forever.
+
+@item -n
+
+	Nonblocking mode: just print what is pending in the buffer.
+
+@item -f
+
+	Floating point: print as a floatingpoint seconds.pico value.
+        The default is a human-readable string, where the decimal part
+        is split.
+
+@item -r
+
+	Raw output: print the three hardware timestamps, in decimal.
+
+@end table
+
+This an example output, reading a pps signal through a 16ns cable:
+
+@smallexample
+   spusa.root# ./tools/fmc-fdelay-input -c 3
+   seq 10921:     time      11984:000,000,015,328 ps
+   seq 10922:     time      11985:000,000,015,410 ps
+   seq 10923:     time      11986:000,000,015,248 ps
+   spusa.root# ./tools/fmc-fdelay-input -c 3 -r
+   seq 10924:      raw   utc      11987,  coarse         1,  frac      3773
+   seq 10925:      raw   utc      11988,  coarse         1,  frac      3814
+   seq 10926:      raw   utc      11989,  coarse         1,  frac      3794
+   spusa.root# ./tools/fmc-fdelay-input -c 3 -f
+   seq 10927:     time      11990.000000015328
+   seq 10928:     time      11991.000000015410
+   seq 10929:     time      11992.000000015410
+@end smallexample
+
+In a future release we'll support reading concurrently from several
+boards.
+
+
+@c ==========================================================================
+@node fmc-fdelay-pulse
+@section fmc-fdelay-pulse
+
+The program can be used to program one of the output channels to
+output a sequence of pulses.  It can parse the following command-line
+options:
+
+@table @code
+@item -o <output>
+
+	Output channels are numbered 1 to 4, as written on the device panel.
+        Each command invocation can set only one output channel; the
+        last @t{-o} specified takes precedence.
+
+@item -c <count>
+
+	Output repeat count: 0 is the default and means forever
+
+@item -m <mode>
+
+	Output mode. Can be @t{pulse}, @t{delay} or @t{disable}.
+
+@item -r <reltime>
+
+	Output pulse at a relative time in the future. The time is
+        a fraction of a second, specified as For pulse mode,
+        the program adds the current board time in seconds. Please note that
+        for pulse mode the second is relative, but the fraction is absolute.
+        So ``@t{-r 1.5}'' will activate output at the middle of the
+        next second, according to board time.  For @i{delay} mode, the
+        time is a relative delay.
+
+@item -D <date>
+
+	Output pulse at a specified date. This is not currently
+        completed supported (no seconds are parsed, for example)
+@c tom says: only seconds:nano
+
+@c @item -f <frequency>
+@c
+@c	Frequency of the output signal. A trailing @t{k} or @t{M}
+@c        means kilohertz or megaherts. Floating point is allowed
+@c        but internal approximation is not accounted for. So
+@c        @t{2.5M} will work, but 2.000001M will probably not.
+@c        The last frequency or period specified takes precedence.
+@c        Default frequency is 10Hz.
+
+@item -T <period>
+@itemx -w <width>
+
+	Period and width of the output signal. A trailing @t{m},
+        @t{u}, @t{n}, @t{p} means milli, micro, nano, pico, resp.
+        The parser supports additions and subtractions, e.g.
+        @t{50m-20n}.
+        The period defaults to 100ms and the width defaults to 8us
+
+@item -t
+
+	Wait for the trigger to happen before returning. The boards reports
+        a trigger event when the requested pulse sequence is initiated,
+        either because the absolute time arrived or because an input
+        pulse was detected and the requested delay elapsed.
+
+@item -p
+@itemx -1
+
+	Pulse-per-seconds and 10MHz. These are shorthands setting many
+        parameters.
+
+@item -v
+
+	Verbose: report action to stdout before telling the driver.
+
+@end table
+
+This is, for example, how verbose operation reports the request for a single pulse 300ns wide, 2 microseconds into the next second.:
+
+@smallexample
+  spusa.root# ./tools/fmc-fdelay-board-time get; \
+              ./tools/fmc-fdelay-pulse -i 0 -o 1 -m pulse -r 2u -w 300n -c 1 -t -v
+  WR Status: disabled.
+  Time: 13728.801090400
+  Channel 1, mode pulse, repeat 1
+    start  time      13729:000,002,000,000 ps
+    end    time      13729:000,002,300,000 ps
+    loop   time          0:100,000,000,000 ps
+  Channel 1, mode pulse, repeat 1
+    start   raw   utc      13729,  coarse       250,  frac         0
+    end     raw   utc      13729,  coarse       287,  frac      2048
+    loop    raw   utc          0,  coarse  12500000,  frac         0
+@end smallexample
+
+@c ==========================================================================
+@node fmc-fdelay-status
+@section fmc-fdelay-status
+
+The program reports the current output status of the four channels,
+both in human-readable and raw format.  The receives no arguments
+besides the usual @t{-i} or @t{-d}.
+
+Please note that the tool reads back hardware values, which are already
+fixed for calibration delays.  For example, this is the output
+I get after the previously-shown activation command, that was for
+13729 + 2 microseconds:
+
+@smallexample
+  spusa.root# ./tools/fmc-fdelay-status
+  Channel 1, mode already-triggered, repeat 1
+    start  time      13729:000,001,961,814 ps
+    end    time      13729:000,002,261,814 ps
+    loop   time          0:100,000,000,000 ps
+  Channel 1, mode already-triggered, repeat 1
+    start   raw   utc      13729,  coarse       245,  frac       929
+    end     raw   utc      13729,  coarse       282,  frac      2977
+    loop    raw   utc          0,  coarse  12500000,  frac         0
+  [...]
+@end smallexample
+
+The difference in value depends on the @t{delay-offset} value for
+the channel, according to calibration.
+
 
 @c ##########################################################################
 @node Troubleshooting

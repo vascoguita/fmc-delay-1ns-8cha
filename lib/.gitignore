@@ -1,10 +1,2 @@
 *.a
 .depend
-fdelay-list
-fdelay-board-time
-fdelay-term
-fdelay-read
-fdelay-fread
-fdelay-pulse
-fdelay-open-by-lun
-fdelay-pulse-tom

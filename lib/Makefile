@@ -6,25 +6,12 @@ LOBJ += fdelay-time.o
 LOBJ += fdelay-tdc.o
 LOBJ += fdelay-output.o
 
-CFLAGS = -Wall -ggdb -O2 -I../kernel -I../zio/include
+CFLAGS = -Wall -ggdb -O2 -I../kernel -I$(ZIO)/include
 LDFLAGS = -L. -lfdelay
 
-DEMOSRC := fdelay-list.c
-DEMOSRC += fdelay-board-time.c
-DEMOSRC += fdelay-term.c
-DEMOSRC += fdelay-read.c
-DEMOSRC += fdelay-fread.c
-DEMOSRC += fdelay-pulse.c
-DEMOSRC += fdelay-open-by-lun.c
-DEMOSRC += fdelay-pulse-tom.c
-
-DEMOS := $(DEMOSRC:.c=)
-
-modules all: lib demos
+modules all: lib
 
 lib: $(LIB)
-
-demos: $(DEMOS)
 
 %: %.c $(LIB)
 	$(CC) $(CFLAGS) $*.c $(LDFLAGS) -o $@

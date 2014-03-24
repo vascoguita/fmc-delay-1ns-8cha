@@ -1,12 +1,15 @@
+FMC_BUS := $(shell scripts/check-submodule fmc-bus $(FMC_BUS))
+ZIO 		:= $(shell scripts/check-submodule zio $(ZIO))
+SPEC_SW := $(shell scripts/check-submodule spec-sw $(SPEC_SW))
 
-.PHONY: all clean modules install modules_install
+.PHONY: all clean modules install modules_install default
 .PHONY: gitmodules prereq prereq_install prereq_install_warn
 
-DIRS = kernel tools lib
+DIRS = kernel lib tools
 
-all clean modules install modules_install: gitmodules
+all clean modules install modules_install: 
 	@if echo $@ | grep -q install; then $(MAKE) prereq_install_warn; fi
-	for d in $(DIRS); do $(MAKE) -C $$d $@ || exit 1; done
+	for d in $(DIRS); do $(MAKE) ZIO=$(ZIO) FMC_BUS=$(FMC_BUS) -C $$d $@ || exit 1; done
 
 all modules: prereq
 
@@ -15,15 +18,8 @@ CONFIG_WR_NIC=n
 export CONFIG_WR_NIC
 
 #### The following targets are used to manage prerequisite repositories
-gitmodules:
-	@test -d fmc-bus/doc || echo "Checking out submodules"
-	@test -d fmc-bus/doc || git submodule update --init
-	@git submodule update
 
 # The user can override, using environment variables, all these three:
-FMC_BUS ?= fmc-bus
-ZIO ?= zio
-SPEC_SW ?= spec-sw
 SUBMOD = $(FMC_BUS) $(ZIO) $(SPEC_SW)
 
 prereq:
@@ -36,3 +32,5 @@ prereq_install_warn:
 prereq_install:
 	for d in $(SUBMOD); do $(MAKE) -C $$d modules_install || exit 1; done
 	touch .prereq_installed
+
+include scripts/gateware.mk

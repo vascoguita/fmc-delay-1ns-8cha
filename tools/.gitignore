@@ -1,6 +1,7 @@
-fd-raw-input
-parport-burst
-fd-raw-gettime
-fd-raw-settime
-fd-raw-output
-fd-raw-perf
+fmc-fdelay-list
+fmc-fdelay-term
+fmc-fdelay-board-time
+fmc-fdelay-input
+fmc-fdelay-pulse
+fmc-fdelay-status
+

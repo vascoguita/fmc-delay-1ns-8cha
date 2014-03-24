@@ -122,17 +122,20 @@ void fdelay_exit(void)
 }
 
 /* Open one specific device. -1 arguments mean "not installed" */
-struct fdelay_board *fdelay_open(int offset, int dev_id)
+struct fdelay_board *fdelay_open(int index, int dev_id)
 {
 	struct __fdelay_board *b = NULL;
 	int i;
 
-	if (offset >= fd_nboards) {
+	if (fdelay_is_verbose())
+		fprintf(stderr, "called: %s(index %i, dev_id 0x%x);\n",
+			__func__, index, dev_id);
+	if (index >= fd_nboards) {
 		errno = ENODEV;
 		return NULL;
 	}
-	if (offset >= 0) {
-		b = fd_boards + offset;
+	if (index >= 0) {
+		b = fd_boards + index;
 		if (dev_id >= 0 && dev_id != b->dev_id) {
 			errno = EINVAL;
 			return NULL;
@@ -166,6 +169,8 @@ struct fdelay_board *fdelay_open_by_lun(int lun)
 	char path[sizeof(path_pattern) + 1];
 	int dev_id;
 
+	if (fdelay_is_verbose())
+		fprintf(stderr, "called: %s(lun %i);\n", __func__, lun);
 	ret = snprintf(path, sizeof(path), path_pattern, lun);
 	if (ret < 0 || ret >= sizeof(path)) {
 		errno = EINVAL;
@@ -184,6 +189,9 @@ int fdelay_close(struct fdelay_board *userb)
 	__define_board(b, userb);
 	int j;
 
+	if (fdelay_is_verbose())
+		fprintf(stderr, "called: %s(index %i, dev_id 0x%x);\n",
+			__func__, b - fd_boards, b->dev_id);
 	for (j = 0; j < ARRAY_SIZE(b->fdc); j++) {
 		if (b->fdc[j] >= 0)
 			close(b->fdc[j]);

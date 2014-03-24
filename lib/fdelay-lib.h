@@ -26,7 +26,8 @@ extern "C" {
    numbers (as seen on the mezzanine's front panel) to convention used
    by the drive (0..3). We keep 0..3 indexing to maintain library
    compatibility. */
-#define FDELAY_OUTPUT(out) ((out) + 1)
+#define FDELAY_OUTPUT_HW_TO_USER(out) ((out) + 1)
+#define FDELAY_OUTPUT_USER_TO_HW(out) ((out) - 1)
 
 /* Opaque data type used as token */
 struct fdelay_board;
