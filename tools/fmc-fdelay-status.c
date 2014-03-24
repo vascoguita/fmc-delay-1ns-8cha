@@ -13,7 +13,7 @@ void help(char *name)
 
 	fprintf(stderr, "fmc-fdelay-status: reports channel programming\n");
 	fprintf(stderr, "Use: \"%s [-i <index>] [-d <dev>] [-r]\"\n", name);
-	fprintf(stderr, "-r: display raw device configuration");
+	fprintf(stderr, "   -r: display raw hardware configuration");
 	exit(1);
 }
 
@@ -21,8 +21,7 @@ int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
 	struct fdelay_pulse p;
-	int nboards, ch, index = -1, dev = -1;
-
+	int nboards, ch, index = -1, dev = -1, raw = 0, opt;
 
 	/* Standard part of the file (repeated code) */
 	if (tools_need_help(argc, argv))
@@ -42,18 +41,40 @@ int main(int argc, char **argv)
 	if (nboards == 1)
 		index = 0; /* so it works with no arguments */
 
-	tools_getopt_d_i(argc, argv, &dev, &index);
+
+	while ((opt = getopt(argc, argv, "i:d:rh")) != -1) {
+		char *rest;
+		switch (opt) {
+		case 'i':
+			index = strtol(optarg, &rest, 0);
+			if (rest && *rest) {
+				fprintf(stderr, "%s: Not a number \"%s\"\n",
+					argv[0], optarg);
+				exit(1);
+			}
+			break;
+		case 'd':
+			dev = strtol(optarg, &rest, 0);
+			if (rest && *rest) {
+			fprintf(stderr, "%s: Not a number \"%s\"\n",
+					argv[0], optarg);
+				exit(1);
+			}
+			break;
+		case 'r':
+			raw = 1;
+			break;
+		case 'h':
+			help(argv[0]);
+			exit(0);
+		}
+	}
 
 	if (index < 0 && dev < 0) {
 		fprintf(stderr, "%s: several boards, please pass -i or -d\n",
 			argv[0]);
 		exit(1);
 	}
-
-	/* Error if too many arguments */
-	if (optind != argc)
-		help(argv[0]);
-
 
 	b = fdelay_open(index, dev);
 	if (!b) {
@@ -70,9 +91,7 @@ int main(int argc, char **argv)
 		}
 		/* pass hw number again, as the function is low-level */
 		report_output_config(FDELAY_OUTPUT_USER_TO_HW(ch),
-				    &p, TOOLS_UMODE_USER);
-//		tools_report_action(FDELAY_OUTPUT_USER_TO_HW(ch),
-//				    &p, TOOLS_UMODE_RAW);
+				    &p, raw ? TOOLS_UMODE_RAW : TOOLS_UMODE_USER);
 	}
 	fdelay_close(b);
 	fdelay_exit();

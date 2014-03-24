@@ -99,6 +99,8 @@ static struct fdelay_time fd_ts_sub(struct fdelay_time a, struct fdelay_time b)
 	rv.utc = u;
 	rv.coarse = c;
 	rv.frac = f;
+	rv.seq_id = 0;
+	rv.channel = 0;
 	return rv;
 }
 
@@ -128,7 +130,7 @@ static void report_output_config_human(int channel, struct fdelay_pulse *p)
 	} 
 
 	if(p->mode & 0x80) 
-		printf("(triggered) ");
+		printf(" (triggered) ");
 
 	tools_report_time(m == FD_OUT_MODE_DELAY ? "\n  delay:           " : "\n  start at:        ", 
 			  &p->start, TOOLS_UMODE_USER);
@@ -138,13 +140,33 @@ static void report_output_config_human(int channel, struct fdelay_pulse *p)
 
 	if(p->rep != 1)
 	{
-    		printf("  repeat:                    ");
+		printf("  repeat:                    ");
 		if(p->rep == -1)
 			printf("infinite\n");
 		else
 			printf("%d times\n", p->rep);
-	    	tools_report_time("  period:          ", &p->loop, TOOLS_UMODE_USER);
+		tools_report_time("  period:          ", &p->loop, TOOLS_UMODE_USER);
 	}
+}
+
+void report_output_config_raw(int channel, struct fdelay_pulse *p, int umode)
+{
+	char mode[80];
+	int m = p->mode & 0x7f;
+	
+	if (m == FD_OUT_MODE_DISABLED) strcpy(mode, "disabled");
+	else if (m == FD_OUT_MODE_PULSE) strcpy(mode, "pulse");
+	else if (m == FD_OUT_MODE_DELAY) strcpy(mode, "delay");
+	else sprintf(mode, "%i (0x%04x)", p->mode, p->mode);
+
+	if (p->mode & 0x80) 
+	strcat(mode, " (triggered)");
+	printf("Channel %i, mode %s, repeat %i %s\n",
+		FDELAY_OUTPUT_HW_TO_USER(channel), mode,
+		p->rep, p->rep == -1 ? "(infinite)" : "");
+	tools_report_time("start", &p->start, umode);
+	tools_report_time("end  ", &p->end, umode);
+	tools_report_time("loop ", &p->loop, umode);
 }
 
 void report_output_config(int channel, struct fdelay_pulse *p, int umode)
@@ -153,6 +175,10 @@ void report_output_config(int channel, struct fdelay_pulse *p, int umode)
     {
 	case TOOLS_UMODE_USER: 
 		report_output_config_human(channel, p);
+		break;
+	case TOOLS_UMODE_RAW: 
+	case TOOLS_UMODE_FLOAT: 
+		report_output_config_raw(channel, p, umode);
 	default: 
 	    break;
     }
