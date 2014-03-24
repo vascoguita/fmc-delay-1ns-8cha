@@ -1521,10 +1521,15 @@ read by the actual reading process).
 
 The @i{offset} attribute
 is the stamping offset, in picoseconds, for the TDC channel.
+The hardware timestamper's time-base is shifted backwards, so the
+driver adds this offset to the raw timestamps it collects. Users should
+not change this value, that depends on how hardware and HDL is designed.
+
 The @i{user-offset} attribute, which defaults to 0 every time the
 driver is loaded, is a
 signed value that users can write to represent a number of picoseconds
-to be added (or subtracted) to the hardware-reported stamps. This is
+to be added (or subtracted, if negative)
+to the hardware-reported stamps. This is
 used to account for delays induced by cabling (range: -2ms to 2ms).
 
 The @i{flags} attribute can be used to change three configuration
@@ -1992,12 +1997,9 @@ from the user-requested delay (@i{start} fields) when generating output
 pulses. It represents internal card delays.  The value can be modified
 from @i{sysfs}.
 
-@b{Note:} the @i{delay-offset} is used for delay mode but not
-for pulse-generation mode.
-
 The @i{user-offset} attribute, which defaults to 0 at module load time, is a
 signed value that users can write to represent a number of picoseconds
-to be added (or subtracted) to every user-command (for both delay
+to be added (or subtracted) to every user command (for both delay
 and pulse generation). This is used to account for delays induced by
 cabling (range: -2ms to 2ms).  The value can be modified
 from @i{sysfs}.
