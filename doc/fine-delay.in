@@ -1092,18 +1092,15 @@ options:
 @item -r <reltime>
 
 	Output pulse at a relative time in the future. The time is
-        a fraction of a second, specified as For pulse mode,
-        the program adds the current board time in seconds. Please note that
-        for pulse mode the second is relative, but the fraction is absolute.
-        So ``@t{-r 1.5}'' will activate output at the middle of the
-        next second, according to board time.  For @i{delay} mode, the
-        time is a relative delay.
+        a fraction of a second, specified as for @t{-T} and @t{-w},
+        described below.  For delay mode the time is used as
+        a delay value from input events; for pulse mode the time
+        represents a fraction of the next absolute second.
 
 @item -D <date>
 
-	Output pulse at a specified date. This is not currently
-        completed supported (no seconds are parsed, for example)
-@c tom says: only seconds:nano
+	Output pulse at a specified date. The argument is parsed
+        as @t{<seconds>:<nanoseconds>}.
 
 @c @item -f <frequency>
 @c
