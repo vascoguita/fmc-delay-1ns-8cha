@@ -343,6 +343,12 @@ int main(int argc, char **argv)
 		if (current_board_time.coarse > COARSE_PER_SEC * 9 / 10)
 			p.start.utc++;
 	}
+
+	/* Report to user how parsing turned out to be */
+	tools_report_time("start time: ", &p.start, TOOLS_UMODE_USER);
+	tools_report_time("pulse width:", &t_width, TOOLS_UMODE_USER);
+	tools_report_time("period:     ", &p.loop, TOOLS_UMODE_USER);
+
 	/* End is start + width, in every situation */
 	p.end = ts_add(p.start, t_width);
 
