@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-04-30
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -305,7 +305,8 @@ package fine_delay_pkg is
       delay_load_done_i : in  std_logic;
       delay_idle_o      : out std_logic;
       wb_i              : in  t_wishbone_slave_in;
-      wb_o              : out t_wishbone_slave_out);
+      wb_o              : out t_wishbone_slave_out;
+      dbg_o             : out std_logic_vector(7 downto 0));
   end component;
 
   component fd_dmtd_insertion_calibrator
@@ -452,7 +453,9 @@ package fine_delay_pkg is
       outx_seconds_i       : in  std_logic_vector(40 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 40 * 4);
       outx_cycles_i        : in  std_logic_vector(28 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 28 * 4);
       outx_frac_i          : in  std_logic_vector(12 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 12 * 4);
-      outx_valid_i         : in  std_logic_vector(3 downto 0)          := x"0");
+      outx_valid_i         : in  std_logic_vector(3 downto 0)          := x"0";
+      dbg_o                : out std_logic_vector(7 downto 0));
+
   end component;
   
   function f_to_internal_time (

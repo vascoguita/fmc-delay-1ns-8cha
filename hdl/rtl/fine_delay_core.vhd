@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-11-23
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -63,7 +63,9 @@ entity fine_delay_core is
 
     -- Wishbone slave settings
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
-    g_address_granularity : t_wishbone_address_granularity := WORD
+    g_address_granularity : t_wishbone_address_granularity := WORD;
+
+    g_with_debug_output : boolean := false
     );
   port (
 
@@ -233,7 +235,9 @@ entity fine_delay_core is
     outx_seconds_i : in std_logic_vector(40 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 40 * 4);
     outx_cycles_i  : in std_logic_vector(28 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 28 * 4);
     outx_frac_i    : in std_logic_vector(12 * 4 - 1 downto 0) := f_gen_dummy_vec('0', 12 * 4);
-    outx_valid_i   : in std_logic_vector(3 downto 0)          := x"0"
+    outx_valid_i   : in std_logic_vector(3 downto 0)          := x"0";
+
+    dbg_o : out std_logic_vector(7 downto 0)
     );
 
 end fine_delay_core;
@@ -303,6 +307,7 @@ architecture rtl of fine_delay_core is
     load           : std_logic;
     load_done      : std_logic;
     tag            : t_fd_timestamp;
+    dbg            : std_logic_vector(7 downto 0);
   end record;
 
   type t_delay_channel_array is array (integer range <>) of t_delay_channel;
@@ -329,7 +334,7 @@ architecture rtl of fine_delay_core is
 
   signal owr_en_int : std_logic_vector(0 downto 0);
   signal owr_int    : std_logic_vector(0 downto 0);
-  signal dbg        : std_logic_vector(3 downto 0);
+  signal dbg_acam   : std_logic_vector(3 downto 0);
 
   signal gen_cal_pulse     : std_logic_vector(3 downto 0);
   signal cal_pulse_mask    : std_logic_vector(3 downto 0);
@@ -536,7 +541,7 @@ begin  -- rtl
 
       regs_i => regs_fromwb,
       regs_o => regs_towb_tsu,
-      dbg_o  => dbg);
+      dbg_o  => dbg_acam);
 
   rbuf_mux_ts(0).u      <= tag_utc;
   rbuf_mux_ts(0).c      <= tag_coarse;
@@ -680,7 +685,8 @@ begin  -- rtl
         delay_idle_o      => channels(i).idle,
         delay_load_done_i => channels(i).load_done,
         wb_i              => cnx_out(i+1),
-        wb_o              => cnx_in(i+1));
+        wb_o              => cnx_in(i+1),
+        dbg_o             => channels(i).dbg);
 
     chx_delay_idle(i) <= channels(i).idle;
 
@@ -813,5 +819,24 @@ begin  -- rtl
   spi_cs_gpio_n_o <= spi_cs_gpio_n;
   spi_cs_dac_n_o  <= spi_cs_dac_n;
   spi_cs_pll_n_o  <= spi_cs_pll_n;
+
+  gen_with_dbg_out : if(g_with_debug_output) generate
+    
+    process(clk_ref_0_i)
+    begin
+      if rising_edge(clk_ref_0_i) then
+        
+        dbg_o(0) <= dbg_acam(1);         -- trig_d(2)
+        dbg_o(1) <= dbg_acam(2);         -- acam tag valid
+        dbg_o(2) <= channels(0).dbg(0);  -- out0 ARB_START
+        dbg_o(3) <= channels(0).dbg(1);  -- out0 WAIT_START
+      end if;
+    end process;
+
+  end generate gen_with_dbg_out;
+
+  gen_without_dbg_out : if(not g_with_debug_output) generate
+    dbg_o <= (others => '0');
+  end generate gen_without_dbg_out;
   
 end rtl;

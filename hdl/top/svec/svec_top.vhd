@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-18
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -84,6 +84,15 @@ entity svec_top is
       fp_led_line_oen_o : out std_logic_vector(1 downto 0);
       fp_led_line_o     : out std_logic_vector(1 downto 0);
       fp_led_column_o   : out std_logic_vector(3 downto 0);
+
+      fp_gpio1_a2b_o  : out std_logic;
+      fp_gpio2_a2b_o  : out std_logic;
+      fp_gpio34_a2b_o : out std_logic;
+
+      fp_gpio1_b : out std_logic;
+      fp_gpio2_b : out std_logic;
+      fp_gpio3_b : out std_logic;
+      fp_gpio4_b : out std_logic;
 
       -------------------------------------------------------------------------
       -- VME Interface pins
@@ -471,12 +480,14 @@ architecture rtl of svec_top is
   signal powerup_rst_n     : std_logic            := '0';
   signal sys_locked        : std_logic;
 
-  signal led_state : std_logic_vector(15 downto 0);
-  signal pps_led, pps_ext   : std_logic;
+  signal led_state        : std_logic_vector(15 downto 0);
+  signal pps_led, pps_ext : std_logic;
 
-  signal led_link : std_logic;
-  signal led_act : std_logic;
+  signal led_link   : std_logic;
+  signal led_act    : std_logic;
   signal vme_access : std_logic;
+
+  signal fd0_dbg : std_logic_vector(7 downto 0);
   
 begin
 
@@ -988,7 +999,8 @@ begin
       wb_we_i    => cnx_master_out(c_SLAVE_FD0).we,
       wb_ack_o   => cnx_master_in(c_SLAVE_FD0).ack,
       wb_stall_o => cnx_master_in(c_SLAVE_FD0).stall,
-      wb_irq_o   => fd0_irq);
+      wb_irq_o   => fd0_irq,
+      dbg_o      => fd0_dbg);
 
   cnx_master_in(c_SLAVE_FD0).err <= '0';
   cnx_master_in(c_SLAVE_FD0).rty <= '0';
@@ -1126,7 +1138,7 @@ begin
       rst_n_i => local_reset_n,
       clk_i   => clk_sys,
 
-      led_intensity_i => "1100100",         -- in %
+      led_intensity_i => "1100100",     -- in %
 
       led_state_i => led_state,
 
@@ -1135,7 +1147,7 @@ begin
       line_oen_o => fp_led_line_oen_o
       );
 
-  U_Drive_VME_Access_Led: gc_extend_pulse
+  U_Drive_VME_Access_Led : gc_extend_pulse
     generic map (
       g_width => 5000000)
     port map (
@@ -1144,7 +1156,7 @@ begin
       pulse_i    => cnx_slave_in(c_MASTER_VME).cyc,
       extended_o => vme_access);
 
-  U_Drive_PPS: gc_extend_pulse
+  U_Drive_PPS : gc_extend_pulse
     generic map (
       g_width => 5000000)
     port map (
@@ -1152,7 +1164,7 @@ begin
       rst_n_i    => local_reset_n,
       pulse_i    => pps,
       extended_o => pps_ext);
-  
+
   -- Drive the front panel LEDs:
 
   -- LED 1: WR Link status
@@ -1182,13 +1194,26 @@ begin
   -- LED 6: FD1 locked to WR
   led_state(10) <= tm_clk_aux_locked(1);
   led_state(11) <= '0';
-  
+
   led_state(8) <= '0';
   led_state(9) <= '0';
-  
+
   -- The SFP is permanently enabled.
   sfp_tx_disable_o <= '0';
 
+  -- Debug signals assignments (FP lemos)
+
+  fp_gpio1_a2b_o  <= '1';
+  fp_gpio2_a2b_o  <= '1';
+  fp_gpio34_a2b_o <= '1';
+
+  fp_gpio1_b <= fd0_dbg(0);
+  fp_gpio2_b <= fd0_dbg(1);
+  fp_gpio3_b <= fd0_dbg(2);
+  fp_gpio4_b <= fd0_dbg(3);
+  
+  
+  
 end rtl;
 
 

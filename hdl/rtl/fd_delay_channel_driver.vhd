@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-06-01
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -100,7 +100,9 @@ entity fd_delay_channel_driver is
 
     -- WB Interface (pipelined, byte-aligned)
     wb_i : in  t_wishbone_slave_in;
-    wb_o : out t_wishbone_slave_out
+    wb_o : out t_wishbone_slave_out;
+
+    dbg_o : out std_logic_vector(7 downto 0)
     );
 
 end fd_delay_channel_driver;
@@ -191,68 +193,8 @@ architecture behavioral of fd_delay_channel_driver is
 
   signal regs_in  : t_fd_channel_out_registers;
   signal regs_out : t_fd_channel_in_registers;
-  component chipscope_ila
-    port (
-      CONTROL : inout std_logic_vector(35 downto 0);
-      CLK     : in    std_logic;
-      TRIG0   : in    std_logic_vector(31 downto 0);
-      TRIG1   : in    std_logic_vector(31 downto 0);
-      TRIG2   : in    std_logic_vector(31 downto 0);
-      TRIG3   : in    std_logic_vector(31 downto 0));
-  end component;
 
-  component chipscope_icon
-    port (
-      CONTROL0 : inout std_logic_vector (35 downto 0));
-  end component;
-
-  signal CONTROL : std_logic_vector(35 downto 0);
-  signal CLK     : std_logic;
-  signal TRIG0   : std_logic_vector(31 downto 0);
-  signal TRIG1   : std_logic_vector(31 downto 0);
-  signal TRIG2   : std_logic_vector(31 downto 0);
-  signal TRIG3   : std_logic_vector(31 downto 0);
 begin
-
-  gen_chipscope : if(g_index = 0) generate
-  --  chipscope_ila_1 : chipscope_ila
-  --    port map (
-  --      CONTROL => CONTROL,
-  --      CLK     => clk_ref_i,
-  --      TRIG0   => TRIG0,
-  --      TRIG1   => TRIG1,
-  --      TRIG2   => TRIG2,
-  --      TRIG3   => TRIG3);
-
-  --  chipscope_icon_1 : chipscope_icon
-  --    port map (
-  --      CONTROL0 => CONTROL);
-    TRIG0(0)  <= regs_in.dcr_mode_o;
-    TRIG0(1)  <= regs_in.dcr_enable_o;
-    TRIG0(2)  <= regs_in.dcr_update_o;
-    TRIG0(3)  <= pending_update;
-    TRIG0(4)  <= first_pulse_till_hit;
-    TRIG0(5)  <= first_pulse;
-    TRIG0(6)  <= tag_valid_i;
-    TRIG0(7)  <= mode_int;
-    TRIG0(8)  <= hit_start;
-    TRIG0(9)  <= hit_end;
-    TRIG0(10) <= mode_int;
-    TRIG0(11) <= '1' when state = IDLE             else '0';
-    TRIG0(12) <= '1' when state = WAIT_ARB_START   else '0';
-    TRIG0(14) <= '1' when state = WAIT_START_PULSE else '0';
-    TRIG0(15) <= '1' when state = WAIT_ARB_END     else '0';
-    TRIG0(16) <= '1' when state = WAIT_PULSE_END   else '0';
-    TRIG0(17) <= '1' when state = COUNT_DOWN       else '0';
-    trig0(18) <= csync_p1_i;
-    
-    TRIG1(27 downto 0) <= tag_coarse_i;
-    trig2(27 downto 0) <= tb_cntr.c;
-    trig3(27 downto 0) <= csync_coarse_i;
-    
-    
-  end generate gen_chipscope;
-
 
   U_WB_Slave : fd_channel_wb_slave
     port map (
@@ -518,16 +460,18 @@ begin
             end if;
 
           when WAIT_ARB_START =>
+            delay_load_o <= '0';
+
             if(delay_load_done_i = '1') then
-              state        <= WAIT_START_PULSE;
-              first_pulse  <= '0';
-              delay_load_o <= '0';
+              state       <= WAIT_START_PULSE;
+              first_pulse <= '0';
             end if;
 
           when WAIT_ARB_START_CP =>
+            delay_load_o <= '0';
+
             if(delay_load_done_i = '1') then
-              state        <= IDLE;
-              delay_load_o <= '0';
+              state <= IDLE;
             end if;
 
           when WAIT_START_PULSE =>
@@ -551,10 +495,10 @@ begin
           when WAIT_ARB_END =>
             delay_pulse0_o <= '1';
             delay_pulse1_o <= '1';
+            delay_load_o   <= '0';
 
             if(delay_load_done_i = '1') then
-              state        <= WAIT_PULSE_END;
-              delay_load_o <= '0';
+              state <= WAIT_PULSE_END;
             end if;
 
           when WAIT_PULSE_END =>
@@ -593,6 +537,9 @@ begin
       end if;
     end if;
   end process;
+
+  dbg_o(0) <= '1' when state = WAIT_ARB_START else '0';
+  dbg_o(1) <= '1' when state = WAIT_START_PULSE else '0';
 
   pstart_utc_o    <= pstart.u;
   pstart_coarse_o <= pstart.c;

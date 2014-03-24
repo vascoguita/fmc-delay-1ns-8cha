@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-02-21
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -70,15 +70,15 @@ entity fd_delay_line_arbiter is
 end fd_delay_line_arbiter;
 
 architecture behavioral of fd_delay_line_arbiter is
-  signal arb_sreg : std_logic_vector(4*4 - 1 downto 0);
-
+  
   type t_dly_array is array (integer range <>) of std_logic_vector(9 downto 0);
 
-  signal done_reg      : std_logic_vector(3 downto 0);
+  signal cntr : unsigned(1 downto 0);
+
   signal delay_vec     : t_dly_array(0 to 3);
   signal delay_len_reg : std_logic_vector(3 downto 0);
   signal delay_val_reg : std_logic_vector(9 downto 0);
-  signal pending_reg   : std_logic_vector(3 downto 0);
+  signal pending_req   : std_logic_vector(3 downto 0);
   
 begin  -- behavioral
 
@@ -87,47 +87,76 @@ begin  -- behavioral
   delay_vec(2) <= delay_val2_i;
   delay_vec(3) <= delay_val3_i;
 
-
-  p_arbitrate : process(clk_ref_i)
+  p_arb_counter : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
       if rst_n_i = '0' then
-        delay_len_reg <= (others => '1');
-        delay_val_reg <= (others => '0');
-        delay_len_o   <= (others => '1');
-        -- done_reg      <= (others => '0');
-        done_o        <= (others => '0');
-        arb_sreg      <= std_logic_vector(to_unsigned(1, arb_sreg'length));
-        pending_reg   <= (others => '0');
+        cntr <= (others => '0');
       else
-        arb_sreg <= arb_sreg(arb_sreg'left-1 downto 0) & arb_sreg(arb_sreg'left);
+        cntr <= cntr + 1;
+      end if;
+    end if;
+  end process;
 
+  p_req_done : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        pending_req <= (others => '0');
+        done_o      <= (others => '0');
+      else
+        
         for i in 0 to 3 loop
-
-          if(arb_sreg(4*i) = '1' and load_i(i) = '1') then
-            delay_val_reg    <= delay_vec(i);
-            pending_reg(i)   <= '1';
-            delay_len_reg(i) <= '1';
-            done_o(i)        <= '0';
-          elsif(arb_sreg(4*i+1) = '1') then
-            delay_len_reg(i) <= not pending_reg(i);
-            done_o(i)        <= '0';
-          elsif(arb_sreg(4*i+2) = '1') then
-            delay_len_reg(i) <= not pending_reg(i);
-            done_o(i)        <= '0';
-          elsif(arb_sreg(4*i+3) = '1') then
-            delay_len_reg(i) <= '1';
-            done_o(i)        <= pending_reg(i);
-            pending_reg(i)   <= '0';
+          if load_i(i) = '1' then
+            pending_req(i) <= '1';
+            done_o(i)      <= '0';
+          elsif (cntr = i) then
+            pending_req(i) <= '0';
+            done_o(i)      <= pending_req(i);
           else
             done_o(i) <= '0';
           end if;
-
-        end loop;  -- i in 0 to 3
-
-        delay_len_o <= delay_len_reg;
-        delay_val_o <= delay_val_reg;
+        end loop;
       end if;
+    end if;
+  end process;
+
+  p_drive_delays : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        delay_len_reg <= (others => '0');
+        delay_val_reg <= (others => '0');
+      else
+        delay_val_reg <= delay_vec(to_integer (cntr));
+
+        for i in 0 to 3 loop
+          if(cntr = i) then
+            delay_len_reg (i) <= not pending_req(i);
+          else
+            delay_len_reg (i) <= '1';
+          end if;
+        end loop;  -- i
+        
+      end if;
+    end if;
+  end process;
+
+
+  p_reg_outputs : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      delay_val_o <= delay_val_reg;
+    end if;
+  end process;
+
+  p_reg_len : process(clk_ref_i)
+  begin
+    -- we latch the LEN signal on the falling edge, so the L->H transition (which
+    -- latches the delay word in the '295 gets right in the middle of the data
+    -- window.
+    if falling_edge(clk_ref_i) then
+      delay_len_o <= delay_len_reg;
     end if;
   end process;
 
