@@ -124,6 +124,35 @@ static void fdelay_add_ps(struct fdelay_time *p, uint64_t ps)
 	}
 }
 
+static void fdelay_sub_ps(struct fdelay_time *p, uint64_t ps)
+{
+	uint32_t coarse_neg, frac_neg;
+
+	/* FIXME: this silently fails with ps > 10^12 = 1s */
+	coarse_neg = ps / 8000;
+	frac_neg = ((ps % 8000) << 12) / 8000;
+
+	if (p->frac < frac_neg) {
+		p->frac += 4096;
+		coarse_neg++;
+	}
+	p->frac -= frac_neg;
+
+	if (p->coarse < coarse_neg) {
+		p->coarse += 125*1000*1000;
+		p->utc--;
+	}
+	p->coarse -= coarse_neg;
+}
+
+static void fdelay_add_signed_ps(struct fdelay_time *p, signed ps)
+{
+	if (ps > 0)
+		fdelay_add_ps(p, ps);
+	else
+		fdelay_sub_ps(p, -ps);
+}
+
 /* The "pulse_ps" function relies on the previous one */
 int fdelay_config_pulse_ps(struct fdelay_board *userb,
 			   int channel, struct fdelay_pulse_ps *ps)
@@ -144,16 +173,16 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 {
 	__define_board(b, userb);
 	char s[32];
-	uint32_t utc_h, utc_l, rep, mode;
+	uint32_t utc_h, utc_l, tmp;
 
 	sprintf(s,"fd-ch%i/%s", channel + 1, "mode");
-	if (fdelay_sysfs_get(b, s, &mode) < 0)
+	if (fdelay_sysfs_get(b, s, &tmp) < 0)
 		return -1; /* errno already set */
-	pulse->mode = mode;
+	pulse->mode = tmp;
 	sprintf(s,"fd-ch%i/%s", channel + 1, "rep");
-	if (fdelay_sysfs_get(b, s, &rep) < 0)
+	if (fdelay_sysfs_get(b, s, &tmp) < 0)
 		return -1;
-	pulse->rep = rep;
+	pulse->rep = tmp;
 
 	sprintf(s,"fd-ch%i/%s", channel + 1, "start-h");
 	if (fdelay_sysfs_get(b, s, &utc_h) < 0)
@@ -193,6 +222,31 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->loop.frac) < 0)
 		return -1;
+
+	/*
+	 * Now, to return consistent values to the user, we must
+	 * un-apply all offsets that the driver added
+	 */
+	sprintf(s,"fd-ch%i/%s", channel + 1, "delay-offset");
+	if (fdelay_sysfs_get(b, s, &tmp) < 0)
+		return -1;
+	fdelay_add_signed_ps(&pulse->start, -(signed)tmp);
+	fdelay_add_signed_ps(&pulse->end, -(signed)tmp);
+
+	sprintf(s,"fd-ch%i/%s", channel + 1, "user-offset");
+	if (fdelay_sysfs_get(b, s, &tmp) < 0)
+		return -1;
+	fdelay_add_signed_ps(&pulse->start, -(signed)tmp);
+	fdelay_add_signed_ps(&pulse->end, -(signed)tmp);
+
+	if ((pulse->mode & 0x7f) == FD_OUT_MODE_DELAY) {
+		/* Delay used the input offset too: undo it */
+		sprintf(s,"fd-input/%s", "offset");
+		if (fdelay_sysfs_get(b, s, &tmp) < 0)
+			return -1;
+		fdelay_add_signed_ps(&pulse->start, -(signed)tmp);
+		fdelay_add_signed_ps(&pulse->end, -(signed)tmp);
+	}
 
 	return 0;
 }
