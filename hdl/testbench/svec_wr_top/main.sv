@@ -59,7 +59,10 @@ module period_meas(input enable, input a);
    always@(posedge a) begin
       if(prev_a > 0)begin
          if(enable) tag_a.put($time - prev_a);
-      end else
+      end
+      if(!enable)
+        prev_a=0;
+      else
         prev_a=$time;
    end
    
@@ -75,7 +78,7 @@ module period_meas(input enable, input a);
          
            tag_a.get(delta);
            
-           $display("Delay: %.3f ns",  real'(delta) / real'(1ns) );
+           $display("Period: %.3f ns",  real'(delta) / real'(1ns) );
         end
    end
 endmodule // delay_meas
@@ -143,9 +146,11 @@ module main;
    reg out0_delayed=0;
 
    always@(out0[0]) out0_delayed <= #10ps out0[0];
-   
-   
+    
   period_meas U_DMeas0 (pulse_enable, out0[0]);
+  period_meas U_DMeas1 (pulse_enable, out0[1]);
+  period_meas U_DMeas2 (pulse_enable, out0[2]);
+  period_meas U_DMeas3 (pulse_enable, out0[3]);
    
    task automatic init_vme64x_core(ref CBusAccessor_VME64x acc);
       /* map func0 to 0x80000000, A32 */
@@ -167,20 +172,11 @@ module main;
       uint64_t d;
       
       #20us;
+      
 
       init_vme64x_core(acc);
       acc_casted.set_default_xfer_size(A32|SINGLE|D32);
 
-//      acc.read('h20000, d, D32|A32|SINGLE);
-//      $display("Vector 1 = %x", d);
-      acc.read('h80030080, d, D32|A32|SINGLE);
-      $display("Vector 0 = %x", d);
-      acc.read('h80030084, d, D32|A32|SINGLE);
-      $display("Vector 1 = %x", d);
-      acc.read('h80030088, d, D32|A32|SINGLE);
-      $display("Vector 2 = %x", d);
-
-      $stop;
       
       
       drv0 = new(acc, 'h80010000);
@@ -188,9 +184,12 @@ module main;
 
       t_start=new;    
       drv0.get_time(t_start);
-      t_start.coarse += 2000;
+      t_start.coarse += 20000;
       
       drv0.config_output(0, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001000, -1);
+      drv0.config_output(1, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001100, -1);
+      drv0.config_output(2, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001200, -1);
+      drv0.config_output(3, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001300, -1);
       
       $display("Init done");
 

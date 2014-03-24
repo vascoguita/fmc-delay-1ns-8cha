@@ -12,10 +12,22 @@ module mc100ep195
    const int c_min_delay     = 2ns;
    const int c_time_per_tap  = 10ps;
    
-   reg [9:0] cur_dly = 0;
+   int cur_dly;
+   
    reg o_reg    = 0;
 
-   assign o     = o_reg;
+   bit dly[0:2000];
+   int ptr = 0;
+
+   always #(c_time_per_tap)
+     begin
+        dly[ptr++] = i;
+        if(ptr == 1024)
+          ptr = 0;
+     end
+   
+   
+   assign o     = dly[ptr - 1 - cur_dly < 0 ? ptr -1 -cur_dly + 1024: ptr-1-cur_dly];
    
 
    always@(posedge len)
@@ -25,7 +37,5 @@ module mc100ep195
    
    
 
-   always@(i)
-     o_reg         <= #(c_min_delay +  cur_dly * c_time_per_tap) i;
 
 endmodule // mc100ep195
