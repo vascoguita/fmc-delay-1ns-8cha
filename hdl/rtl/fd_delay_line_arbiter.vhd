@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2014-03-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -76,8 +76,8 @@ architecture behavioral of fd_delay_line_arbiter is
   signal cntr : unsigned(1 downto 0);
 
   signal delay_vec     : t_dly_array(0 to 3);
-  signal delay_len_reg : std_logic_vector(3 downto 0);
-  signal delay_val_reg : std_logic_vector(9 downto 0);
+  signal delay_len_reg, delay_len_reg_d0 : std_logic_vector(3 downto 0);
+  signal delay_val_reg, delay_val_reg_d0 : std_logic_vector(9 downto 0);
   signal pending_req   : std_logic_vector(3 downto 0);
   
 begin  -- behavioral
@@ -146,7 +146,9 @@ begin  -- behavioral
   p_reg_outputs : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
-      delay_val_o <= delay_val_reg;
+      delay_val_reg_d0 <= delay_val_reg;
+      delay_len_reg_d0 <= delay_len_reg;
+      delay_val_o <= delay_val_reg_d0;
     end if;
   end process;
 
@@ -156,7 +158,7 @@ begin  -- behavioral
     -- latches the delay word in the '295 gets right in the middle of the data
     -- window.
     if falling_edge(clk_ref_i) then
-      delay_len_o <= delay_len_reg;
+      delay_len_o <= delay_len_reg_d0;
     end if;
   end process;
 
