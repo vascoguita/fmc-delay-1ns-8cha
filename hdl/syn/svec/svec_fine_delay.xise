@@ -9,10 +9,10 @@
     <!-- along with the project source files, is sufficient to open and    -->
     <!-- implement in ISE Project Navigator.                               -->
     <!--                                                                   -->
-    <!-- Copyright (c) 1995-2011 Xilinx, Inc.  All rights reserved. -->
+    <!-- Copyright (c) 1995-2012 Xilinx, Inc.  All rights reserved. -->
   </header>
 
-  <version xil_pn:ise_version="13.3" xil_pn:schema_version="2"/>
+  <version xil_pn:ise_version="14.5" xil_pn:schema_version="2"/>
 
   <files>
     <file xil_pn:name="../../platform/chipscope_icon.ngc" xil_pn:type="FILE_NGC">
@@ -934,6 +934,7 @@
     <property xil_pn:name="Maximum Signal Name Length" xil_pn:value="20" xil_pn:valueState="default"/>
     <property xil_pn:name="Move First Flip-Flop Stage" xil_pn:value="true" xil_pn:valueState="default"/>
     <property xil_pn:name="Move Last Flip-Flop Stage" xil_pn:value="true" xil_pn:valueState="default"/>
+    <property xil_pn:name="MultiBoot: Insert IPROG CMD in the Bitfile spartan6" xil_pn:value="Enable" xil_pn:valueState="default"/>
     <property xil_pn:name="MultiBoot: Next Configuration Mode spartan6" xil_pn:value="001" xil_pn:valueState="default"/>
     <property xil_pn:name="MultiBoot: Starting Address for Golden Configuration spartan6" xil_pn:value="0x00000000" xil_pn:valueState="default"/>
     <property xil_pn:name="MultiBoot: Starting Address for Next Configuration spartan6" xil_pn:value="0x0b00000" xil_pn:valueState="non-default"/>
