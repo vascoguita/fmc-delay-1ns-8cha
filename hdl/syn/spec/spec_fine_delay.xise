@@ -17,9 +17,9 @@
 		<!-- Do not hand-edit this section, as it will be overwritten when the    -->
 		<!-- project is analyzed based on files automatically identified as       -->
 		<!-- include files.                                                       -->
-		<file xil_pn:name="../../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_include.v" xil_pn:type="FILE_VERILOG"/>
-		<file xil_pn:name="../../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_defines.v" xil_pn:type="FILE_VERILOG"/>
-		<file xil_pn:name="../../../ip_cores/general-cores/modules/wishbone/wb_spi/timescale.v" xil_pn:type="FILE_VERILOG"/>
+		<file xil_pn:name="../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/lm32_include.v" xil_pn:type="FILE_VERILOG"/>
+		<file xil_pn:name="../../ip_cores/general-cores/modules/wishbone/wb_spi/spi_defines.v" xil_pn:type="FILE_VERILOG"/>
+		<file xil_pn:name="../../ip_cores/general-cores/modules/wishbone/wb_spi/timescale.v" xil_pn:type="FILE_VERILOG"/>
 </autoManagedFiles>
 	<properties>
 		<property xil_pn:name="AES Initial Vector spartan6" xil_pn:value="" xil_pn:valueState="default"/>
@@ -131,7 +131,7 @@
 		<property xil_pn:name="Ignore User Timing Constraints Map" xil_pn:value="false" xil_pn:valueState="default"/>
 		<property xil_pn:name="Ignore User Timing Constraints Par" xil_pn:value="false" xil_pn:valueState="default"/>
 		<property xil_pn:name="Implementation Top" xil_pn:value="Architecture|spec_top|rtl" xil_pn:valueState="non-default"/>
-		<property xil_pn:name="Implementation Top File" xil_pn:value="../../../top/spec/wr/spec_top.vhd" xil_pn:valueState="non-default"/>
+		<property xil_pn:name="Implementation Top File" xil_pn:value="../../top/spec/spec_top.vhd" xil_pn:valueState="non-default"/>
 		<property xil_pn:name="Implementation Top Instance Path" xil_pn:value="/spec_top" xil_pn:valueState="non-default"/>
 		<property xil_pn:name="Include 'uselib Directive in Verilog File" xil_pn:value="false" xil_pn:valueState="default"/>
 		<property xil_pn:name="Include SIMPRIM Models in Verilog File" xil_pn:value="false" xil_pn:valueState="default"/>

@@ -213,12 +213,23 @@ NET "fd_clk_ref_p_i" LOC =  L20 ;
 NET "fd_clk_ref_p_i" IOSTANDARD =LVDS_25;
 NET "fd_delay_len_o[3]" LOC =  W14 ;
 NET "fd_delay_len_o[3]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_len_o[3]" SLEW =  SLOW;
+NET "fd_delay_len_o[3]" DRIVE = 4;
+
 NET "fd_delay_len_o[2]" LOC =  Y14 ;
 NET "fd_delay_len_o[2]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_len_o[2]" SLEW =  SLOW;
+NET "fd_delay_len_o[2]" DRIVE = 4;
+
 NET "fd_delay_len_o[1]" LOC =  Y18 ;
 NET "fd_delay_len_o[1]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_len_o[1]" SLEW =  SLOW;
+NET "fd_delay_len_o[1]" DRIVE = 4;
+
 NET "fd_delay_len_o[0]" LOC =  W17 ;
 NET "fd_delay_len_o[0]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_len_o[0]" SLEW =  SLOW;
+NET "fd_delay_len_o[0]" DRIVE = 4;
 
 NET "fd_delay_pulse_o[3]" LOC =  W13 ;
 NET "fd_delay_pulse_o[3]" IOSTANDARD =LVCMOS25;
@@ -231,24 +242,54 @@ NET "fd_delay_pulse_o[0]" IOSTANDARD =LVCMOS25;
 
 NET "fd_delay_val_o[0]" LOC =  A20 ;
 NET "fd_delay_val_o[0]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[0]" SLEW =  SLOW;
+NET "fd_delay_val_o[0]" DRIVE = 4;
+
 NET "fd_delay_val_o[1]" LOC =  B20 ;
 NET "fd_delay_val_o[1]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[1]" SLEW =  SLOW;
+NET "fd_delay_val_o[1]" DRIVE = 4;
+
 NET "fd_delay_val_o[2]" LOC =  A19 ;
 NET "fd_delay_val_o[2]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[2]" SLEW =  SLOW;
+NET "fd_delay_val_o[2]" DRIVE = 4;
+
 NET "fd_delay_val_o[3]" LOC =  C19 ;
 NET "fd_delay_val_o[3]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[3]" SLEW =  SLOW;
+NET "fd_delay_val_o[3]" DRIVE = 4;
+
 NET "fd_delay_val_o[4]" LOC =  W18 ;
 NET "fd_delay_val_o[4]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[4]" SLEW =  SLOW;
+NET "fd_delay_val_o[4]" DRIVE = 4;
+
 NET "fd_delay_val_o[5]" LOC =  V17 ;
 NET "fd_delay_val_o[5]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[5]" SLEW =  SLOW;
+NET "fd_delay_val_o[5]" DRIVE = 4;
+
 NET "fd_delay_val_o[6]" LOC =  C18 ;
 NET "fd_delay_val_o[6]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[6]" SLEW =  SLOW;
+NET "fd_delay_val_o[6]" DRIVE = 4;
+
 NET "fd_delay_val_o[7]" LOC =  D17 ;
 NET "fd_delay_val_o[7]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[7]" SLEW =  SLOW;
+NET "fd_delay_val_o[7]" DRIVE = 4;
+
 NET "fd_delay_val_o[8]" LOC =  W15 ;
 NET "fd_delay_val_o[8]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[8]" SLEW =  SLOW;
+NET "fd_delay_val_o[8]" DRIVE = 4;
+
 NET "fd_delay_val_o[9]" LOC =  Y16 ;
 NET "fd_delay_val_o[9]" IOSTANDARD =LVCMOS25;
+NET "fd_delay_val_o[9]" SLEW =  SLOW;
+NET "fd_delay_val_o[9]" DRIVE = 4;
+
 NET "fd_led_trig_o" LOC =  V11 ;
 NET "fd_led_trig_o" IOSTANDARD =LVCMOS25;
 NET "fd_spi_cs_dac_n_o" LOC =  AB16 ;
