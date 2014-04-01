@@ -118,7 +118,7 @@ static void fdelay_add_ps(struct fdelay_time *p, uint64_t ps)
 		coarse++;
 	}
 	p->coarse += coarse;
-	if (p->coarse > 125*1000*1000) {
+	if (p->coarse >= 125*1000*1000) {
 		p->coarse -= 125*1000*1000;
 		p->utc++;
 	}
