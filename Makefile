@@ -2,6 +2,8 @@ FMC_BUS := $(shell scripts/check-submodule fmc-bus $(FMC_BUS))
 ZIO 		:= $(shell scripts/check-submodule zio $(ZIO))
 SPEC_SW := $(shell scripts/check-submodule spec-sw $(SPEC_SW))
 
+DESTDIR ?= /usr/local
+
 .PHONY: all clean modules install modules_install default
 .PHONY: gitmodules prereq prereq_install prereq_install_warn
 

@@ -2,6 +2,8 @@
 
 M = $(shell /bin/pwd)/../kernel
 
+DESTDIR ?= /usr/local
+
 HOST_EXTRACFLAGS += -I$(M) -I../lib -I$(ZIO)/include -Wno-trigraphs -Wall -ggdb
 
 HOSTCC ?= gcc
@@ -22,7 +24,11 @@ clean:
 $(hostprogs-y): tools-util.o tools-common.h $(wildcard ../lib/*.[ch])
 
 # make nothing for modules_install, but avoid errors
-modules_install install:
+modules_install:
+
+install:
+	install -d $(DESTDIR)/bin
+	install -D $(hostprogs-y) $(DESTDIR)/bin
 
 # we need this as we are out of the kernel
 %: %.c $(wildcard *.h)
