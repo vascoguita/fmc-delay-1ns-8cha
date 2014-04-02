@@ -1,8 +1,8 @@
-GW_SPEC = spec-fine-delay-v2.0rc1-20140319.bin
-GW_SVEC = svec-fine-delay-v2.0rc1-20140319.bin
+GW_SPEC = spec-fine-delay-v2.0-20140331.bin
+GW_SVEC = svec-fine-delay-v2.0-20140331.bin
 
-GW_URL_SPEC = http://www.ohwr.org/attachments/download/2746/$(GW_SPEC)
-GW_URL_SVEC = http://www.ohwr.org/attachments/download/2747/$(GW_SVEC)
+GW_URL_SPEC = http://www.ohwr.org/attachments/download/2777/$(GW_SPEC)
+GW_URL_SVEC = http://www.ohwr.org/attachments/download/2778/$(GW_SVEC)
 
 FIRMWARE_PATH ?= /lib/firmware/fmc
 
