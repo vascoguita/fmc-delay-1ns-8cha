@@ -35,7 +35,7 @@
 
 @setchapternewpage off
 
-@set update-month March 2014
+@set update-month April 2014
 @c the release name below is substituted at build time
 @set release __RELEASE_GIT_ID__
 
