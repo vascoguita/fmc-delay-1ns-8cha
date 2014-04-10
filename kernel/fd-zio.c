@@ -816,6 +816,31 @@ void fd_zio_unregister(void)
 	/* FIXME */
 }
 
+
+/* preinitializes the outputs to some meaningful register values */
+static void __fd_init_outputs(struct fd_dev *fd)
+{
+	uint32_t attrs [ FD_ATTR_OUT__LAST]; 
+	int i;
+	
+	attrs [ FD_ATTR_OUT_MODE ] = FD_OUT_MODE_DISABLED;
+	attrs [ FD_ATTR_OUT_REP ] = 1;
+	attrs [ FD_ATTR_OUT_START_H ] = 0;
+	attrs [ FD_ATTR_OUT_START_L ] = 0;
+	attrs [ FD_ATTR_OUT_START_COARSE ] = 75; /* 600 ns delay */
+	attrs [ FD_ATTR_OUT_START_FINE ] = 0;
+	attrs [ FD_ATTR_OUT_END_H ] = 0;
+	attrs [ FD_ATTR_OUT_END_L ] = 0;
+	attrs [ FD_ATTR_OUT_END_COARSE ] = 75 + 31; /* 250 ns width */
+	attrs [ FD_ATTR_OUT_END_FINE ] = 1024;
+	attrs [ FD_ATTR_OUT_DELTA_L ] = 0;
+	attrs [ FD_ATTR_OUT_DELTA_COARSE ] = 125; /* 1us ns period */
+	attrs [ FD_ATTR_OUT_DELTA_FINE ] = 0;
+
+	for (i = 1; i <= 4; i++)
+	    __fd_zio_output(fd, i, attrs);
+}
+
 /* Init and exit are called for each FD card we have */
 int fd_zio_init(struct fd_dev *fd)
 {
@@ -837,6 +862,8 @@ int fd_zio_init(struct fd_dev *fd)
 		zio_free_device(fd->hwzdev);
 		return err;
 	}
+
+	__fd_init_outputs(fd);
 
 	return 0;
 }
