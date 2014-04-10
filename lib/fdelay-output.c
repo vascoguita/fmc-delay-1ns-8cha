@@ -77,7 +77,7 @@ int fdelay_config_pulse(struct fdelay_board *userb,
 		return -1; /* errno already set */
 
 	a = ctrl.attr_channel.ext_val;
-	a[FD_ATTR_OUT_MODE] = pulse->mode;
+	a[FD_ATTR_OUT_MODE] = pulse->mode & 0x7f;
 	a[FD_ATTR_OUT_REP] = pulse->rep;
 
 	a[FD_ATTR_OUT_START_H] = pulse->start.utc >> 32;
@@ -174,6 +174,7 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	__define_board(b, userb);
 	char s[32];
 	uint32_t utc_h, utc_l, tmp;
+	uint32_t input_offset, output_offset, output_user_offset;
 
 	sprintf(s,"fd-ch%i/%s", channel + 1, "mode");
 	if (fdelay_sysfs_get(b, s, &tmp) < 0)
@@ -228,26 +229,37 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	 * un-apply all offsets that the driver added
 	 */
 	sprintf(s,"fd-ch%i/%s", channel + 1, "delay-offset");
-	if (fdelay_sysfs_get(b, s, &tmp) < 0)
+	if (fdelay_sysfs_get(b, s, &output_offset) < 0)
 		return -1;
-	fdelay_add_signed_ps(&pulse->start, -(signed)tmp);
-	fdelay_add_signed_ps(&pulse->end, -(signed)tmp);
 
 	sprintf(s,"fd-ch%i/%s", channel + 1, "user-offset");
-	if (fdelay_sysfs_get(b, s, &tmp) < 0)
+	if (fdelay_sysfs_get(b, s, &output_user_offset) < 0)
 		return -1;
-	fdelay_add_signed_ps(&pulse->start, -(signed)tmp);
-	fdelay_add_signed_ps(&pulse->end, -(signed)tmp);
 
-	if ((pulse->mode & 0x7f) == FD_OUT_MODE_DELAY) {
-		/* Delay used the input offset too: undo it */
-		sprintf(s,"fd-input/%s", "offset");
-		if (fdelay_sysfs_get(b, s, &tmp) < 0)
-			return -1;
-		fdelay_add_signed_ps(&pulse->start, -(signed)tmp);
-		fdelay_add_signed_ps(&pulse->end, -(signed)tmp);
+	sprintf(s,"fd-input/%s", "offset");
+	if (fdelay_sysfs_get(b, s, &input_offset) < 0)
+		return -1;
+
+	int m = pulse->mode & 0x7f;
+	switch(m)
+	{
+		case FD_OUT_MODE_DISABLED:
+		/* hack for Steen/COHAL: if channel is disabled, apply delay-mode offsets */
+		case FD_OUT_MODE_DELAY:
+		fdelay_add_signed_ps(&pulse->start, -(signed)output_offset);
+		fdelay_add_signed_ps(&pulse->end, -(signed)output_offset);
+		fdelay_add_signed_ps(&pulse->start, -(signed)output_user_offset);
+		fdelay_add_signed_ps(&pulse->end, -(signed)output_user_offset);
+		fdelay_add_signed_ps(&pulse->start, -(signed)input_offset);
+		fdelay_add_signed_ps(&pulse->end, -(signed)input_offset);
+		break;
+		case FD_OUT_MODE_PULSE:
+		fdelay_add_signed_ps(&pulse->start, -(signed)output_offset);
+		fdelay_add_signed_ps(&pulse->end, -(signed)output_offset);
+		fdelay_add_signed_ps(&pulse->start, -(signed)output_user_offset);
+		fdelay_add_signed_ps(&pulse->end, -(signed)output_user_offset);
+		break;
 	}
-
 	return 0;
 }
 
@@ -278,13 +290,6 @@ int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 	/* FIXME: subtraction can be < 0 */
 	fdelay_subtract_ps(&pulse.end, &pulse.start, (int64_t *)&ps->length);
 	fdelay_time_to_pico(&pulse.loop, &ps->period);
-
-	sprintf(s,"fd-ch%i/%s", channel + 1, "delay-offset");
-	if (fdelay_sysfs_get(b, s, &delay_offset) < 0)
-		return -1;
-	if (fdelay_sysfs_get(b, "fd-input/offset", &offset) < 0)
-		return -1;
-	ps->length -= delay_offset + offset;
 
 	return 0;
 }
