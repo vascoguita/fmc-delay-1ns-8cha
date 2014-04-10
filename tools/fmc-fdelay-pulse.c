@@ -28,6 +28,7 @@ void help(char *name)
 		"   -p              pulse per seconds (sets -D -T -w)\n"
 		"   -1              10MHz (sets -D -T -w)\n"
 		"   -v              verbose (report action)\n");
+	fprintf(stderr,"By default, the tool generates a continuous train of pulses (10 Hz frequency) on a given output.\n");
 	exit(1);
 }
 
@@ -211,7 +212,7 @@ int main(int argc, char **argv)
 	int nboards;
 	int i, opt, index = -1, dev = -1;
 	/* our parameters */
-	int count = 0, channel = 1;
+	int count = 0, channel = -1;
 	int trigger_wait = 0, verbose = 0;
 	struct fdelay_pulse p;
 
@@ -339,6 +340,12 @@ int main(int argc, char **argv)
 	if (!b) {
 		fprintf(stderr, "%s: fdelay_open(): %s\n", argv[0],
 			strerror(errno));
+		exit(1);
+	}
+
+	if(channel < 0)
+	{
+		fprintf(stderr, "%s: no channel specified (-o option missing).\n", argv[0]);
 		exit(1);
 	}
 
