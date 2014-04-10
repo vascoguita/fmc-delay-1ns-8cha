@@ -276,11 +276,7 @@ static void fdelay_subtract_ps(struct fdelay_time *t2,
 int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 			       int channel, struct fdelay_pulse_ps *ps)
 {
-	__define_board(b, userb);
 	struct fdelay_pulse pulse;
-	char s[32];
-	uint32_t delay_offset;
-	uint32_t offset;
 
 	if (fdelay_get_config_pulse(userb, channel, &pulse) < 0)
 		return -1;
