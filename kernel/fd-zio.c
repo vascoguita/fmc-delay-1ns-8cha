@@ -516,30 +516,23 @@ void fd_apply_offset(uint32_t *a, int32_t off_pico)
 }
 
 /* Internal output engine */
-static void __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
+static int __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
 {
 	struct timespec delta, width, delay;
 	int ch = index1_4 - 1;
 	int mode = attrs[FD_ATTR_OUT_MODE];
 	int rep = attrs[FD_ATTR_OUT_REP];
-	int dcr;
+	int dcr = 0;
 
-	if (mode == FD_OUT_MODE_DISABLED) {
-		/* disable output via DCR register */
-		dcr = 0;
-		fd_ch_writel(fd, ch, dcr, FD_REG_DCR);
-		return;
-	}
-
-	if (mode == FD_OUT_MODE_DELAY) {
+	if (mode == FD_OUT_MODE_DELAY || mode == FD_OUT_MODE_DISABLED) {
 		if(rep < 0 || rep > 16) /* delay mode allows trains of 1 to 16 pulses. */
-			return;
+			return -EINVAL;
 
 		/* check delay lower limits. FIXME: raise an alarm */
 		delay.tv_sec = attrs[FD_ATTR_OUT_START_L];
 		delay.tv_nsec = attrs[FD_ATTR_OUT_START_COARSE] * 8;
 		if (delay.tv_sec == 0 && delay.tv_nsec < 600)
-			return;
+			return -EINVAL;
 
 		fd_apply_offset(attrs + FD_ATTR_OUT_START_H,
 			    fd->calib.tdc_zero_offset);
@@ -575,7 +568,7 @@ static void __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_DELTA_COARSE], FD_REG_C_DELTA);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_DELTA_FINE],   FD_REG_F_DELTA);
 
-	if (mode == FD_OUT_MODE_DELAY) {
+	if (mode == FD_OUT_MODE_DELAY || mode == FD_OUT_MODE_DISABLED) {
 		dcr = 0;
 		fd_ch_writel(fd, ch, FD_RCR_REP_CNT_W(rep - 1)
 			     | (rep < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
@@ -623,17 +616,20 @@ static void __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
 	}
 	/* finally check */
 	if (width.tv_sec == 0 && width.tv_nsec < 200)
-		dcr |= FD_DCR_NO_FINE;;
+		dcr |= FD_DCR_NO_FINE;
 	if (delta.tv_sec == 0 && delta.tv_nsec < 200)
-		dcr |= FD_DCR_NO_FINE;;
+		dcr |= FD_DCR_NO_FINE;
 
 
 	fd_ch_writel(fd, ch, dcr, FD_REG_DCR);
 	fd_ch_writel(fd, ch, dcr | FD_DCR_UPDATE, FD_REG_DCR);
-	fd_ch_writel(fd, ch, dcr | FD_DCR_ENABLE, FD_REG_DCR);
-	if (mode == FD_OUT_MODE_PULSE) {
+
+	if (mode == FD_OUT_MODE_DELAY) {
+	    fd_ch_writel(fd, ch, dcr | FD_DCR_ENABLE, FD_REG_DCR);
+	} else if (mode == FD_OUT_MODE_PULSE) {
 		fd_ch_writel(fd, ch, dcr | FD_DCR_ENABLE | FD_DCR_PG_ARM,  FD_REG_DCR);
 	}
+	return 0;
 }
 
 /* This is called on user write */
@@ -653,8 +649,7 @@ static int fd_zio_output(struct zio_cset *cset)
 			printk("%08x%c", ctrl->attr_channel.ext_val[i],
 			       i == FD_ATTR_OUT__LAST -1 ? '\n' : ' ');
 	}
-	__fd_zio_output(fd, cset->index, ctrl->attr_channel.ext_val);
-	return 0; /* already done */
+	return __fd_zio_output(fd, cset->index, ctrl->attr_channel.ext_val);
 }
 
 /*
