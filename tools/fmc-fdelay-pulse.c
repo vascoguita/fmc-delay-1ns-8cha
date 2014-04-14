@@ -210,7 +210,7 @@ int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
 	int nboards;
-	int i, opt, index = -1, dev = -1;
+	int i, opt, index = -1, dev = -1, err = 0;
 	/* our parameters */
 	int count = 0, channel = -1;
 	int trigger_wait = 0, verbose = 0;
@@ -381,9 +381,9 @@ int main(int argc, char **argv)
 
 	report_output_config(channel, &p, TOOLS_UMODE_USER);
 
-	if (fdelay_config_pulse(b, channel, &p) < 0) {
+	if ((err = fdelay_config_pulse(b, channel, &p)) < 0) {
 		fprintf(stderr, "%s: fdelay_config_pulse(): %s\n",
-			argv[0], strerror(errno));
+			argv[0], strerror(-err));
 		exit(1);
 	}
 	while (trigger_wait) {
