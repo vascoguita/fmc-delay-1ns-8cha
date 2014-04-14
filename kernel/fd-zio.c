@@ -526,13 +526,13 @@ static int __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
 
 	if (mode == FD_OUT_MODE_DELAY || mode == FD_OUT_MODE_DISABLED) {
 		if(rep < 0 || rep > 16) /* delay mode allows trains of 1 to 16 pulses. */
-			return -EINVAL;
+			return 0;
 
 		/* check delay lower limits. FIXME: raise an alarm */
 		delay.tv_sec = attrs[FD_ATTR_OUT_START_L];
 		delay.tv_nsec = attrs[FD_ATTR_OUT_START_COARSE] * 8;
 		if (delay.tv_sec == 0 && delay.tv_nsec < 600)
-			return -EINVAL;
+			return 0;
 
 		fd_apply_offset(attrs + FD_ATTR_OUT_START_H,
 			    fd->calib.tdc_zero_offset);

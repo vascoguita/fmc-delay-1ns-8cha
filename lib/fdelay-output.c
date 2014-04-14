@@ -94,6 +94,19 @@ int fdelay_config_pulse(struct fdelay_board *userb,
 	a[FD_ATTR_OUT_DELTA_COARSE] = pulse->loop.coarse; /* only 0..f */
 	a[FD_ATTR_OUT_DELTA_FINE] = pulse->loop.frac; /* only 0..f */
 
+	int mode = pulse->mode & 0x7f;
+	
+	/* hotfix: the ZIO has a bug blocking the output when the output raw_io function returns an error.
+	therefore we temporarily have to check the output programming correctness in the user library. */
+	if (mode == FD_OUT_MODE_DELAY || mode == FD_OUT_MODE_DISABLED)
+	{
+		if(pulse->rep < 0 || pulse->rep > 16) /* delay mode allows trains of 1 to 16 pulses. */
+			return -EINVAL;
+
+		if(a[FD_ATTR_OUT_START_L] == 0 && a[FD_ATTR_OUT_START_COARSE] < (600 / 8)) // 600 ns min delay
+			return -EINVAL;
+	}
+
 	/* we need to fill the nsample field of the control */
 	ctrl.attr_trigger.std_val[1] = 1;
 	ctrl.nsamples = 1;
