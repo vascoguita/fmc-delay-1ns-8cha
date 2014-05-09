@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <string.h>
 #include <sys/select.h>
 
 #include <linux/zio.h>
@@ -40,7 +41,7 @@ void fdelay_time_to_pico(struct fdelay_time *time, uint64_t *pico)
 	uint64_t p;
 
 	p = time->frac * 8000 / 4096;
-	p += time->coarse * 8000;
+	p += (uint64_t) time->coarse * 8000LL;
 	p += time->utc * (1000ULL * 1000ULL * 1000ULL * 1000ULL);
 	*pico = p;
 }
@@ -189,6 +190,8 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	uint32_t utc_h, utc_l, tmp;
 	uint32_t input_offset, output_offset, output_user_offset;
 
+	memset(pulse, 0, sizeof(struct fdelay_pulse));
+
 	sprintf(s,"fd-ch%i/%s", channel + 1, "mode");
 	if (fdelay_sysfs_get(b, s, &tmp) < 0)
 		return -1; /* errno already set */
@@ -293,6 +296,8 @@ int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 
 	if (fdelay_get_config_pulse(userb, channel, &pulse) < 0)
 		return -1;
+	
+	memset(ps, 0, sizeof(struct fdelay_pulse_ps));
 	ps->mode = pulse.mode;
 	ps->rep = pulse.rep;
 	ps->start = pulse.start;

@@ -190,7 +190,7 @@ int fdelay_close(struct fdelay_board *userb)
 	int j;
 
 	if (fdelay_is_verbose())
-		fprintf(stderr, "called: %s(index %i, dev_id 0x%x);\n",
+		fprintf(stderr, "called: %s(index %li, dev_id 0x%x);\n",
 			__func__, b - fd_boards, b->dev_id);
 	for (j = 0; j < ARRAY_SIZE(b->fdc); j++) {
 		if (b->fdc[j] >= 0)
