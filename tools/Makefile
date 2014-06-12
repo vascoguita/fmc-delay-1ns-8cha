@@ -4,35 +4,35 @@ M = $(shell /bin/pwd)/../kernel
 
 DESTDIR ?= /usr/local
 
-HOST_EXTRACFLAGS += -I$(M) -I../lib -I$(ZIO)/include -Wno-trigraphs -Wall -ggdb
+CFLAGS += -I$(M) -I../lib -I$(ZIO)/include -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
 
-HOSTCC ?= gcc
+CC ?= $(CROSS_COMPILE)gcc
 
-hostprogs-y := fmc-fdelay-list
-hostprogs-y += fmc-fdelay-term
-hostprogs-y += fmc-fdelay-board-time
-hostprogs-y += fmc-fdelay-input
-hostprogs-y += fmc-fdelay-pulse
-hostprogs-y += fmc-fdelay-status
+progs := fmc-fdelay-list
+progs += fmc-fdelay-term
+progs += fmc-fdelay-board-time
+progs += fmc-fdelay-input
+progs += fmc-fdelay-pulse
+progs += fmc-fdelay-status
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
-all modules: $(hostprogs-y)
+all modules: $(progs)
 
 clean:
-	rm -f $(hostprogs-y) *.o *~
+	rm -f $(progs) *.o *~
 
-$(hostprogs-y): tools-util.o tools-common.h $(wildcard ../lib/*.[ch])
+$(progs): tools-util.o tools-common.h $(wildcard ../lib/*.[ch])
 
 # make nothing for modules_install, but avoid errors
 modules_install:
 
 install:
 	install -d $(DESTDIR)/bin
-	install -D $(hostprogs-y) $(DESTDIR)/bin
+	install -D $(progs) $(DESTDIR)/bin
 
 # we need this as we are out of the kernel
 %: %.c $(wildcard *.h)
-	$(HOSTCC) $(HOST_EXTRACFLAGS) -O2 -Wall $*.c tools-util.o \
+	$(CC) $(CFLAGS) -O2 $*.c tools-util.o \
 		-L../lib -lfdelay -o $@
 %.o: %.c  $(wildcard *.h)
-	$(HOSTCC) $(HOST_EXTRACFLAGS) -O2 -Wall -c $*.c -o $@
+	$(CC) $(CFLAGS) -O2 -c $*.c -o $@
