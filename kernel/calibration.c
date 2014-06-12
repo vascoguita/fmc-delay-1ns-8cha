@@ -15,7 +15,7 @@
 #include <linux/firmware.h>
 #include <linux/jhash.h>
 #include "fine-delay.h"
-#include "../sdb-lib/libsdbfs.h"
+#include <sdb-lib/libsdbfs.h>
 
 /* At factory config time, it's possible to load a file and/or write eeprom */
 static char *calibration_load;
