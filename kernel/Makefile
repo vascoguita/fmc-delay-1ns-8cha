@@ -1,7 +1,7 @@
 LINUX ?= /lib/modules/$(shell uname -r)/build
 
-ZIO ?= $(M)/../zio
-FMC_BUS ?= $(M)/../fmc-bus
+ZIO ?= $(src)/../zio
+FMC_BUS ?= $(src)/../fmc-bus
 
 KBUILD_EXTRA_SYMBOLS := \
 	$(ZIO)/Module.symvers \
@@ -14,7 +14,7 @@ ccflags-y = \
 	-I$(FMC_BUS)/kernel/include \
 	-I$(FMC_BUS)/kernel/include/linux \
 	-I$(FMC_BUS) \
-	-I$M
+	-I$(src)
 
 ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
 #ccflags-y += -DDEBUG
