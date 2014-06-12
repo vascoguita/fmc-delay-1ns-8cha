@@ -9,7 +9,7 @@ DESTDIR ?= /usr/local
 
 DIRS = kernel lib tools
 
-all clean modules install modules_install: 
+all clean modules install modules_install: gitmodules
 	@if echo $@ | grep -q install; then $(MAKE) prereq_install_warn; fi
 	for d in $(DIRS); do $(MAKE) ZIO=$(ZIO) FMC_BUS=$(FMC_BUS) -C $$d $@ || exit 1; done
 
@@ -20,6 +20,10 @@ CONFIG_WR_NIC=n
 export CONFIG_WR_NIC
 
 #### The following targets are used to manage prerequisite repositories
+gitmodules:
+	@test -d fmc-bus/doc || echo "Checking out submodules"
+	@test -d fmc-bus/doc || git submodule update --init
+	@git submodule update
 
 # The user can override, using environment variables, all these three:
 SUBMOD = $(FMC_BUS) $(ZIO) $(SPEC_SW)
