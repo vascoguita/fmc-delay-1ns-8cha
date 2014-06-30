@@ -324,7 +324,7 @@ int fd_irq_init(struct fd_dev *fd)
 		if (rv < 0) {
 			dev_err(&fd->fmc->dev,
 				"Failed to request the VIC interrupt\n");
-			return rv;
+			goto out_irq_request;
 		}
 
 		/*
@@ -344,6 +344,10 @@ int fd_irq_init(struct fd_dev *fd)
 	fd_writel(fd, FD_GCR_INPUT_EN, FD_REG_GCR);
 
 	return 0;
+
+out_irq_request:
+	kfree(fd->sw_fifo.t);
+	return rv;
 }
 
 void fd_irq_exit(struct fd_dev *fd)

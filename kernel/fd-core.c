@@ -131,17 +131,18 @@ int fd_probe(struct fmc_device *fmc)
 	char *fwname;
 	int i, index, ret, ch;
 
-	fd = kzalloc(sizeof(*fd), GFP_KERNEL);
-	if (!fd) {
-		dev_err(dev, "can't allocate device\n");
-		return -ENOMEM;
-	}
-
+	/* Validate the new FMC device */
 	index = fmc->op->validate(fmc, &fd_drv);
 	if (index < 0) {
 		dev_info(dev, "not using \"%s\" according to "
 			 "modparam\n", KBUILD_MODNAME);
 		return -ENODEV;
+	}
+
+	fd = devm_kzalloc(&fmc->dev, sizeof(*fd), GFP_KERNEL);
+	if (!fd) {
+		dev_err(dev, "can't allocate device\n");
+		return -ENOMEM;
 	}
 
 	fwname = "";
