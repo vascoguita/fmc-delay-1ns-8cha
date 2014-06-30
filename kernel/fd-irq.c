@@ -359,6 +359,9 @@ void fd_irq_exit(struct fd_dev *fd)
 {
 	struct fmc_device *fmc = fd->fmc;
 
+	/* Stop input */
+	fd_writel(fd, 0, FD_REG_GCR);
+
 	if (fd_timer_period_ms) {
 		del_timer_sync(&fd->fifo_timer);
 	} else {
