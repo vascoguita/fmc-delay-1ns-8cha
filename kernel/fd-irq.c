@@ -322,6 +322,9 @@ int fd_irq_init(struct fd_dev *fd)
 	} else {
 		dev_info(fd->fmc->hwdev, "Using interrupts for input\n");
 
+		/* Disable interrupts */
+		fd_writel(fd, ~0, FD_REG_EIC_IDR);
+
 		tasklet_init(&fd->tlet, fd_tlet, (unsigned long)fd);
 		fmc->irq = fd->fd_regs_base;
 		rv = fmc->op->irq_request(fmc, fd_irq_handler, "fine-delay", 0);
@@ -341,7 +344,6 @@ int fd_irq_init(struct fd_dev *fd)
 			  |FD_TSBIR_THRESHOLD_W(15),	/* samples */
 			  FD_REG_TSBIR);
 
-		fd_writel(fd, ~0, FD_REG_EIC_IDR);
 		fd_writel(fd, FD_EIC_IER_TS_BUF_NOTEMPTY, FD_REG_EIC_IER);
 	}
 
