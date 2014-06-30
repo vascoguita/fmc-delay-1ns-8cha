@@ -309,21 +309,20 @@ int fd_irq_init(struct fd_dev *fd)
 	if (!fd->sw_fifo.t)
 		return -ENOMEM;
 
-	fd_timer_period_jiffies = msecs_to_jiffies(fd_timer_period_ms);
 	/*
 	 * According to the period, this can work with a timer (old way)
 	 * or a custom tasklet (newer). Init both anyways, no harm is done.
 	 */
-	setup_timer(&fd->fifo_timer, fd_tlet, (unsigned long)fd);
-	tasklet_init(&fd->tlet, fd_tlet, (unsigned long)fd);
-
 	if (fd_timer_period_ms) {
+		setup_timer(&fd->fifo_timer, fd_tlet, (unsigned long)fd);
+		fd_timer_period_jiffies = msecs_to_jiffies(fd_timer_period_ms);
 		dev_info(&fd->fmc->dev,"Using a timer for input (%i ms)\n",
 			 jiffies_to_msecs(fd_timer_period_jiffies));
 		mod_timer(&fd->fifo_timer, jiffies + fd_timer_period_jiffies);
 	} else {
 		dev_info(fd->fmc->hwdev, "Using interrupts for input\n");
 
+		tasklet_init(&fd->tlet, fd_tlet, (unsigned long)fd);
 		fmc->irq = fd->fd_regs_base;
 		rv = fmc->op->irq_request(fmc, fd_irq_handler, "fine-delay", 0);
 
