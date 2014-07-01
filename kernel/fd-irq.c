@@ -364,6 +364,7 @@ void fd_irq_exit(struct fd_dev *fd)
 		del_timer_sync(&fd->fifo_timer);
 	} else {
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
+		fmc->irq = fd->fd_regs_base;
 		fmc->op->irq_free(fmc);
 	}
 	kfree(fd->sw_fifo.t);
