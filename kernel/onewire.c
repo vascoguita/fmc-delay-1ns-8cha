@@ -72,7 +72,7 @@ static int ow_reset(struct fd_dev *fd, int port)
 		| CSR_CYC_MSK | CSR_RST_MSK;
 	ow_writel(fd, data, R_CSR);
 	while(ow_readl(fd, R_CSR) & CSR_CYC_MSK)
-		/* FIXME: timeout */;
+	    udelay(10);
 	reg = ow_readl(fd, R_CSR);
 	return ~reg & CSR_DAT_MSK;
 }
@@ -85,7 +85,7 @@ static int slot(struct fd_dev *fd, int port, int bit)
 		| CSR_CYC_MSK | (bit & CSR_DAT_MSK);
 	ow_writel(fd, data, R_CSR);
 	while(ow_readl(fd, R_CSR) & CSR_CYC_MSK)
-		/* FIXME: timeout */;
+	    udelay(10);
 	reg = ow_readl(fd, R_CSR);
 	return reg & CSR_DAT_MSK;
 }

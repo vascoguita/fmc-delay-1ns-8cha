@@ -138,7 +138,7 @@ int fd_probe(struct fmc_device *fmc)
 	struct fd_dev *fd;
 	struct device *dev = &fmc->dev;
 	char *fwname;
-	int i, index, ret, ch;
+	int i, index, ret, ch, ord;
 
 	/* Validate the new FMC device */
 	index = fmc->op->validate(fmc, &fd_drv);
@@ -179,14 +179,15 @@ int fd_probe(struct fmc_device *fmc)
 		fmc_show_sdb_tree(fmc);
 
 	/* Now use SDB to find the base addresses */
-	fd->fd_regs_base =
-		fmc_find_sdb_device(fmc->sdb, 0xce42, 0xf19ede1a, NULL);
 
-	/* ugly hack for svec testing*/
-	/* FIXME: this depends on 0x10000/0x20000 being the FD cores
-	 * base addresses */
-	if (!strcmp(fmc->carrier_name, "SVEC") && fmc->slot_id == 1)
-		fd->fd_regs_base += 0x10000;
+	ord = fmc->slot_id;
+	
+	fd->fd_regs_base = fmc_sdb_find_nth_device ( fmc->sdb, 0xce42, 0xf19ede1a, &ord, NULL );
+	if( (signed long)fd->fd_regs_base < 0)
+	{
+	    dev_err(dev, "Can't find the FD core. Wrong gateware?\n");
+	}
+	
 	dev_info(dev, "fd_regs_base is %x\n", fd->fd_regs_base);
 
 	fd->fd_owregs_base = fd->fd_regs_base + 0x500;

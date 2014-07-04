@@ -382,6 +382,7 @@ extern int fd_eeprom_write(struct fd_dev *fd, int i2c_addr, uint32_t offset,
 
 /* Function exported by calibration.c */
 int fd_handle_eeprom_calibration(struct fd_dev *fd);
+signed long fmc_sdb_find_nth_device (struct sdb_array *tree, uint64_t vid, uint32_t did, int *ordinal, uint32_t *size );
 
 #endif /* __KERNEL__ */
 #endif /* __FINE_DELAY_H__ */
