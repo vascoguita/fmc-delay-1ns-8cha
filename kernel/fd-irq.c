@@ -258,6 +258,12 @@ static void fd_tlet(unsigned long arg)
 	}
 }
 
+/*
+ * fd_irq_handler
+ * NOTE: TS_BUF_NOTEMPTY interrupt is level sensitive, it is cleared when
+ * you read the whole fifo buffer. It is useless to clear the interrupt
+ * in EIC_ISR
+ */
 irqreturn_t fd_irq_handler(int irq, void *dev_id)
 {
 	struct fmc_device *fmc = dev_id;
