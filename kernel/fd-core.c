@@ -41,10 +41,18 @@ module_param_named(show_sdb, fd_show_sdb, int, 0444);
 
 /* FIXME: add parameters "file=" and "wrc=" like wr-nic-core does */
 
-/* The reset function (by Tomasz) */
+/**
+ * fd_do_reset
+ * The reset function (by Tomasz)
+ *
+ * This function can reset the entire mezzanine (FMC) or just
+ * the fine-delay core (CORE).
+ * In the reset register 0 means reset, 1 means normal operation.
+ */
 static void fd_do_reset(struct fd_dev *fd, int hw_reset)
 {
 	if (hw_reset) {
+		/* clear RSTS_RST_FMC bit, set  RSTS_RST_CORE bit*/
 		fd_writel(fd, FD_RSTR_LOCK_W(0xdead) | FD_RSTR_RST_CORE_MASK,
 		       FD_REG_RSTR);
 		udelay(10000);
@@ -55,6 +63,7 @@ static void fd_do_reset(struct fd_dev *fd, int hw_reset)
 		return;
 	}
 
+	/* clear RSTS_RST_CORE bit, set RSTS_RST_FMC bit */
 	fd_writel(fd, FD_RSTR_LOCK_W(0xdead) | FD_RSTR_RST_FMC_MASK,
 		  FD_REG_RSTR);
 	udelay(1000);

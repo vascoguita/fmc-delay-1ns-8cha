@@ -540,40 +540,54 @@ static int __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
 			    fd->calib.tdc_zero_offset);
 	}
 
+	/* Apply offset to START timestamp */
 	fd_apply_offset(attrs + FD_ATTR_OUT_START_H,
 			    fd->calib.zero_offset[ch]);
 
 	fd_apply_offset(attrs + FD_ATTR_OUT_START_H,
 			  fd->ch_user_offset[ch]);
 
+	/* Apply offset to END timestamp */
 	fd_apply_offset(attrs + FD_ATTR_OUT_END_H,
 			    fd->calib.zero_offset[ch]);
 
 	fd_apply_offset(attrs + FD_ATTR_OUT_END_H,
 			  fd->ch_user_offset[ch]);
 
+	/* Update Fine Register with calibrated value */
 	fd_ch_writel(fd, ch, fd->ch[ch].frr_cur,  FD_REG_FRR);
 
+	/* Write Pulse Start Absolute Time */
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_START_H],      FD_REG_U_STARTH);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_START_L],      FD_REG_U_STARTL);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_START_COARSE], FD_REG_C_START);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_START_FINE],   FD_REG_F_START);
 
+	/* Write Pulse End Absolute Time */
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_END_H],      FD_REG_U_ENDH);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_END_L],      FD_REG_U_ENDL);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_END_COARSE], FD_REG_C_END);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_END_FINE],   FD_REG_F_END);
 
+	/* Write clock cycles between rasing edges of output pulses */
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_DELTA_L],      FD_REG_U_DELTA);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_DELTA_COARSE], FD_REG_C_DELTA);
 	fd_ch_writel(fd, ch, attrs[FD_ATTR_OUT_DELTA_FINE],   FD_REG_F_DELTA);
 
+	/*
+	 * Configure the number of repetitions and the operational mode.
+	 * The Fine delay always add an extra pulse to the repetition
+	 * counter, so remove it on our side in order to produce exactly
+	 * the number of pulses requested
+	 */
 	if (mode == FD_OUT_MODE_DELAY || mode == FD_OUT_MODE_DISABLED) {
+		/* Delay Mode */
 		dcr = 0;
 		fd_ch_writel(fd, ch, FD_RCR_REP_CNT_W(rep - 1)
 			     | (rep < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
 	} else {
-		dcr = FD_DCR_MODE;
+		/* Pulse Mode */
+		dcr = FD_DCR_MODE; /* Set pulse mode  */
 		fd_ch_writel(fd, ch, FD_RCR_REP_CNT_W(rep < 0 ? 0 : rep - 1)
 			    | (rep < 0 ? FD_RCR_CONT : 0), FD_REG_RCR);
 	}
@@ -620,13 +634,16 @@ static int __fd_zio_output(struct fd_dev *fd, int index1_4, uint32_t *attrs)
 	if (delta.tv_sec == 0 && delta.tv_nsec < 200)
 		dcr |= FD_DCR_NO_FINE;
 
-
+	/* Configure Fine Delay output */
 	fd_ch_writel(fd, ch, dcr, FD_REG_DCR);
+	/* Update the time stamps according to start/end registers */
 	fd_ch_writel(fd, ch, dcr | FD_DCR_UPDATE, FD_REG_DCR);
 
+	/* Enable channel output */
 	if (mode == FD_OUT_MODE_DELAY) {
-	    fd_ch_writel(fd, ch, dcr | FD_DCR_ENABLE, FD_REG_DCR);
+		fd_ch_writel(fd, ch, dcr | FD_DCR_ENABLE, FD_REG_DCR);
 	} else if (mode == FD_OUT_MODE_PULSE) {
+		/* ... and arm the pulse generator */
 		fd_ch_writel(fd, ch, dcr | FD_DCR_ENABLE | FD_DCR_PG_ARM,  FD_REG_DCR);
 	}
 	return 0;

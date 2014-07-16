@@ -152,6 +152,7 @@ static int fd_find_8ns_tap(struct fd_dev *fd, int ch)
 	 * Measure the delay at zero setting, so it can be further
 	 * subtracted to get only the delay part introduced by the
 	 * delay line (ingoring the TDC, FPGA and routing delays).
+	 * Use a binary search of the delay value.
 	 */
 	bias = output_delay_ps(fd, ch, 0, FD_CAL_STEPS, NULL);
 	while( r - l > 1) {
@@ -174,6 +175,12 @@ static int fd_find_8ns_tap(struct fd_dev *fd, int ch)
 
 }
 
+/**
+ * fd_calibrate_outputs
+ * It calibrates the delay line by finding the correct 8ns-tap value
+ * for each channel. This is done during ACAM initialization, so on driver
+ * probe.
+ */
 int fd_calibrate_outputs(struct fd_dev *fd)
 {
 	int ret, ch;
@@ -206,7 +213,11 @@ int fd_calibrate_outputs(struct fd_dev *fd)
 	return 0;
 }
 
-/* Called from a timer any few seconds */
+/**
+ * fd_update_calibration
+ * Called from a timer any few seconds. It updates the Delay line tap
+ * according to the measured temperature
+ */
 void fd_update_calibration(unsigned long arg)
 {
 	struct fd_dev *fd = (void *)arg;
