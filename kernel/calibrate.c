@@ -230,13 +230,13 @@ void fd_update_calibration(unsigned long arg)
 		new = fitted + fd->ch[ch].frr_offset;
 		fd_ch_writel(fd, ch, new, FD_REG_FRR);
 		fd->ch[ch].frr_cur = new;
-		if (0) {
-			dev_info(&fd->fmc->dev,
-				 "%s: ch%i: 8ns @%i (f %i, off %i, t %i.%02i)\n",
-				 __func__, FD_CH_EXT(ch),
-				 new, fitted, fd->ch[ch].frr_offset,
-				 fd->temp / 16, (fd->temp & 0xf) * 100 / 16);
-		}
+
+		dev_dbg(&fd->fmc->dev,
+			"%s: ch%i: 8ns @%i (f %i, off %i, t %i.%02i)\n",
+			__func__, FD_CH_EXT(ch),
+			new, fitted, fd->ch[ch].frr_offset,
+			fd->temp / 16, (fd->temp & 0xf) * 100 / 16);
+
 	}
 
 	mod_timer(&fd->temp_timer, jiffies + HZ * fd_calib_period_s);
