@@ -1,5 +1,10 @@
 # user-space tools for spec-fine-delay
 
+# If it exists includes Makefile.specific. In this Makefile, you should put
+# specific Makefile code that you want to run before this. For example,
+# build a particular environment.
+-include Makefile.specific
+
 M = $(shell /bin/pwd)/../kernel
 
 DESTDIR ?= /usr/local

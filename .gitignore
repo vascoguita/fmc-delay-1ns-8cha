@@ -6,3 +6,4 @@
 .*cmd
 modules.order
 Module.symvers
+Makefile.specific
