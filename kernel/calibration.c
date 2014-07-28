@@ -99,7 +99,9 @@ static int fd_read_calibration_eeprom(struct fmc_device *fmc,
 		return ret;
 
 	/* Open "cali" as a device id, vendor is "FileData" -- big endian */
-	ret = sdbfs_open_id(&fs, 0x61746144656c6946LL, 0x696c6163);
+	ret = sdbfs_open_id(&fs,
+			    be64_to_cpu(0x46696c6544617461LL),
+			    be32_to_cpu(0x63616c69) /* "cali" */);
 	if (ret)
 		return ret;
 	ret = sdbfs_fread(&fs, 0, (void *)calib, sizeof(*calib));
