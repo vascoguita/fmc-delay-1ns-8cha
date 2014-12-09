@@ -422,32 +422,33 @@ TIMESPEC TS_fd_clk_ref_p_i = PERIOD "fd_clk_ref_p_i" 8 ns HIGH 50%;
 NET "clk_sys" TNM_NET = clk_sys;
 
 TIMESPEC TS_clk_20m_vcxo_i = PERIOD "clk_20m_vcxo_i" 50 ns HIGH 50%;
-TIMESPEC ts_ignore_crossclock = FROM "clk_sys" TO "fd_clk_ref_p_i" 10ns DATAPATHONLY;
-TIMESPEC ts_ignore_crossclock2 = FROM "fd_clk_ref_p_i" TO "clk_sys" 10ns  DATAPATHONLY;
-#bank 0
-#gennum
+
 NET "l_rst_n" TIG;
 NET "cmp_gn4124_core/rst_*" TIG;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2011/01/20
 NET "cmp_gn4124_core/cmp_clk_in/P_clk" TNM_NET = cmp_gn4124_core/cmp_clk_in/P_clk;
 
 PIN "U_DDR_PLL/clkout1_buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
-#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/04/26
-NET "clk_125m_gtp_n_i" TNM_NET = clk_125m_gtp_n_i;
-TIMESPEC TS_clk_125m_gtp_n_i = PERIOD "clk_125m_gtp_n_i" 8 ns HIGH 50%;
+
+#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2014/08/01
+NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
+TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
+NET "U_WR_CORE/WRPC/LM32_CORE/gen_profile_medium_icache_debug.U_Wrapped_LM32/jtck" TNM_NET = U_WR_CORE/WRPC/LM32_CORE/gen_profile_medium_icache_debug.U_Wrapped_LM32/jtck;
+TIMESPEC TS_U_WR_CORE_WRPC_LM32_CORE_gen_profile_medium_icache_debug_U_Wrapped_LM32_jtck = PERIOD "U_WR_CORE/WRPC/LM32_CORE/gen_profile_medium_icache_debug.U_Wrapped_LM32/jtck" 20 ns HIGH 50%;
+TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
+NET "cmp_gn4124_core/cmp_clk_in/feedback" TNM_NET = cmp_gn4124_core/cmp_clk_in/feedback;
+TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_feedback = PERIOD "cmp_gn4124_core/cmp_clk_in/feedback" 5 ns HIGH 50%;
 NET "clk_125m_gtp_p_i" TNM_NET = clk_125m_gtp_p_i;
 TIMESPEC TS_clk_125m_gtp_p_i = PERIOD "clk_125m_gtp_p_i" 8 ns HIGH 50%;
+NET "clk_125m_gtp_n_i" TNM_NET = clk_125m_gtp_n_i;
+TIMESPEC TS_clk_125m_gtp_n_i = PERIOD "clk_125m_gtp_n_i" 8 ns HIGH 50%;
+ 
 
-TIMESPEC ts_ignore_xclock1 = FROM "clk_sys" TO "clk_125m_pllref_n_i" 10ns DATAPATHONLY;
-TIMESPEC ts_ignore_xclock2 = FROM "clk_125m_pllref_p_i" TO "clk_sys" 10ns DATAPATHONLY;
+# TIMESPEC TS_crossdomain_1 = FROM "clk_sys" TO "clk_125m_pllref_BUFG" 4ns DATAPATHONLY;
+TIMESPEC TS_crossdomain_4 = FROM "clk_sys" TO "dcm_clk_ref_0" 4ns DATAPATHONLY;
+TIMESPEC TS_crossdomain_5 = FROM "dcm_clk_ref_0" TO "clk_sys" 4ns DATAPATHONLY;
+# TIMESPEC TS_crossdomain_7 = FROM "clk_125m_pllref_BUFG" TO "clk_sys" 4ns DATAPATHONLY;
+TIMESPEC TS_crossdomain_9 = FROM "clk_125m_pllref_BUFG" TO "dcm_clk_ref_0" 4ns DATAPATHONLY;
 
-#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/04/26
-TIMESPEC ts_x3 = FROM "clk_sys" TO "U_GTP_ch1_rx_divclk" 10ns DATAPATHONLY;
-TIMESPEC TS_x4 = FROM "U_GTP_ch1_rx_divclk" TO "clk_sys" 10ns DATAPATHONLY;
-#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2012/04/27
-TIMESPEC TS_x5 = FROM "U_DDR_PLL_clkout0" TO "clk_sys" 10ns DATAPATHONLY;
-TIMESPEC TS_x6 = FROM "clk_sys" TO "U_DDR_PLL_clkout0" 10ns  DATAPATHONLY;
-#Created by Constraints Editor (xc6slx45t-fgg484-3) - 2014/01/16
-NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
-TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 125 MHz HIGH 50%;
-TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
+NET "*/gc_sync_register_in[*]" MAXDELAY=4ns;
+

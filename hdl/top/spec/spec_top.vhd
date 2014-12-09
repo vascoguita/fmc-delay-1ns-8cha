@@ -540,12 +540,17 @@ begin
       csr_dat_i   => cnx_slave_out(c_MASTER_GENNUM).dat,
       csr_ack_i   => cnx_slave_out(c_MASTER_GENNUM).ack,
       csr_stall_i => cnx_slave_out(c_MASTER_GENNUM).stall,
-
+      csr_err_i => cnx_slave_out(c_MASTER_GENNUM).err,
+	  csr_rty_i => cnx_slave_out(c_MASTER_GENNUM).rty,
+	  csr_int_i => '0',
+		
       dma_clk_i   => clk_sys,
       dma_ack_i   => '1',
       dma_stall_i => '0',
+	  dma_err_i => '0',
+	  dma_rty_i => '0',
       dma_dat_i   => (others => '0'),
-
+	  dma_int_i => '0',
       dma_reg_adr_i => (others => '0'),
       dma_reg_dat_i => (others => '0'),
       dma_reg_sel_i => (others => '0'),
