@@ -1,5 +1,5 @@
 @regsection Memory map summary
-@multitable  @columnfractions .08 .08 .15 .64
+@multitable  @columnfractions .10 .15 .15 .55
 @headitem Address @tab Type @tab Prefix @tab Name
 @item @code{0x0} @tab
 REG @tab
@@ -170,12 +170,12 @@ Reset magic value
 @end multitable
 @regsection @code{IDR} - ID Register
 Magic identification value (for detecting FD cores by the driver). Even though now enumeration is handled through SDB, the @code{IDR} register is kept for compatibility with older software.
-@multitable @columnfractions .10 .10 .15 .30 .35
+@multitable @columnfractions .10 .10 .15 .10 .55
 @headitem Bits @tab Access @tab Prefix @tab Default @tab Name
 @item @code{31...0}
 @tab R/O @tab
 @code{IDR}
-@tab @code{0xf19ede1a} @tab 
+@tab @code{X} @tab 
 ID Magic Value
 @end multitable
 @multitable @columnfractions 0.15 0.85
@@ -210,7 +210,7 @@ Mezzanine present
 @multitable @columnfractions 0.15 0.85
 @headitem Field @tab Description
 @item @code{BYPASS} @tab Descides who is in charge of the TDC and delay lines:@* write 0: TDC and delay lines are controlled by the HDL core (normal operation mode)@* write 1: TDC and delay lines controlled from the host via @code{TDR} and @code{TDCSR} registers (calibration and testing mode)
-@item @code{INPUT_EN} @tab write 1: trigger input is enabled@* write 0: trigger input is disabled@* @b{Note 1:} state of @code{INPUT_EN} is relevant only in normal operation mode (i.e. when @code{GCR.BYPASS} == 0). @* @b{Note 2:} enabling the input in @code{INPUT_EN} does not mean it will be automatically enabled in the ACAM TDC - one must pre-program its registers first.
+@item @code{INPUT_EN} @tab write 1: trigger input is enabled@* write 0: trigger input is disabled.@* @b{Note 1:} state of @code{INPUT_EN} is relevant only in normal operation mode (i.e. when @code{GCR.BYPASS} == 0). @* @b{Note 2:} enabling the input in @code{INPUT_EN} does not mean it will be automatically enabled in the ACAM TDC - one must pre-program its registers first.
 @item @code{DDR_LOCKED} @tab read 1: AD9516 and internal DDR PLLs are locked@* read 0: AD9516 or internal DDR PLL not (yet) locked
 @item @code{FMC_PRESENT} @tab Mirrors the state of the FMC's @code{PRSNT_L} hardware pin: @* read 1: FMC card is present (@code{PRSNT_L == 0})@* read 0: no FMC card in the slot (@code{PRSNT_L == 1})
 @end multitable
@@ -449,7 +449,7 @@ Scaling factor between the FD's internal time scale and the ACAM's format. Used 
 ADSFR Value
 @end multitable
 @regsection @code{ATMCR} - Acam Timestamp Merging Control Register
-Controls merging of fine timestamps prouced by Acam with coarse timestamps obtained by the FPGA. 
+Controls merging of fine timestamps prouced by Acam with coarse timestamps obtained by the FPGA. See developers' manual for explanation. 
 @multitable @columnfractions .10 .10 .15 .10 .55
 @headitem Bits @tab Access @tab Prefix @tab Default @tab Name
 @item @code{7...0}
@@ -464,7 +464,7 @@ Coarse threshold
 Fine threshold
 @end multitable
 @regsection @code{ASOR} - Acam Start Offset Register
-ACAM timestamp start offset. Value that gets subtracted from ACAM's timestamps (due to ACAM's ALU architecture that does not support negative numbers).
+ACAM timestamp start offset. Value that gets subtracted from ACAM's timestamps (due to ACAM's ALU architecture that does not support negative numbers). See developers' manual for explanation.
 @multitable @columnfractions .10 .10 .15 .10 .55
 @headitem Bits @tab Access @tab Prefix @tab Default @tab Name
 @item @code{22...0}

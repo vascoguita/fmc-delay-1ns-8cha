@@ -14,7 +14,7 @@ HTML = $(INPUT:.in=.html)
 TXT  = $(INPUT:.in=.txt)
 PDF  = $(INPUT:.in=.pdf)
 
-ALL    =  $(PDF)
+ALL    =  $(PDF) $(HTML)
 
 MAKEINFO ?= makeinfo
 
@@ -28,8 +28,8 @@ MAKEINFO ?= makeinfo
 #%.info: %.texi
 #	$(MAKEINFO) $< -o $@
 
-#%.html: %.texi
-#	$(MAKEINFO) --html --no-split -o $@ $<
+%.html: %.texi
+	$(MAKEINFO) --html --no-split -o $@ $<
 
 %.txt: %.texi
 	$(MAKEINFO) --no-headers $< > $@
