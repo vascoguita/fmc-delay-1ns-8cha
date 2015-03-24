@@ -202,7 +202,7 @@ int fd_calibrate_outputs(struct fd_dev *fd)
 
 		fd_ch_writel(fd, ch, new, FD_REG_FRR);
 		fd->ch[ch].frr_cur = new;
-		if (1) {
+		if (fd->verbose > 1) {
 			dev_info(&fd->fmc->dev,
 				 "%s: ch%i: 8ns @%i (f %i, off %i, t %i.%02i)\n",
 				 __func__, FD_CH_EXT(ch),

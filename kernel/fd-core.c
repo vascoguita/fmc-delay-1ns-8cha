@@ -36,9 +36,6 @@ static struct fmc_driver fd_drv; /* forward declaration */
 FMC_PARAM_BUSID(fd_drv);
 FMC_PARAM_GATEWARE(fd_drv);
 
-static int fd_show_sdb;
-module_param_named(show_sdb, fd_show_sdb, int, 0444);
-
 /* FIXME: add parameters "file=" and "wrc=" like wr-nic-core does */
 
 /**
@@ -172,23 +169,19 @@ int fd_probe(struct fmc_device *fmc)
 		}
 		return ret; /* other error: pass over */
 	}
-	dev_info(dev, "Gateware successfully loaded\n");
-
-	/* FIXME: this is obsoleted by fmc-bus internal parameters */
-	if (fd_show_sdb)
-		fmc_show_sdb_tree(fmc);
+	dev_dbg(dev, "Gateware successfully loaded\n");
 
 	/* Now use SDB to find the base addresses */
 
 	ord = fmc->slot_id;
-	
+
 	fd->fd_regs_base = fmc_sdb_find_nth_device ( fmc->sdb, 0xce42, 0xf19ede1a, &ord, NULL );
 	if( (signed long)fd->fd_regs_base < 0)
 	{
 	    dev_err(dev, "Can't find the FD core. Wrong gateware?\n");
 	}
-	
-	dev_info(dev, "fd_regs_base is %x\n", fd->fd_regs_base);
+
+	dev_dbg(dev, "fd_regs_base is %x\n", fd->fd_regs_base);
 
 	fd->fd_owregs_base = fd->fd_regs_base + 0x500;
 
@@ -201,8 +194,6 @@ int fd_probe(struct fmc_device *fmc)
 	if (fd_readl(fd, FD_REG_IDR) != FD_MAGIC_FPGA) {
 		dev_err(dev, "wrong gateware\n");
 		return -ENODEV;
-	} else {
-		dev_info(dev, "%s: initializing\n", KBUILD_MODNAME);
 	}
 
 	/* Retrieve calibration from the eeprom, and validate */
@@ -277,6 +268,7 @@ int fd_probe(struct fmc_device *fmc)
 	/* set all output enable stages */
 	for (ch = 1; ch <= FD_CH_NUMBER; ch++)
 		fd_gpio_set(fd, FD_GPIO_OUTPUT_EN(ch));
+
 	return 0;
 
 err:

@@ -153,24 +153,26 @@ int fd_handle_eeprom_calibration(struct fd_dev *fd)
 	calib->vcxo_default_tune = be32_to_cpu(calib->vcxo_default_tune);
 
 	if (calibration_default) {
-		dev_info(d, "Overriding with default calibration\n");
+		dev_info(d, "calibration: overriding with default values\n");
 		*calib = fd_calib_default;
 		hash = horig; /* whatever it is */
 	}
 
-	dev_info(d, "calibration: version %i, date %08x\n", calib->version,
-		 calib->date);
-	if (calibration_check) {
-		/* dump human-readable values */
-		dev_info(d, "calib: magic 0x%08x\n", calib->magic);
-		for (i = 0; i < ARRAY_SIZE(calib->frr_poly); i++)
-			dev_info(d, "calib: poly[%i] = %lli\n", i,
-				 (long long)calib->frr_poly[i]);
-		for (i = 0; i < ARRAY_SIZE(calib->zero_offset); i++)
-			dev_info(d, "calib: offset[%i] = %li\n", i,
-				 (long)calib->zero_offset[i]);
-		dev_info(d, "calib: tdc_offset %i\n", calib->tdc_zero_offset);
-		dev_info(d, "calib: vcxo %i\n", calib->vcxo_default_tune);
+	if (fd->verbose) {
+		dev_info(d, "calibration: version %i, date %08x\n",
+			 calib->version, calib->date);
+		if (calibration_check) {
+			/* dump human-readable values */
+			dev_info(d, "calib: magic 0x%08x\n", calib->magic);
+			for (i = 0; i < ARRAY_SIZE(calib->frr_poly); i++)
+				dev_info(d, "calib: poly[%i] = %lli\n", i,
+					 (long long)calib->frr_poly[i]);
+			for (i = 0; i < ARRAY_SIZE(calib->zero_offset); i++)
+				dev_info(d, "calib: offset[%i] = %li\n", i,
+					 (long)calib->zero_offset[i]);
+			dev_info(d, "calib: tdc_offset %i\n", calib->tdc_zero_offset);
+			dev_info(d, "calib: vcxo %i\n", calib->vcxo_default_tune);
+		}
 	}
 
 	if (hash != horig) {

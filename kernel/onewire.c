@@ -242,7 +242,7 @@ int fd_onewire_init(struct fd_dev *fd)
 			printk("%02x%c", fd->ds18_id[i], i == 7 ? '\n' : ':');
 	}
 	/* read the temperature once, to ensure it works, and print it */
-	fd_read_temp(fd, 2);
+	fd_read_temp(fd, fd->verbose);
 
 	return 0;
 }

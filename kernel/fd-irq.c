@@ -216,7 +216,7 @@ static int fd_read_hw_fifo(struct fd_dev *fd)
 
 	BUG_ON(diff < 0);
 	if (diff >= fd_sw_fifo_len)
-		dev_warn(fd->fmc->hwdev, "Fifo overflow: "
+		dev_dbg(fd->fmc->hwdev, "Fifo overflow: "
 			 " dropped %i samples (%li -> %li == %li)\n",
 			 fd_sw_fifo_len / 2,
 			 fd->sw_fifo.tail, fd->sw_fifo.head, diff);
@@ -316,11 +316,11 @@ int fd_irq_init(struct fd_dev *fd)
 	if (fd_timer_period_ms) {
 		setup_timer(&fd->fifo_timer, fd_tlet, (unsigned long)fd);
 		fd_timer_period_jiffies = msecs_to_jiffies(fd_timer_period_ms);
-		dev_info(&fd->fmc->dev,"Using a timer for input (%i ms)\n",
+		dev_dbg(&fd->fmc->dev,"Using a timer for input (%i ms)\n",
 			 jiffies_to_msecs(fd_timer_period_jiffies));
 		mod_timer(&fd->fifo_timer, jiffies + fd_timer_period_jiffies);
 	} else {
-		dev_info(fd->fmc->hwdev, "Using interrupts for input\n");
+		dev_dbg(fd->fmc->hwdev, "Using interrupts for input\n");
 
 		/* Disable interrupts */
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
