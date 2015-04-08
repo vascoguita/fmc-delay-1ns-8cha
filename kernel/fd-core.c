@@ -151,25 +151,44 @@ int fd_probe(struct fmc_device *fmc)
 		return -ENOMEM;
 	}
 
-	fwname = "";
+	/*
+	 * If the carrier is still using the golden bitstream or the user is
+	 * asking for a particular one, then program our bistream, otherwise
+	 * we already have our bitstream
+	 */
+	if (fmc->flags & FMC_DEVICE_HAS_GOLDEN || fd_drv.gw_n) {
+		if (fd_drv.gw_n)
+			fwname = ""; /* reprogram will pick from module parameter */
+		else if (!strcmp(fmc->carrier_name, "SVEC"))
+			fwname = FDELAY_GATEWARE_NAME_SVEC;
+		else if (!strcmp(fmc->carrier_name, "SPEC"))
+			fwname = FDELAY_GATEWARE_NAME_SPEC;
+		dev_info(fmc->hwdev, "Gateware (%s)\n", fwname);
 
-	if (!strcmp(fmc->carrier_name, "SVEC"))
-	    fwname = FDELAY_GATEWARE_NAME_SVEC;
-	else if (!strcmp(fmc->carrier_name, "SPEC"))
-	    fwname = FDELAY_GATEWARE_NAME_SPEC;
-
-	if (fd_drv.gw_n)
-		fwname = ""; /* reprogram will pick from module parameter */
-	ret = fmc_reprogram(fmc, &fd_drv, fwname, 0 /* SDB entry point */);
-	if (ret < 0) {
-		if (ret == -ESRCH) {
-			dev_info(dev, "%s: no gateware at index %i\n",
-				 KBUILD_MODNAME, index);
-			return -ENODEV;
+		/* We first write a new binary (and lm32) within the carrier */
+		ret = fmc_reprogram(fmc, &fd_drv, fwname, 0 /* SDB entry point */);
+		if (ret < 0) {
+			dev_err(fmc->hwdev, "write firmware \"%s\": error %i\n",
+				fwname, ret);
+			if (ret == -ESRCH) {
+				dev_info(fmc->hwdev, "%s: no gateware at index %i\n",
+					 KBUILD_MODNAME, index);
+				return -ENODEV;
+			}
+			return ret;
 		}
-		return ret; /* other error: pass over */
+		dev_info(fmc->hwdev, "Gateware successfully loaded\n");
+	} else {
+		dev_info(fmc->hwdev,
+			 "Gateware already there. Set the \"gateware\" parameter to overwrite the current gateware\n");
 	}
-	dev_dbg(dev, "Gateware successfully loaded\n");
+
+	ret = fmc_scan_sdb_tree(fmc, 0);
+	if (ret == -EBUSY) {
+		/* Not a problem, it's already there. We assume that
+		   it's the correct one */
+		ret = 0;
+	}
 
 	/* Now use SDB to find the base addresses */
 
