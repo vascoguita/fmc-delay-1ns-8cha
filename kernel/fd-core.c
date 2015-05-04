@@ -288,8 +288,14 @@ int fd_probe(struct fmc_device *fmc)
 	for (ch = 1; ch <= FD_CH_NUMBER; ch++)
 		fd_gpio_set(fd, FD_GPIO_OUTPUT_EN(ch));
 
+	/* Pin the carrier */
+	if (!try_module_get(fmc->owner))
+		goto out_mod;
+
 	return 0;
 
+out_mod:
+	fd_irq_exit(fd);
 err:
 	while (--m, --i >= 0)
 		if (m->exit)
@@ -312,6 +318,10 @@ int fd_remove(struct fmc_device *fmc)
 		if (m->exit)
 			m->exit(fd);
 	}
+
+	/* Release the carrier */
+	module_put(fmc->owner);
+
 	return 0;
 }
 
