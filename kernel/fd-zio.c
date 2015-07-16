@@ -806,6 +806,11 @@ static struct zio_driver fd_zdrv = {
 	},
 	.id_table = fd_table,
 	.probe = fd_zio_probe,
+	/* Take the version from ZIO git sub-module */
+	.min_version = ZIO_VERSION(__ZIO_MIN_MAJOR_VERSION,
+				   __ZIO_MIN_MINOR_VERSION,
+				   0), /* Change it if you use new features from
+					  a specific patch */
 };
 
 

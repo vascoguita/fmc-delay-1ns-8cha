@@ -1,5 +1,7 @@
 FMC_BUS := $(shell scripts/check-submodule fmc-bus $(FMC_BUS))
 ZIO 		:= $(shell scripts/check-submodule zio $(ZIO))
+ZIO_VERSION = $(shell cd $(ZIO); git describe --always --dirty --long --tags)
+export ZIO_VERSION
 SPEC_SW := $(shell scripts/check-submodule spec-sw $(SPEC_SW))
 
 DESTDIR ?= /usr/local
