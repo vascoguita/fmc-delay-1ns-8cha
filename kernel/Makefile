@@ -15,11 +15,12 @@ ifdef CONFIG_CSM_VERSION
 else
   ccflags-y += -DCERN_SUPER_MODULE=""
 endif
+# The library includes <sdb.h>, so point -I directtly there
+# include our header before to avoid conflicts with the kernel
+LINUXINCLUDE := -I$(FMC_BUS)/kernel/include -I$(FMC_BUS)/kernel/include/linux $(LINUXINCLUDE)
 
 ccflags-y += \
 	-I$(ZIO)/include \
-	-I$(FMC_BUS)/kernel/include \
-	-I$(FMC_BUS)/kernel/include/linux \
 	-I$(FMC_BUS) \
 	-I$(src)
 
