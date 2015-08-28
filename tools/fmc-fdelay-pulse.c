@@ -150,6 +150,7 @@ void parse_default(struct fdelay_pulse *p)
 	p->mode =  FD_OUT_MODE_PULSE;
 	p->rep = -1; /* 1 pulse */
 
+	p->start.utc = 0;
 	/* Default settings are for 10Hz, 1us width */
 	p->loop.coarse = COARSE_PER_SEC / 10;
 	t_width.coarse = 125;
@@ -373,10 +374,18 @@ int main(int argc, char **argv)
 	/* End is start + width, in every situation */
 	p.end = ts_add(p.start, t_width);
 
-	/* In delay mode, default is one pulse only; recover if wrong */
-	if (p.mode == FD_OUT_MODE_DELAY && p.rep <= 0)
+	/* In delay mode, default is one pulse only; recover if wrong
+	   The same rule apply also for the disabled mode */
+	if ((p.mode == FD_OUT_MODE_DELAY || p.mode == FD_OUT_MODE_DISABLED) &&
+	    p.rep <= 0)
 		p.rep = 1;
-
+	/* In delay mode, the minimum delay is 600ns; recover if wrong
+	   The same rule apply also for the disabled mode */
+	if ((p.mode == FD_OUT_MODE_DELAY || p.mode == FD_OUT_MODE_DISABLED) &&
+	    p.start.utc == 0 && p.start.coarse < (600 / 8)) {
+		p.start.coarse = 600 / 8;
+		p.start.frac = 0;
+	}
 	/* Done. Report verbosely and activate the information we parsed */
 	channel = FDELAY_OUTPUT_USER_TO_HW(channel);
 
