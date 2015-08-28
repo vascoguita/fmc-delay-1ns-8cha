@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #include "fdelay-lib.h"
 
@@ -112,8 +113,8 @@ static void parse_time(char *s, struct fdelay_time *t)
 	t->utc += extra_seconds;
 
 	if (0)
-		printf("dbg: raw %lld, %lld, converted: %lld s %d ns %d ps\n",
-		       extra_seconds,time_ps, t->utc, t->coarse * 8,
+		printf("dbg: raw %"PRId64", %"PRId64", converted: %"PRIu64" s %"PRId32" ns %"PRId32" ps\n",
+		       extra_seconds, time_ps, t->utc, t->coarse * 8,
 		       t->frac * 8000 / 4096);
 }
 
@@ -145,7 +146,7 @@ static struct fdelay_time ts_add(struct fdelay_time a, struct fdelay_time b)
 void parse_default(struct fdelay_pulse *p)
 {
 	memset(p, 0, sizeof(*p));
-	memset(&t_width, 0, sizeof(&t_width));
+	memset(&t_width, 0, sizeof(struct fdelay_time));
 	p->mode =  FD_OUT_MODE_PULSE;
 	p->rep = -1; /* 1 pulse */
 
@@ -201,7 +202,7 @@ void parse_period(struct fdelay_pulse *p, char *s)
 
 void parse_width(struct fdelay_pulse *p, char *s)
 {
-	memset(&t_width, 0, sizeof(&t_width));
+	memset(&t_width, 0, sizeof(struct fdelay_time));
 	parse_time(s, &t_width);
 }
 
@@ -396,7 +397,6 @@ int main(int argc, char **argv)
 		}
 		trigger_wait = !i;
 	}
-
 
 	fdelay_close(b);
 	fdelay_exit();

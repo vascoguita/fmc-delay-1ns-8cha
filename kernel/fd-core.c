@@ -134,7 +134,7 @@ int fd_probe(struct fmc_device *fmc)
 	struct fd_modlist *m;
 	struct fd_dev *fd;
 	struct device *dev = &fmc->dev;
-	char *fwname;
+	char *fwname = "invalid";
 	int i, index, ret, ch, ord;
 
 	/* Validate the new FMC device */
