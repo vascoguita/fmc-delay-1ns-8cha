@@ -30,7 +30,7 @@ lib: $(LIB)
 	$(CC) $(CFLAGS) $*.c $(LDFLAGS) -o $@
 
 $(LIB): $(LOBJ)
-	ar r $@ $^
+	$(AR) r $@ $^
 
 clean:
 	rm -f $(LIB) .depend *.o *~
