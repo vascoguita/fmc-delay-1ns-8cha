@@ -5,7 +5,11 @@
 # build a particular environment.
 -include Makefile.specific
 
-ZIO := $(shell cd ..; scripts/check-submodule zio $(ZIO))
+# include parent_common.mk for buildsystem's defines
+REPO_PARENT=../..
+-include $(REPO_PARENT)/parent_common.mk
+
+ZIO ?= ../zio
 
 LIB = libfdelay.a
 LOBJ := fdelay-init.o
