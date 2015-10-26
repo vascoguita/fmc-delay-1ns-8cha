@@ -3,11 +3,27 @@
 REPO_PARENT=$(shell /bin/pwd)/..
 -include $(REPO_PARENT)/parent_common.mk
 
-FMC_BUS := $(shell scripts/check-submodule fmc-bus $(FMC_BUS))
-ZIO 		:= $(shell scripts/check-submodule zio $(ZIO))
+# The user can override, using environment variables, all these three:
+FMC_BUS ?= $(shell pwd)/fmc-bus
+ZIO ?= $(shell pwd)/zio
+SPEC_SW ?= $(shell pwd)/spec-sw
+
+export FMC_BUS
+export ZIO
+export SPEC_SW
+
+# FMC_BUS_ABS, ZIO_ABS and SPEC_SW_ABS has to be absolut path, due to beeing
+# passed to the Kbuild
+FMC_BUS_ABS ?= $(abspath $(FMC_BUS) )
+ZIO_ABS ?= $(abspath $(ZIO) )
+SPEC_SW_ABS ?= $(abspath $(SPEC_SW) )
+
+export FMC_BUS_ABS
+export ZIO_ABS
+export SPEC_SW_ABS
+
 ZIO_VERSION = $(shell cd $(ZIO); git describe --always --dirty --long --tags)
 export ZIO_VERSION
-SPEC_SW := $(shell scripts/check-submodule spec-sw $(SPEC_SW))
 
 DESTDIR ?= /usr/local
 

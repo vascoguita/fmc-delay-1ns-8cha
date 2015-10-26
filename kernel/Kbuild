@@ -1,7 +1,7 @@
 
 KBUILD_EXTRA_SYMBOLS := \
-	$(ZIO)/Module.symvers \
-	$(FMC_BUS)/kernel/Module.symvers
+	$(ZIO_ABS)/Module.symvers \
+	$(FMC_BUS_ABS)/kernel/Module.symvers
 
 # For this CSM_VERSION, please see ohwr.org/csm documentation
 ifdef CONFIG_CSM_VERSION
@@ -11,11 +11,11 @@ else
 endif
 # The library includes <sdb.h>, so point -I directtly there
 # include our header before to avoid conflicts with the kernel
-LINUXINCLUDE := -I$(FMC_BUS)/kernel/include -I$(FMC_BUS)/kernel/include/linux $(LINUXINCLUDE)
+LINUXINCLUDE := -I$(FMC_BUS_ABS)/kernel/include -I$(FMC_BUS_ABS)/kernel/include/linux $(LINUXINCLUDE)
 
 ccflags-y += \
-	-I$(ZIO)/include \
-	-I$(FMC_BUS) \
+	-I$(ZIO_ABS)/include \
+	-I$(FMC_BUS_ABS) \
 	-I$(src)
 
 ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
