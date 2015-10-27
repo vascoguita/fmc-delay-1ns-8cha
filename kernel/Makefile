@@ -16,7 +16,9 @@ ZIO_ABS ?= $(abspath $(ZIO) )
 GIT_VERSION = $(shell git describe --dirty --long --tags)
 export GIT_VERSION
 
-ZIO_VERSION = $(shell cd $(ZIO_ABS); git describe --always --dirty --long --tags)
+FMC_BUS_VERSION ?= $(shell cd $(FMC_BUS_ABS); git describe --always --dirty --long --tags)
+ZIO_VERSION     ?= $(shell cd $(ZIO_ABS);     git describe --always --dirty --long --tags)
+export FMC_BUS_VERSION
 export ZIO_VERSION
 
 all modules:
