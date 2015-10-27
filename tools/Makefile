@@ -9,11 +9,14 @@
 REPO_PARENT=../..
 -include $(REPO_PARENT)/fmc_common.mk
 
+ZIO ?= ../zio
+ZIO_ABS ?= $(abspath $(ZIO) )
+
 M = $(shell /bin/pwd)/../kernel
 
 DESTDIR ?= /usr/local
 
-CFLAGS += -I$(M) -I../lib -I$(ZIO)/include -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+CFLAGS += -I$(M) -I../lib -I$(ZIO_ABS)/include -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
 
 LDFLAGS = -L../lib
 LDLIBS = -lfdelay
