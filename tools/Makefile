@@ -5,11 +5,21 @@
 # build a particular environment.
 -include Makefile.specific
 
+# include parent_common.mk for buildsystem's defines
+REPO_PARENT=../..
+-include $(REPO_PARENT)/fmc_common.mk
+
+ZIO ?= ../zio
+ZIO_ABS ?= $(abspath $(ZIO) )
+
 M = $(shell /bin/pwd)/../kernel
 
 DESTDIR ?= /usr/local
 
-CFLAGS += -I$(M) -I../lib -I$(ZIO)/include -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+CFLAGS += -I$(M) -I../lib -I$(ZIO_ABS)/include -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+
+LDFLAGS = -L../lib
+LDLIBS = -lfdelay
 
 CC ?= $(CROSS_COMPILE)gcc
 
@@ -26,7 +36,9 @@ all modules: $(progs)
 clean:
 	rm -f $(progs) *.o *~
 
-$(progs): tools-util.o tools-common.h $(wildcard ../lib/*.[ch])
+COMMON_SRCS = tools-util.c
+
+$(progs): $(COMMON_SRCS:.c=.o)
 
 # make nothing for modules_install, but avoid errors
 modules_install:
@@ -35,9 +47,3 @@ install:
 	install -d $(DESTDIR)/bin
 	install -D $(progs) $(DESTDIR)/bin
 
-# we need this as we are out of the kernel
-%: %.c $(wildcard *.h)
-	$(CC) $(CFLAGS) -O2 $*.c tools-util.o \
-		-L../lib -lfdelay -o $@
-%.o: %.c  $(wildcard *.h)
-	$(CC) $(CFLAGS) -O2 -c $*.c -o $@

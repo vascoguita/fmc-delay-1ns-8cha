@@ -1,39 +1,60 @@
-FMC_BUS := $(shell scripts/check-submodule fmc-bus $(FMC_BUS))
-ZIO 		:= $(shell scripts/check-submodule zio $(ZIO))
-ZIO_VERSION = $(shell cd $(ZIO); git describe --always --dirty --long --tags)
-export ZIO_VERSION
-SPEC_SW := $(shell scripts/check-submodule spec-sw $(SPEC_SW))
+# include parent_common.mk for buildsystem's defines
+# use absolute path for REPO_PARENT
+REPO_PARENT=$(shell /bin/pwd)/..
+-include $(REPO_PARENT)/parent_common.mk
 
-DESTDIR ?= /usr/local
-
-.PHONY: all clean modules install modules_install default
-.PHONY: gitmodules prereq prereq_install prereq_install_warn prereq_clean
-
-DIRS = kernel lib tools
-
-all clean modules install modules_install: gitmodules
-	@if echo $@ | grep -q install; then $(MAKE) prereq_install_warn; fi
-	for d in $(DIRS); do $(MAKE) ZIO=$(ZIO) FMC_BUS=$(FMC_BUS) -C $$d $@ || exit 1; done
-
-all modules: prereq
-
-clean_all: clean prereq_clean
+all: kernel lib tools
 
 # a hack, to prevent compiling wr-nic.ko, which won't work on older kernels
 CONFIG_WR_NIC=n
 export CONFIG_WR_NIC
 
-#### The following targets are used to manage prerequisite repositories
-gitmodules:
-	@test -d fmc-bus/doc || echo "Checking out submodules"
-	@test -d fmc-bus/doc || git submodule update --init
-	@git submodule update
-
 # The user can override, using environment variables, all these three:
-SUBMOD = $(FMC_BUS) $(ZIO) $(SPEC_SW)
+FMC_BUS ?= fmc-bus
+ZIO ?= zio
+SPEC_SW ?= spec-sw
 
-prereq:
-	for d in $(SUBMOD); do $(MAKE) -C $$d || exit 1; done
+# FMC_BUS_ABS, ZIO_ABS and SPEC_SW_ABS has to be absolut path, due to beeing
+# passed to the Kbuild
+FMC_BUS_ABS ?= $(abspath $(FMC_BUS) )
+ZIO_ABS ?= $(abspath $(ZIO) )
+SPEC_SW_ABS ?= $(abspath $(SPEC_SW) )
+
+export FMC_BUS_ABS
+export ZIO_ABS
+export SPEC_SW_ABS
+
+ZIO_VERSION = $(shell cd $(ZIO_ABS); git describe --always --dirty --long --tags)
+export ZIO_VERSION
+
+
+DIRS = $(FMC_BUS_ABS) $(ZIO_ABS) $(SPEC_SW_ABS) kernel lib tools
+
+$(SPEC_SW_ABS): $(FMC_BUS_ABS)
+kernel: $(FMC_BUS_ABS) $(ZIO_ABS) $(SPEC_SW_ABS)
+lib: $(ZIO_ABS)
+tools: lib
+
+DESTDIR ?= /usr/local
+
+.PHONY: all clean modules install modules_install $(DIRS)
+.PHONY: gitmodules prereq_install prereq_install_warn
+
+install modules_install: prereq_install_warn
+
+all clean modules install modules_install: $(DIRS)
+
+clean: TARGET = clean
+modules: TARGET = modules
+install: TARGET = install
+modules_install: TARGET = modules_install
+
+
+$(DIRS):
+	$(MAKE) -C $@ $(TARGET)
+
+
+SUBMOD = $(FMC_BUS_ABS) $(ZIO_ABS) $(SPEC_SW_ABS)
 
 prereq_install_warn:
 	@test -f .prereq_installed || \
@@ -43,7 +64,21 @@ prereq_install:
 	for d in $(SUBMOD); do $(MAKE) -C $$d modules_install || exit 1; done
 	touch .prereq_installed
 
-prereq_clean:
-	for d in $(SUBMOD); do $(MAKE) -C $$d clean || exit 1; done
+$(FMC_BUS_ABS): fmc-bus-init_repo
+$(ZIO_ABS): zio-init_repo
+$(SPEC_SW_ABS): spec-sw-init_repo
+
+# init submodule if missing
+fmc-bus-init_repo:
+	@test -d $(FMC_BUS_ABS)/doc || ( echo "Checking out submodule $(FMC_BUS_ABS)"; git submodule update --init $(FMC_BUS_ABS) )
+
+# init submodule if missing
+zio-init_repo:
+	@test -d $(ZIO_ABS)/doc || ( echo "Checking out submodule $(ZIO_ABS)" && git submodule update --init $(ZIO_ABS) )
+
+# init submodule if missing
+spec-sw-init_repo:
+	@test -d $(SPEC_SW_ABS)/doc || ( echo "Checking out submodule $(SPEC_SW_ABS)" && git submodule update --init $(SPEC_SW_ABS) )
+
 
 include scripts/gateware.mk
