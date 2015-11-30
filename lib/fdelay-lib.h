@@ -103,6 +103,11 @@ extern int fdelay_get_config_pulse(struct fdelay_board *userb,
 extern int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 			       int channel, struct fdelay_pulse_ps *ps);
 
+/* libfmctdc version string */
+extern const char * const libfdelay_version_s;
+/* zio version string used during compilation of libfmctdc */
+extern const char * const libfdelay_zio_version_s;
+
 #ifdef FDELAY_INTERNAL /* Libray users should ignore what follows */
 #include <unistd.h>
 #include <fcntl.h>
