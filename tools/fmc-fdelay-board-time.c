@@ -8,11 +8,13 @@
 
 #include "tools-common.h"
 
+char git_version[] = "git version: " GIT_VERSION;
+
 void help(char *name)
 {
 
 	fprintf(stderr, "fmc-fdelay-board-time: a tool for manipulating the FMC Fine Delay time base.\n");
-	fprintf(stderr, "Use: \"%s [-i <index>] [-d <dev>] <command>\"\n",
+	fprintf(stderr, "Use: \"%s [-V] [-i <index>] [-d <dev>] <command>\"\n",
 		name);
 	fprintf(stderr, "   where the <command> can be:\n"
 			"     get                    - shows current time and White Rabbit status.\n"
@@ -36,6 +38,9 @@ int main(int argc, char **argv)
 	/* Standard part of the file (repeated code) */
 	if (tools_need_help(argc, argv))
 		help(argv[0]);
+
+	/* print versions if needed */
+	print_version(argc, argv);
 
 	nboards = fdelay_init();
 

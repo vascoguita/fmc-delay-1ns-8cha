@@ -8,6 +8,18 @@
 #include "tools-common.h"
 
 extern void help(char *name); /* This is mandatory in all tools */
+extern char git_version[];
+
+void print_version(int argc, char **argv)
+{
+	if ((argc == 2) && (!strcmp(argv[1], "-V"))) {
+		printf("%s %s\n", argv[0], git_version);
+		printf("%s\n", libfdelay_version_s);
+		printf("%s\n", libfdelay_zio_version_s);
+		exit(0);
+	}
+
+}
 
 void tools_getopt_d_i(int argc, char **argv,
 				    int *dev, int *index)
