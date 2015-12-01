@@ -19,7 +19,12 @@ LOBJ += fdelay-time.o
 LOBJ += fdelay-tdc.o
 LOBJ += fdelay-output.o
 
+GIT_VERSION := $(shell git describe --dirty --long --tags)
+ZIO_GIT_VERSION := $(shell cd $(ZIO_ABS); git describe --dirty --long --tags)
+
 CFLAGS = -Wall -ggdb -O2 -I../kernel -I$(ZIO_ABS)/include $(EXTRACFLAGS)
+CFLAGS += -DGIT_VERSION="\"$(GIT_VERSION)\""
+CFLAGS += -DZIO_GIT_VERSION="\"$(ZIO_GIT_VERSION)\""
 LDFLAGS = -L. -lfdelay
 
 DESTDIR ?= /usr/local

@@ -14,3 +14,5 @@ extern void tools_report_time(char *name, struct fdelay_time *t, int umode);
 extern void report_output_config(int channel, struct fdelay_pulse *p, int umode);
 
 extern void help(char *name); /* This is mandatory in all tools */
+
+extern void print_version(int argc, char **argv);

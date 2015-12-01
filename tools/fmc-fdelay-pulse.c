@@ -13,9 +13,11 @@
 
 #include "tools-common.h"
 
+char git_version[] = "git version: " GIT_VERSION;
+
 void help(char *name)
 {
-	fprintf(stderr, "%s: Use \"%s [-i <index>] [-d <dev>] [<opts>]\n",
+	fprintf(stderr, "%s: Use \"%s [-V] [-i <index>] [-d <dev>] [<opts>]\n",
 		name, name);
 	fprintf(stderr, " options:\n"
 		"   -o <output>     ouput channel: 1..4 (default 1)\n"
@@ -222,6 +224,9 @@ int main(int argc, char **argv)
 	/* Standard part of the file (repeated code) */
 	if (tools_need_help(argc, argv))
 		help(argv[0]);
+
+	/* print versions if needed */
+	print_version(argc, argv);
 
 	nboards = fdelay_init();
 

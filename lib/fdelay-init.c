@@ -27,6 +27,9 @@
 #define FDELAY_INTERNAL
 #include "fdelay-lib.h"
 
+const char * const libfdelay_version_s = "libfdelay version: " GIT_VERSION;
+const char * const libfdelay_zio_version_s = "libfdelay is using zio version: " ZIO_GIT_VERSION;
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 static struct __fdelay_board *fd_boards;

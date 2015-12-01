@@ -9,11 +9,12 @@
 REPO_PARENT=../..
 -include $(REPO_PARENT)/parent_common.mk
 
-M = $(shell /bin/pwd)/../kernel
-
 DESTDIR ?= /usr/local
 
-CFLAGS += -I$(M) -I../lib -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+GIT_VERSION := $(shell git describe --dirty --long --tags)
+
+CFLAGS += -I../kernel -I../lib -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+CFLAGS += -DGIT_VERSION="\"$(GIT_VERSION)\""
 
 LDFLAGS = -L../lib
 LDLIBS = -lfdelay

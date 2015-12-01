@@ -9,9 +9,12 @@
 
 #include "tools-common.h"
 
+char git_version[] = "git version: " GIT_VERSION;
+
 void help(char *name)
 {
-	fprintf(stderr, "%s: Lists boards, takes no arguments\n", name);
+	fprintf(stderr, "%s: Lists boards\n"
+			"    -V  print version\n", name);
 	exit(1);
 }
 
@@ -23,6 +26,9 @@ int main(int argc, char **argv)
 
 	if (tools_need_help(argc, argv))
 		help(argv[0]);
+
+	/* print versions if needed */
+	print_version(argc, argv);
 
 	if (argc > 1) {
 		fprintf(stderr, "%s: too many arguments (none expected)\n",
