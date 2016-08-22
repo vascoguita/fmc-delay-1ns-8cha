@@ -24,8 +24,6 @@
 #include <linux/zio-buffer.h>
 #include <linux/zio-trigger.h>
 
-#include <linux/fmc.h>
-
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
 #include "hw/fd_channel_regs.h"
@@ -216,7 +214,7 @@ static int fd_read_hw_fifo(struct fd_dev *fd)
 
 	BUG_ON(diff < 0);
 	if (diff >= fd_sw_fifo_len)
-		dev_dbg(fd->fmc->hwdev, "Fifo overflow: "
+		dev_dbg(&fd->pdev->dev, "Fifo overflow: "
 			 " dropped %i samples (%li -> %li == %li)\n",
 			 fd_sw_fifo_len / 2,
 			 fd->sw_fifo.tail, fd->sw_fifo.head, diff);
@@ -264,10 +262,9 @@ static void fd_tlet(unsigned long arg)
  * you read the whole fifo buffer. It is useless to clear the interrupt
  * in EIC_ISR
  */
-irqreturn_t fd_irq_handler(int irq, void *dev_id)
+irqreturn_t fd_irq_handler(int irq, void *arg)
 {
-	struct fmc_device *fmc = dev_id;
-	struct fd_dev *fd = fmc->mezzanine_data;
+	struct fd_dev *fd = arg;
 
 	if ((fd_readl(fd, FD_REG_TSBCR) & FD_TSBCR_EMPTY))
 		goto out_unexpected; /* bah! */
@@ -282,23 +279,17 @@ irqreturn_t fd_irq_handler(int irq, void *dev_id)
 	tasklet_schedule(&fd->tlet);
 
 out_unexpected:
-	/*
-	 * This may be an unexpected interrupt (it may not even be
-	 * use, but still on the SPEC we must ack, or the system locks
-	 * up, entering the interrupt again and again
-	 */
-	fmc->op->irq_ack(fmc);
+
 	return IRQ_HANDLED;
 }
 
 int fd_irq_init(struct fd_dev *fd)
 {
-	struct fmc_device *fmc = fd->fmc;
 	int rv;
 
 	/* Check that the sw fifo size is a power of two */
 	if (fd_sw_fifo_len & (fd_sw_fifo_len - 1)) {
-		dev_err(&fd->fmc->dev,
+		dev_err(&fd->pdev->dev,
 			"fifo len must be a power of 2 (not %d = 0x%x)\n",
 		        fd_sw_fifo_len, fd_sw_fifo_len);
 		return -EINVAL;
@@ -316,21 +307,20 @@ int fd_irq_init(struct fd_dev *fd)
 	if (fd_timer_period_ms) {
 		setup_timer(&fd->fifo_timer, fd_tlet, (unsigned long)fd);
 		fd_timer_period_jiffies = msecs_to_jiffies(fd_timer_period_ms);
-		dev_dbg(&fd->fmc->dev,"Using a timer for input (%i ms)\n",
+		dev_dbg(&fd->pdev->dev,"Using a timer for input (%i ms)\n",
 			 jiffies_to_msecs(fd_timer_period_jiffies));
 		mod_timer(&fd->fifo_timer, jiffies + fd_timer_period_jiffies);
 	} else {
-		dev_dbg(fd->fmc->hwdev, "Using interrupts for input\n");
+		dev_dbg(&fd->pdev->dev, "Using interrupts for input\n");
 
 		/* Disable interrupts */
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
 
 		tasklet_init(&fd->tlet, fd_tlet, (unsigned long)fd);
-		fmc->irq = fd->fd_regs_base;
-		rv = fmc->op->irq_request(fmc, fd_irq_handler, "fine-delay", 0);
-
+		rv = request_irq(platform_get_irq(fd->pdev, 0), fd_irq_handler, 0,
+			  dev_name(&fd->pdev->dev), fd);
 		if (rv < 0) {
-			dev_err(&fd->fmc->dev,
+			dev_err(&fd->pdev->dev,
 				"Failed to request the VIC interrupt\n");
 			goto out_irq_request;
 		}
@@ -359,7 +349,6 @@ out_irq_request:
 
 void fd_irq_exit(struct fd_dev *fd)
 {
-	struct fmc_device *fmc = fd->fmc;
 
 	/* Stop input */
 	fd_writel(fd, 0, FD_REG_GCR);
@@ -368,8 +357,7 @@ void fd_irq_exit(struct fd_dev *fd)
 		del_timer_sync(&fd->fifo_timer);
 	} else {
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
-		fmc->irq = fd->fd_regs_base;
-		fmc->op->irq_free(fmc);
+		free_irq(platform_get_irq(fd->pdev, 0), fd);
 	}
 	kfree(fd->sw_fifo.t);
 }

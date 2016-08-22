@@ -1,8 +1,22 @@
 #ifndef __FINE_DELAY_H__
 #define __FINE_DELAY_H__
 
-#define FDELAY_GATEWARE_NAME_SPEC "fmc/spec-fine-delay.bin"
-#define FDELAY_GATEWARE_NAME_SVEC "fmc/svec-fine-delay.bin"
+enum fd_versions {
+	FD_VER_SPEC = 0,
+	FD_VER_SVEC,
+};
+
+enum fd_mem_resource {
+	FD_MEM_BASE = 0,
+};
+
+enum fd_bus_resource {
+	FD_BUS_FMC_SLOT = 0,
+};
+
+enum fd_irq_resource {
+	FD_IRQ = 0,
+};
 
 #define FDELAY_VERSION		2 /* version of the layout of registers */
 /*
@@ -114,8 +128,9 @@ struct fd_time {
 #ifdef __KERNEL__ /* All the rest is only of kernel users */
 #include <linux/spinlock.h>
 #include <linux/timer.h>
-#include <linux/fmc.h>
+#include <linux/platform_device.h>
 #include <linux/version.h>
+#include <linux/interrupt.h>
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,25)
 #include <linux/math64.h>
 #else
@@ -126,6 +141,13 @@ static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
 	return dividend;
 }
 #endif
+
+struct memory_ops {
+	u32 (*read)(void *addr);
+	void (*write)(u32 value, void *addr);
+};
+
+extern struct memory_ops memops;
 
 /* This is somehow generic, but I find no better place at this time */
 #ifndef SET_HI32
@@ -186,9 +208,9 @@ struct fd_sw_fifo {
 struct fd_dev {
 	spinlock_t lock;
 	unsigned long flags;
-	int fd_regs_base;		/* sdb_find_device(cern, f19ede1a) */
-	int fd_owregs_base;		/* regs_base + 0x500 */
-	struct fmc_device *fmc;
+	void *fd_regs_base;
+	void *fd_owregs_base;		/* regs_base + 0x500 */
+	struct platform_device *pdev;
 	struct zio_device *zdev, *hwzdev;
 	struct timer_list fifo_timer;
 	struct timer_list temp_timer;
@@ -230,15 +252,15 @@ static inline void fd_split_pico(uint64_t pico,
 	*frac = (*frac << 12) / 8000;
 }
 
-static inline u32 ft_ioread(struct fmctdc_dev *ft, void *addr)
+static inline u32 ft_ioread(struct fd_dev *ft, void *addr)
 {
-	return fmc_readl(fd->fmc, addr);
+	return memops.read(addr);
 }
 
-static inline void ft_iowrite(struct fmctdc_dev *ft,
+static inline void ft_iowrite(struct fd_dev *ft,
 			      u32 value, void *addr)
 {
-	fmc_writel(fd->fmc, value, addr);
+	memops.write(value, addr);
 }
 
 static inline uint32_t fd_readl(struct fd_dev *fd, unsigned long reg)
@@ -392,8 +414,9 @@ extern int fd_eeprom_write(struct fd_dev *fd, int i2c_addr, uint32_t offset,
 			void *buf, size_t size);
 
 /* Function exported by calibration.c */
-int fd_handle_eeprom_calibration(struct fd_dev *fd);
-signed long fmc_sdb_find_nth_device (struct sdb_array *tree, uint64_t vid, uint32_t did, int *ordinal, uint32_t *size );
+extern int fd_handle_calibration(struct fd_dev *fd,
+				 struct fd_calibration *calib);
+extern struct bin_attribute dev_attr_eeprom;
 
 #endif /* __KERNEL__ */
 #endif /* __FINE_DELAY_H__ */

@@ -142,7 +142,7 @@ static int ow_read_block(struct fd_dev *fd, int port, uint8_t *block, int len)
 static int ds18x_read_serial(struct fd_dev *fd)
 {
 	if(!ow_reset(fd, 0)) {
-		dev_err(&fd->fmc->dev, "Failure in resetting one-wire channel\n");
+		dev_err(&fd->pdev->dev, "Failure in resetting one-wire channel\n");
 		return -EIO;
 	}
 
@@ -165,7 +165,7 @@ static int ds18x_access(struct fd_dev *fd)
 		return ow_write_byte(fd, FD_OW_PORT, CMD_ROM_SKIP);
 	}
 out:
-	dev_err(&fd->fmc->dev, "Failure in one-wire communication\n");
+	dev_err(&fd->pdev->dev, "Failure in one-wire communication\n");
 	return -EIO;
 }
 
@@ -185,7 +185,7 @@ int fd_read_temp(struct fd_dev *fd, int verbose)
 	int i, temp;
 	unsigned long j;
 	uint8_t data[9];
-	struct device *dev = &fd->fmc->dev;
+	struct device *dev = &fd->pdev->dev;
 
 	/* If first conversion, ask for it first */
 	if (fd->next_t == 0)
@@ -238,7 +238,7 @@ int fd_onewire_init(struct fd_dev *fd)
 		return -EIO;
 
 	if (fd->verbose) {
-		dev_info(&fd->fmc->dev, "%s: Found DS18xx sensor: ", __func__);
+		dev_info(&fd->pdev->dev, "%s: Found DS18xx sensor: ", __func__);
 		for (i = 0; i < 8; i++)
 			printk("%02x%c", fd->ds18_id[i], i == 7 ? '\n' : ':');
 	}

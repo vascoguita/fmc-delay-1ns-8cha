@@ -21,20 +21,19 @@
 #include <linux/init.h>
 #include <linux/list.h>
 #include <linux/io.h>
-
-#include <linux/fmc.h>
-#include <linux/fmc-sdb.h>
+#include <linux/platform_device.h>
 
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
 
+struct memory_ops memops = {
+	.read = NULL,
+	.write = NULL,
+};
+
 /* Module parameters */
 static int fd_verbose = 0;
 module_param_named(verbose, fd_verbose, int, 0444);
-
-static struct fmc_driver fd_drv; /* forward declaration */
-FMC_PARAM_BUSID(fd_drv);
-FMC_PARAM_GATEWARE(fd_drv);
 
 /* FIXME: add parameters "file=" and "wrc=" like wr-nic-core does */
 
@@ -97,7 +96,7 @@ int fd_reset_again(struct fd_dev *fd)
 		msleep(10);
 	}
 	if (time_after_eq(jiffies, j)) {
-		dev_err(&fd->fmc->dev,
+		dev_err(&fd->pdev->dev,
 			"%s: timeout waiting for GCR lock bit\n", __func__);
 		return -EIO;
 	}
@@ -124,90 +123,85 @@ static struct fd_modlist mods[] = {
 	{"reset-again", fd_reset_again},
 	SUBSYS(acam),
 	SUBSYS(time),
-	SUBSYS(i2c),
 	SUBSYS(zio),
 };
 
+
+
+static int fd_resource_validation(struct platform_device *pdev)
+{
+	struct resource *r;
+
+	r = platform_get_resource(pdev, IORESOURCE_IRQ, FD_IRQ);
+	if (!r) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay needs an interrupt number\n");
+		return -ENXIO;
+	}
+
+	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
+	if (!r) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay needs base address\n");
+		return -ENXIO;
+	}
+
+	r = platform_get_resource(pdev, IORESOURCE_BUS, FD_BUS_FMC_SLOT);
+	if (!r) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay needs to be assigned to an FMC slot\n");
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+
 /* probe and remove are called by the FMC bus core */
-int fd_probe(struct fmc_device *fmc)
+int fd_probe(struct platform_device *pdev)
 {
 	struct fd_modlist *m;
 	struct fd_dev *fd;
-	struct device *dev = &fmc->dev;
-	char *fwname = "invalid";
-	int i, index, ret, ch, ord;
+	struct device *dev = &pdev->dev;
+	int i, ret, ch, err;
+	struct resource *r;
 
-	/* Validate the new FMC device */
-	index = fmc->op->validate(fmc, &fd_drv);
-	if (index < 0) {
-		dev_info(dev, "not using \"%s\" according to "
-			 "modparam\n", KBUILD_MODNAME);
-		return -ENODEV;
+	err = fd_resource_validation(pdev);
+	if (err)
+		return err;
+
+	/* Assign IO operation */
+	switch (pdev->id_entry->driver_data) {
+	case FD_VER_SPEC:
+		memops.read = ioread32;
+		memops.write = iowrite32;
+		break;
+	case FD_VER_SVEC:
+		memops.read = ioread32be;
+		memops.write = iowrite32be;
+		break;
+	default:
+		dev_err(&pdev->dev, "Unknow version %lu\n",
+			pdev->id_entry->driver_data);
+		return -EINVAL;
 	}
 
-	fd = devm_kzalloc(&fmc->dev, sizeof(*fd), GFP_KERNEL);
+	fd = devm_kzalloc(&pdev->dev, sizeof(*fd), GFP_KERNEL);
 	if (!fd) {
 		dev_err(dev, "can't allocate device\n");
 		return -ENOMEM;
 	}
+	platform_set_drvdata(pdev, fd);
+	fd->pdev = pdev;
+	fd->verbose = fd_verbose;
 
-	/*
-	 * If the carrier is still using the golden bitstream or the user is
-	 * asking for a particular one, then program our bistream, otherwise
-	 * we already have our bitstream
-	 */
-	if (fmc->flags & FMC_DEVICE_HAS_GOLDEN || fd_drv.gw_n) {
-		if (fd_drv.gw_n)
-			fwname = ""; /* reprogram will pick from module parameter */
-		else if (!strcmp(fmc->carrier_name, "SVEC"))
-			fwname = FDELAY_GATEWARE_NAME_SVEC;
-		else if (!strcmp(fmc->carrier_name, "SPEC"))
-			fwname = FDELAY_GATEWARE_NAME_SPEC;
-		dev_info(fmc->hwdev, "Gateware (%s)\n", fwname);
 
-		/* We first write a new binary (and lm32) within the carrier */
-		ret = fmc_reprogram(fmc, &fd_drv, fwname, 0 /* SDB entry point */);
-		if (ret < 0) {
-			dev_err(fmc->hwdev, "write firmware \"%s\": error %i\n",
-				fwname, ret);
-			if (ret == -ESRCH) {
-				dev_info(fmc->hwdev, "%s: no gateware at index %i\n",
-					 KBUILD_MODNAME, index);
-				return -ENODEV;
-			}
-			return ret;
-		}
-		dev_info(fmc->hwdev, "Gateware successfully loaded\n");
-	} else {
-		dev_info(fmc->hwdev,
-			 "Gateware already there. Set the \"gateware\" parameter to overwrite the current gateware\n");
-	}
-
-	ret = fmc_scan_sdb_tree(fmc, 0);
-	if (ret == -EBUSY) {
-		/* Not a problem, it's already there. We assume that
-		   it's the correct one */
-		ret = 0;
-	}
-
-	/* Now use SDB to find the base addresses */
-
-	ord = fmc->slot_id;
-
-	fd->fd_regs_base = fmc_sdb_find_nth_device ( fmc->sdb, 0xce42, 0xf19ede1a, &ord, NULL );
-	if( (signed long)fd->fd_regs_base < 0)
-	{
-	    dev_err(dev, "Can't find the FD core. Wrong gateware?\n");
-	}
-
-	dev_dbg(dev, "fd_regs_base is %x\n", fd->fd_regs_base);
-
+	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
+	fd->fd_regs_base = ioremap(r->start, resource_size(r));
 	fd->fd_owregs_base = fd->fd_regs_base + 0x500;
 
 	spin_lock_init(&fd->lock);
-	fmc->mezzanine_data = fd;
-	fd->fmc = fmc;
-	fd->verbose = fd_verbose;
+
 
 	/* Check the binary is there */
 	if (fd_readl(fd, FD_REG_IDR) != FD_MAGIC_FPGA) {
@@ -216,38 +210,9 @@ int fd_probe(struct fmc_device *fmc)
 	}
 
 	/* Retrieve calibration from the eeprom, and validate */
-	ret = fd_handle_eeprom_calibration(fd);
+	ret = fd_handle_calibration(fd, NULL);
 	if (ret < 0)
 		return ret;
-
-	/*
-	 * Now, check the release field of the sdb record for our core.
-	 * Unfortunately we have no fmc primitive to see the device record.
-	 * So keep at the first level, knowing fdelay leaves there (FIXME)
-	 */
-	for (i = 0; i < fmc->sdb->len; i++) {
-		union  sdb_record *r;
-		struct sdb_product *p;
-		struct sdb_component *c;
-
-		r = fmc->sdb->record + i;
-		if (r->empty.record_type != sdb_type_device)
-			continue;
-		c = &r->dev.sdb_component;
-		p = &c->product;
-		if (be64_to_cpu(p->vendor_id) != 0xce42LL)
-			continue;
-		if (be32_to_cpu(p->device_id) != 0xf19ede1a)
-			continue;
-		if (be32_to_cpu(p->version) < 3) {
-			dev_err(dev, "Core version %i < 3; refusing to work\n",
-				be32_to_cpu(p->version));
-			return -EINVAL;
-		}
-		break;
-	}
-	if (i == fmc->sdb->len)
-		dev_warn(dev, "Can't find 0xf19ede1a dev for version check\n");
 
 	/* First, hardware reset */
 	fd_do_reset(fd, 1);
@@ -269,6 +234,12 @@ int fd_probe(struct fmc_device *fmc)
 	if (ret < 0)
 		goto err;
 
+	ret = device_create_bin_file(&fd->pdev->dev, &dev_attr_eeprom);
+	if (ret) {
+		dev_warn(&fd->pdev->dev,
+			 "Cannot create EEPROM sysfs attribute, use default calibration data\n");
+	}
+
 	if (0) {
 		struct timespec ts1, ts2, ts3;
 		/* Temporarily, test the time stuff */
@@ -288,14 +259,8 @@ int fd_probe(struct fmc_device *fmc)
 	for (ch = 1; ch <= FD_CH_NUMBER; ch++)
 		fd_gpio_set(fd, FD_GPIO_OUTPUT_EN(ch));
 
-	/* Pin the carrier */
-	if (!try_module_get(fmc->owner))
-		goto out_mod;
-
 	return 0;
 
-out_mod:
-	fd_irq_exit(fd);
 err:
 	while (--m, --i >= 0)
 		if (m->exit)
@@ -303,14 +268,16 @@ err:
 	return ret;
 }
 
-int fd_remove(struct fmc_device *fmc)
+int fd_remove(struct platform_device *pdev)
 {
 	struct fd_modlist *m;
-	struct fd_dev *fd = fmc->mezzanine_data;
+	struct fd_dev *fd = platform_get_drvdata(pdev);
 	int i = ARRAY_SIZE(mods);
 
 	if (!test_bit(FD_FLAG_INITED, &fd->flags)) /* FIXME: ditch this */
 		return 0; /* No init, no exit */
+
+	device_remove_bin_file(&fd->pdev->dev, &dev_attr_eeprom);
 
 	fd_irq_exit(fd);
 	while (--i >= 0) {
@@ -319,28 +286,31 @@ int fd_remove(struct fmc_device *fmc)
 			m->exit(fd);
 	}
 
-	/* Release the carrier */
-	module_put(fmc->owner);
-
 	return 0;
 }
 
-static struct fmc_fru_id fd_fru_id[] = {
+static const struct platform_device_id fd_id[] = {
 	{
-		.product_name = "FmcDelay1ns4cha",
+		.name = "fdelay-tdc-spec",
+		.driver_data = FD_VER_SPEC,
+	}, {
+		.name = "fdelay-tdc-svec",
+		.driver_data = FD_VER_SVEC,
 	},
+
+	/* TODO we should support different version */
 };
 
-static struct fmc_driver fd_drv = {
-	.version = FMC_VERSION,
-	.driver.name = KBUILD_MODNAME,
+
+static struct platform_driver fd_platform_driver = {
+	.driver = {
+		.name = KBUILD_MODNAME,
+	},
 	.probe = fd_probe,
 	.remove = fd_remove,
-	.id_table = {
-		.fru_id = fd_fru_id,
-		.fru_id_nr = ARRAY_SIZE(fd_fru_id),
-	},
+	.id_table = fd_id,
 };
+
 
 static int fd_init(void)
 {
@@ -349,7 +319,7 @@ static int fd_init(void)
 	ret = fd_zio_register();
 	if (ret < 0)
 		return ret;
-	ret = fmc_driver_register(&fd_drv);
+	ret = platform_driver_register(&fd_platform_driver);
 	if (ret < 0) {
 		fd_zio_unregister();
 		return ret;
@@ -359,7 +329,7 @@ static int fd_init(void)
 
 static void fd_exit(void)
 {
-	fmc_driver_unregister(&fd_drv);
+	platform_driver_unregister(&fd_platform_driver);
 	fd_zio_unregister();
 }
 

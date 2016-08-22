@@ -1,7 +1,6 @@
 
 KBUILD_EXTRA_SYMBOLS := \
-	$(ZIO_ABS)/Module.symvers \
-	$(FMC_BUS_ABS)/kernel/Module.symvers
+	$(ZIO_ABS)/Module.symvers
 
 # add versions of supermodule. It is useful when fine-delay-sw is included as sub-module
 # of a bigger project that we want to track
@@ -11,18 +10,13 @@ SUBMODULE_VERSIONS += MODULE_INFO(version_$(CONFIG_SUPER_REPO),\"$(CONFIG_SUPER_
 endif
 endif
 # add versions of used submodules
-SUBMODULE_VERSIONS += MODULE_INFO(version_fmc_bus,\"$(FMC_BUS_VERSION)\");
 SUBMODULE_VERSIONS += MODULE_INFO(version_zio,\"$(ZIO_VERSION)\");
 
 ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
 
-# The library includes <sdb.h>, so point -I directtly there
-# include our header before to avoid conflicts with the kernel
-LINUXINCLUDE := -I$(FMC_BUS_ABS)/kernel/include -I$(FMC_BUS_ABS)/kernel/include/linux $(LINUXINCLUDE)
 
 ccflags-y += \
 	-I$(ZIO_ABS)/include \
-	-I$(FMC_BUS_ABS) \
 	-I$(src)
 
 ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
@@ -37,8 +31,6 @@ subdirs-ccflags-y = $(ccflags-y)
 obj-m := fmc-fine-delay.o
 
 fmc-fine-delay-objs	=  fd-zio.o fd-irq.o fd-core.o
-fmc-fine-delay-objs	+= onewire.o spi.o i2c.o gpio.o
+fmc-fine-delay-objs	+= onewire.o spi.o gpio.o
 fmc-fine-delay-objs	+= acam.o calibrate.o pll.o time.o
-fmc-fine-delay-objs	+= calibration.o fmc-util.o
-fmc-fine-delay-objs	+= fmc-bus-link/sdb-lib/access.o
-fmc-fine-delay-objs	+= fmc-bus-link/sdb-lib/glue.o
+fmc-fine-delay-objs	+= calibration.o
