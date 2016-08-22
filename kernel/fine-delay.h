@@ -230,13 +230,24 @@ static inline void fd_split_pico(uint64_t pico,
 	*frac = (*frac << 12) / 8000;
 }
 
+static inline u32 ft_ioread(struct fmctdc_dev *ft, void *addr)
+{
+	return fmc_readl(fd->fmc, addr);
+}
+
+static inline void ft_iowrite(struct fmctdc_dev *ft,
+			      u32 value, void *addr)
+{
+	fmc_writel(fd->fmc, value, addr);
+}
+
 static inline uint32_t fd_readl(struct fd_dev *fd, unsigned long reg)
 {
-	return fmc_readl(fd->fmc, fd->fd_regs_base + reg);
+	return ft_ioread(fd, fd->fd_regs_base + reg);
 }
 static inline void fd_writel(struct fd_dev *fd, uint32_t v, unsigned long reg)
 {
-	fmc_writel(fd->fmc, v, fd->fd_regs_base + reg);
+	ft_iowrite(fd, v, fd->fd_regs_base + reg);
 }
 
 static inline void __check_chan(int x)
