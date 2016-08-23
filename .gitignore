@@ -8,3 +8,6 @@ modules.order
 Module.symvers
 Makefile.specific
 *.tmp
+GTAGS
+GPATH
+GRTAGS
