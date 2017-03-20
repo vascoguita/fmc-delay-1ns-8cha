@@ -149,6 +149,14 @@ entity spec_top is
       sfp_los_i         : in    std_logic := '0';
 
       -------------------------------------------------------------------------
+      -- Flash memory pins
+      -------------------------------------------------------------------------
+      flash_sclk_o  : out std_logic;
+      flash_mosi_o  : out std_logic;
+      flash_ncs_o   : out std_logic;
+      flash_miso_i  : in  std_logic;
+
+      -------------------------------------------------------------------------
       -- Fine Delay Pins
       -------------------------------------------------------------------------
 
@@ -302,16 +310,18 @@ architecture rtl of spec_top is
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
 
   signal phy_tx_data      : std_logic_vector(7 downto 0);
-  signal phy_tx_k         : std_logic;
+  signal phy_tx_k         : std_logic_vector(0 downto 0);
   signal phy_tx_disparity : std_logic;
   signal phy_tx_enc_err   : std_logic;
   signal phy_rx_data      : std_logic_vector(7 downto 0);
   signal phy_rx_rbclk     : std_logic;
-  signal phy_rx_k         : std_logic;
+  signal phy_rx_k         : std_logic_vector(0 downto 0);
   signal phy_rx_enc_err   : std_logic;
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
   signal phy_rst          : std_logic;
   signal phy_loopen       : std_logic;
+  signal phy_loopen_vec   : std_logic_vector(2 downto 0);
+  signal phy_rdy          : std_logic;
 
   signal local_reset_n : std_logic;
 
@@ -623,7 +633,7 @@ begin
       g_virtual_uart              => true,
       g_with_external_clock_input => false,
       g_aux_clks                  => 1,
-      g_dpram_initf               => "wrc-release.ram", 
+      g_dpram_initf               => "../../ip_cores/wr-cores/bin/wrpc/wrc_phy8.bram", 
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
       g_softpll_enable_debugger   => false)
@@ -651,6 +661,8 @@ begin
       phy_rx_bitslide_i  => phy_rx_bitslide,
       phy_rst_o          => phy_rst,
       phy_loopen_o       => phy_loopen,
+      phy_loopen_vec_o   => phy_loopen_vec,
+      phy_rdy_i          => phy_rdy,
 
       led_act_o  => LED_RED,
       led_link_o => LED_GREEN,
@@ -664,6 +676,11 @@ begin
       sfp_sda_o => sfp_sda_out,
       sfp_sda_i => sfp_sda_in,
       sfp_det_i => sfp_mod_def0_b,
+
+      spi_sclk_o => flash_sclk_o,
+      spi_ncs_o  => flash_ncs_o,
+      spi_mosi_o => flash_mosi_o,
+      spi_miso_i => flash_miso_i,
 
       uart_rxd_i => uart_rxd_i,
       uart_txd_o => uart_txd_o,
@@ -721,16 +738,18 @@ begin
 
       ch1_ref_clk_i      => clk_125m_pllref,
       ch1_tx_data_i      => phy_tx_data,
-      ch1_tx_k_i         => phy_tx_k,
+      ch1_tx_k_i         => phy_tx_k(0),
       ch1_tx_disparity_o => phy_tx_disparity,
       ch1_tx_enc_err_o   => phy_tx_enc_err,
       ch1_rx_data_o      => phy_rx_data,
       ch1_rx_rbclk_o     => phy_rx_rbclk,
-      ch1_rx_k_o         => phy_rx_k,
+      ch1_rx_k_o         => phy_rx_k(0),
       ch1_rx_enc_err_o   => phy_rx_enc_err,
       ch1_rx_bitslide_o  => phy_rx_bitslide,
       ch1_rst_i          => phy_rst,
-      ch1_loopen_i       => '0',        --phy_loopen,
+      ch1_loopen_i       => phy_loopen,
+      ch1_loopen_vec_i   => phy_loopen_vec,
+      ch1_rdy_o          => phy_rdy,
       pad_txn0_o         => open,
       pad_txp0_o         => open,
       pad_rxn0_i         => '0',

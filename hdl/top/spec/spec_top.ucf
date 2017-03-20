@@ -204,6 +204,18 @@ NET "SFP_TX_DISABLE_o" IOSTANDARD = "LVCMOS25";
 NET "SFP_LOS_i" LOC = D18;
 NET "SFP_LOS_i" IOSTANDARD = "LVCMOS25";
 
+###########################################################################
+## Flash memory SPI interface
+###########################################################################
+NET "flash_ncs_o"  LOC = AA3;
+NET "flash_ncs_o"  IOSTANDARD = "LVCMOS25";
+NET "flash_sclk_o" LOC = Y20;
+NET "flash_sclk_o" IOSTANDARD = "LVCMOS25";
+NET "flash_mosi_o" LOC = AB20;
+NET "flash_mosi_o" IOSTANDARD = "LVCMOS25";
+NET "flash_miso_i" LOC = AA20;
+NET "flash_miso_i" IOSTANDARD = "LVCMOS25";
+
 ####################################################################################
 # FineDelay V3/V4 pins
 ####################################################################################
@@ -433,8 +445,6 @@ PIN "U_DDR_PLL/clkout1_buf.O" CLOCK_DEDICATED_ROUTE = FALSE;
 #Created by Constraints Editor (xc6slx45t-fgg484-3) - 2014/08/01
 NET "U_GTP/ch1_gtp_clkout_int<1>" TNM_NET = U_GTP/ch1_gtp_clkout_int<1>;
 TIMESPEC TS_U_GTP_ch1_gtp_clkout_int_1_ = PERIOD "U_GTP/ch1_gtp_clkout_int<1>" 8 ns HIGH 50%;
-NET "U_WR_CORE/WRPC/LM32_CORE/gen_profile_medium_icache_debug.U_Wrapped_LM32/jtck" TNM_NET = U_WR_CORE/WRPC/LM32_CORE/gen_profile_medium_icache_debug.U_Wrapped_LM32/jtck;
-TIMESPEC TS_U_WR_CORE_WRPC_LM32_CORE_gen_profile_medium_icache_debug_U_Wrapped_LM32_jtck = PERIOD "U_WR_CORE/WRPC/LM32_CORE/gen_profile_medium_icache_debug.U_Wrapped_LM32/jtck" 20 ns HIGH 50%;
 TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_P_clk = PERIOD "cmp_gn4124_core/cmp_clk_in/P_clk" 5 ns HIGH 50%;
 NET "cmp_gn4124_core/cmp_clk_in/feedback" TNM_NET = cmp_gn4124_core/cmp_clk_in/feedback;
 TIMESPEC TS_cmp_gn4124_core_cmp_clk_in_feedback = PERIOD "cmp_gn4124_core/cmp_clk_in/feedback" 5 ns HIGH 50%;
