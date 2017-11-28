@@ -8,7 +8,7 @@ LINUX ?= /lib/modules/$(shell uname -r)/build
 FMC_BUS ?= ../fmc-bus
 ZIO ?= ../zio
 
-# FMC_BUS_ABS, ZIO_ABS and SPEC_SW_ABS has to be absolut path, due to beeing
+# FMC_BUS_ABS and ZIO_ABS has to be absolut path, due to beeing
 # passed to the Kbuild
 FMC_BUS_ABS ?= $(abspath $(FMC_BUS) )
 ZIO_ABS ?= $(abspath $(ZIO) )
