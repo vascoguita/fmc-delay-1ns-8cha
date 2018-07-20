@@ -9,5 +9,7 @@ syn_package = "fgg900"
 syn_top = "svec_top"
 syn_project = "svec_fine_delay.xise"
 
+syn_tool = "ise"
+
 files = [ "wrc-release.ram" ]
 modules = { "local" : [ "../../top/svec", "../../platform" ] }

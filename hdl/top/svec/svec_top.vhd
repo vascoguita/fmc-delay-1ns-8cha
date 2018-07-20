@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2018-07-19
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -47,6 +47,7 @@ use work.gencores_pkg.all;
 use work.wrcore_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.wishbone_pkg.all;
+use work.vme64x_pkg.all;
 use work.fine_delay_pkg.all;
 --use work.etherbone_pkg.all;
 use work.wr_xilinx_pkg.all;
@@ -248,42 +249,6 @@ end svec_top;
 
 architecture rtl of svec_top is
 
-  component xvme64x_core
-    port (
-      clk_i           : in  std_logic;
-      rst_n_i         : in  std_logic;
-      VME_AS_n_i      : in  std_logic;
-      VME_RST_n_i     : in  std_logic;
-      VME_WRITE_n_i   : in  std_logic;
-      VME_AM_i        : in  std_logic_vector(5 downto 0);
-      VME_DS_n_i      : in  std_logic_vector(1 downto 0);
-      VME_GA_i        : in  std_logic_vector(5 downto 0);
-      VME_BERR_o      : out std_logic;
-      VME_DTACK_n_o   : out std_logic;
-      VME_RETRY_n_o   : out std_logic;
-      VME_RETRY_OE_o  : out std_logic;
-      VME_LWORD_n_b_i : in  std_logic;
-      VME_LWORD_n_b_o : out std_logic;
-      VME_ADDR_b_i    : in  std_logic_vector(31 downto 1);
-      VME_ADDR_b_o    : out std_logic_vector(31 downto 1);
-      VME_DATA_b_i    : in  std_logic_vector(31 downto 0);
-      VME_DATA_b_o    : out std_logic_vector(31 downto 0);
-      VME_IRQ_n_o     : out std_logic_vector(6 downto 0);
-      VME_IACKIN_n_i  : in  std_logic;
-      VME_IACK_n_i    : in  std_logic;
-      VME_IACKOUT_n_o : out std_logic;
-      VME_DTACK_OE_o  : out std_logic;
-      VME_DATA_DIR_o  : out std_logic;
-      VME_DATA_OE_N_o : out std_logic;
-      VME_ADDR_DIR_o  : out std_logic;
-      VME_ADDR_OE_N_o : out std_logic;
-      master_o        : out t_wishbone_master_out;
-      master_i        : in  t_wishbone_master_in;
-      irq_i           : in  std_logic;
-      irq_ack_o       : out std_logic);
-  end component;
-
-
   component fd_ddr_pll
     port (
       RST       : in  std_logic;
@@ -331,6 +296,9 @@ architecture rtl of svec_top is
   signal VME_DATA_b_out                                        : std_logic_vector(31 downto 0);
   signal VME_ADDR_b_out                                        : std_logic_vector(31 downto 1);
   signal VME_LWORD_n_b_out, VME_DATA_DIR_int, VME_ADDR_DIR_int : std_logic;
+
+  signal VME_BERR_n : std_logic;
+  signal VME_IRQ_n  : std_logic_vector(6 downto 0);
 
   signal dac_hpll_load_p1 : std_logic;
   signal dac_dpll_load_p1 : std_logic;
@@ -488,7 +456,7 @@ architecture rtl of svec_top is
   signal vme_access : std_logic;
 
   signal fd0_dbg : std_logic_vector(7 downto 0);
-  
+
 begin
 
   p_powerup_reset : process(clk_sys)
@@ -623,37 +591,46 @@ begin
 
 
   U_VME_Core : xvme64x_core
+    generic map (
+      g_CLOCK_PERIOD    => 16,
+      g_DECODE_AM       => TRUE,
+      g_USER_CSR_EXT    => FALSE,
+      g_WB_GRANULARITY  => BYTE,
+      g_MANUFACTURER_ID => c_CERN_ID,
+      g_BOARD_ID        => c_SVEC_ID,
+      g_REVISION_ID     => c_SVEC_REVISION_ID,
+      g_PROGRAM_ID      => c_SVEC_PROGRAM_ID)
     port map (
       clk_i           => clk_sys,
       rst_n_i         => powerup_rst_n,
-      VME_AS_n_i      => VME_AS_n_i,
-      VME_RST_n_i     => powerup_rst_n,
-      VME_WRITE_n_i   => VME_WRITE_n_i,
-      VME_AM_i        => VME_AM_i,
-      VME_DS_n_i      => VME_DS_n_i,
-      VME_GA_i        => VME_GA_i,
-      VME_BERR_o      => VME_BERR_o,
-      VME_DTACK_n_o   => VME_DTACK_n_o,
-      VME_RETRY_n_o   => VME_RETRY_n_o,
-      VME_RETRY_OE_o  => VME_RETRY_OE_o,
-      VME_LWORD_n_b_i => VME_LWORD_n_b,
-      VME_LWORD_n_b_o => VME_LWORD_n_b_out,
-      VME_ADDR_b_i    => VME_ADDR_b,
-      VME_DATA_b_o    => VME_DATA_b_out,
-      VME_ADDR_b_o    => VME_ADDR_b_out,
-      VME_DATA_b_i    => VME_DATA_b,
-      VME_IRQ_n_o     => VME_IRQ_n_o,
-      VME_IACK_n_i    => VME_IACK_n_i,
-      VME_IACKIN_n_i  => VME_IACKIN_n_i,
-      VME_IACKOUT_n_o => VME_IACKOUT_n_o,
-      VME_DTACK_OE_o  => VME_DTACK_OE_o,
-      VME_DATA_DIR_o  => VME_DATA_DIR_int,
-      VME_DATA_OE_N_o => VME_DATA_OE_N_o,
-      VME_ADDR_DIR_o  => VME_ADDR_DIR_int,
-      VME_ADDR_OE_N_o => VME_ADDR_OE_N_o,
-      master_o        => vme_master_out,
-      master_i        => vme_master_in,
-      irq_i           => vic_master_irq);
+      vme_i.as_n      => VME_AS_n_i,
+      vme_i.rst_n     => powerup_rst_n,
+      vme_i.write_n   => VME_WRITE_n_i,
+      vme_i.am        => VME_AM_i,
+      vme_i.ds_n      => VME_DS_n_i,
+      vme_i.ga        => VME_GA_i,
+      vme_i.lword_n   => VME_LWORD_n_b,
+      vme_i.addr      => VME_ADDR_b,
+      vme_i.data      => VME_DATA_b,
+      vme_i.iack_n    => VME_IACK_n_i,
+      vme_i.iackin_n  => VME_IACKIN_n_i,
+      vme_o.berr_n    => VME_BERR_n,
+      vme_o.dtack_n   => VME_DTACK_n_o,
+      vme_o.retry_n   => VME_RETRY_n_o,
+      vme_o.retry_oe  => VME_RETRY_OE_o,
+      vme_o.lword_n   => VME_LWORD_n_b_out,
+      vme_o.data      => VME_DATA_b_out,
+      vme_o.addr      => VME_ADDR_b_out,
+      vme_o.irq_n     => VME_IRQ_n,
+      vme_o.iackout_n => VME_IACKOUT_n_o,
+      vme_o.dtack_oe  => VME_DTACK_OE_o,
+      vme_o.data_dir  => VME_DATA_DIR_int,
+      vme_o.data_oe_n => VME_DATA_OE_N_o,
+      vme_o.addr_dir  => VME_ADDR_DIR_int,
+      vme_o.addr_oe_n => VME_ADDR_OE_N_o,
+      wb_o            => vme_master_out,
+      wb_i            => vme_master_in,
+      int_i           => vic_master_irq);
 
   VME_DATA_b    <= VME_DATA_b_out    when VME_DATA_DIR_int = '1' else (others => 'Z');
   VME_ADDR_b    <= VME_ADDR_b_out    when VME_ADDR_DIR_int = '1' else (others => 'Z');
@@ -661,6 +638,10 @@ begin
 
   VME_ADDR_DIR_o <= VME_ADDR_DIR_int;
   VME_DATA_DIR_o <= VME_DATA_DIR_int;
+
+  --  BERR and IRQ vme signals are inverted by the drivers. See SVEC schematics.
+  VME_BERR_o  <= not VME_BERR_n;
+  VME_IRQ_n_o <= not VME_IRQ_n;
 
   cnx_slave_in(c_MASTER_VME) <= vme_master_out;
   vme_master_in              <= cnx_slave_out(c_MASTER_VME);
@@ -700,7 +681,7 @@ begin
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
       g_softpll_enable_debugger   => false,
-      g_dpram_initf               => "wrc-release.ram")
+      g_dpram_initf               => "../../ip_cores/wr-cores/bin/wrpc/wrc_phy8.bram")
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
@@ -716,12 +697,12 @@ begin
 
       phy_ref_clk_i      => clk_125m_pllref,
       phy_tx_data_o      => phy_tx_data,
-      phy_tx_k_o         => phy_tx_k,
+      phy_tx_k_o(0)      => phy_tx_k,
       phy_tx_disparity_i => phy_tx_disparity,
       phy_tx_enc_err_i   => phy_tx_enc_err,
       phy_rx_data_i      => phy_rx_data,
       phy_rx_rbclk_i     => phy_rx_rbclk,
-      phy_rx_k_i         => phy_rx_k,
+      phy_rx_k_i(0)      => phy_rx_k,
       phy_rx_enc_err_i   => phy_rx_enc_err,
       phy_rx_bitslide_i  => phy_rx_bitslide,
       phy_rst_o          => phy_rst,

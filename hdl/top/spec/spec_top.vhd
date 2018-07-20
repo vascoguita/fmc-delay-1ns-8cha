@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-19
+-- Last update: 2018-07-19
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -552,7 +552,6 @@ begin
       csr_stall_i => cnx_slave_out(c_MASTER_GENNUM).stall,
       csr_err_i => cnx_slave_out(c_MASTER_GENNUM).err,
 	  csr_rty_i => cnx_slave_out(c_MASTER_GENNUM).rty,
-	  csr_int_i => '0',
 		
       dma_clk_i   => clk_sys,
       dma_ack_i   => '1',
@@ -560,7 +559,6 @@ begin
 	  dma_err_i => '0',
 	  dma_rty_i => '0',
       dma_dat_i   => (others => '0'),
-	  dma_int_i => '0',
       dma_reg_adr_i => (others => '0'),
       dma_reg_dat_i => (others => '0'),
       dma_reg_sel_i => (others => '0'),

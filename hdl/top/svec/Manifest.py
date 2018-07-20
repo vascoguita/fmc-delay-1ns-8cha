@@ -3,7 +3,13 @@ files = [ "synthesis_descriptor.vhd", "svec_top.vhd", "svec_top.ucf", "bicolor_l
 fetchto = "../../ip_cores"
 
 modules = {
-    "local" : ["../../rtl", "../../platform" ],
-    "git" : [ "git://ohwr.org/hdl-core-lib/wr-cores.git",
-    					"git://ohwr.org/hdl-core-lib/vme64x-core.git" ]
-    }
+    "local" : [
+        "../../rtl",
+        "../../platform",
+    ],
+    "git" : [
+        "git://ohwr.org/hdl-core-lib/wr-cores.git",
+        "git://ohwr.org/hdl-core-lib/vme64x-core.git",
+        "git://ohwr.org/hdl-core-lib/general-cores.git",
+    ],
+}
