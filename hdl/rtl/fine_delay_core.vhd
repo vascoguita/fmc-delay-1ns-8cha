@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2018-08-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -552,13 +552,14 @@ begin  -- rtl
 
   gen_with_direct_io_tdc : if(g_with_direct_timestamp_io) generate
     
-    U_Sync_TDC_Valid_Out : gc_pulse_synchronizer
+    U_Sync_TDC_Valid_Out : gc_pulse_synchronizer2
       port map (
-        clk_in_i  => clk_ref_0_i,
-        clk_out_i => clk_sys_i,
-        rst_n_i   => rst_n_sys,
-        d_p_i     => tag_valid,
-        q_p_o     => tdc_valid_o);
+        clk_in_i    => clk_ref_0_i,
+        rst_in_n_i  => rst_n_ref,
+        clk_out_i   => clk_sys_i,
+        rst_out_n_i => rst_n_sys,
+        d_p_i       => tag_valid,
+        q_p_o       => tdc_valid_o);
 
     process(clk_ref_0_i)
     begin
@@ -630,14 +631,14 @@ begin  -- rtl
 
     gen_with_direct_io : if g_with_direct_timestamp_io generate
       
-
-      U_Sync_Valid_Pulse : gc_pulse_synchronizer
+      U_Sync_Valid_Pulse : gc_pulse_synchronizer2
         port map (
-          clk_in_i  => clk_sys_i,
-          clk_out_i => clk_ref_0_i,
-          rst_n_i   => rst_n_ref,
-          d_p_i     => outx_valid_i(i),
-          q_p_o     => channels(i).tag.valid);
+          clk_in_i    => clk_sys_i,
+          rst_in_n_i  => rst_n_sys,
+          clk_out_i   => clk_ref_0_i,
+          rst_out_n_i => rst_n_ref,
+          d_p_i       => outx_valid_i(i),
+          q_p_o       => channels(i).tag.valid);
 
       process(clk_sys_i)
       begin
