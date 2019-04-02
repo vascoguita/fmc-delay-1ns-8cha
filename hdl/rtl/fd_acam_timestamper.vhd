@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2013-07-02
+-- Last update: 2019-03-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -423,21 +423,10 @@ begin  -- behave
 -- Input: tdc_start_i
 -- Output: tdc_start_d
 --
--- A synchronizer chain for detecting the relation between clk_tdc_i
--- and clk_ref_i. Since both clocks are almost in phase, the first stage
--- reacts to the falling edge of the reference clock to satisfy setup/hold
--- requirements.
--- 
-  p_sync_tdclk_fedge : process(clk_ref_i)
-  begin
-    if falling_edge(clk_ref_i) then
-      tdc_start_d(0) <= tdc_start_i;
-    end if;
-  end process;
-
   p_sync_tdclk_redge : process(clk_ref_i)
   begin
     if rising_edge(clk_ref_i) then
+      tdc_start_d(0) <= tdc_start_i;
       tdc_start_d(1) <= tdc_start_d(0);
       tdc_start_d(2) <= tdc_start_d(1);
     end if;
