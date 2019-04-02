@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2019-03-25
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,6 +50,7 @@ use work.wishbone_pkg.all;
 use work.fine_delay_pkg.all;
 --use work.etherbone_pkg.all;
 use work.wr_xilinx_pkg.all;
+use work.vme64x_pkg.all;
 
 use work.synthesis_descriptor.all;
 
@@ -60,7 +61,8 @@ entity svec_top is
   generic
     (
       g_with_wr_phy : integer := 1;
-      g_simulation  : integer := 0
+      g_simulation  : integer := 0;
+      g_SIM_BYPASS_VME : integer := 0
       );
   port
     (
@@ -242,46 +244,20 @@ entity svec_top is
 
       uart_rxd_i : in  std_logic := '1';
       uart_txd_o : out std_logic
+      -- Bypass VME core, useful only in simulation
+      -- synthesis translate_off
+      ;
+      sim_wb_i            : in    t_wishbone_slave_in := cc_dummy_slave_in;
+      sim_wb_o            : out   t_wishbone_slave_out
+      -- synthesis translate_on
       );
 
 end svec_top;
 
 architecture rtl of svec_top is
 
-  component xvme64x_core
-    port (
-      clk_i           : in  std_logic;
-      rst_n_i         : in  std_logic;
-      VME_AS_n_i      : in  std_logic;
-      VME_RST_n_i     : in  std_logic;
-      VME_WRITE_n_i   : in  std_logic;
-      VME_AM_i        : in  std_logic_vector(5 downto 0);
-      VME_DS_n_i      : in  std_logic_vector(1 downto 0);
-      VME_GA_i        : in  std_logic_vector(5 downto 0);
-      VME_BERR_o      : out std_logic;
-      VME_DTACK_n_o   : out std_logic;
-      VME_RETRY_n_o   : out std_logic;
-      VME_RETRY_OE_o  : out std_logic;
-      VME_LWORD_n_b_i : in  std_logic;
-      VME_LWORD_n_b_o : out std_logic;
-      VME_ADDR_b_i    : in  std_logic_vector(31 downto 1);
-      VME_ADDR_b_o    : out std_logic_vector(31 downto 1);
-      VME_DATA_b_i    : in  std_logic_vector(31 downto 0);
-      VME_DATA_b_o    : out std_logic_vector(31 downto 0);
-      VME_IRQ_n_o     : out std_logic_vector(6 downto 0);
-      VME_IACKIN_n_i  : in  std_logic;
-      VME_IACK_n_i    : in  std_logic;
-      VME_IACKOUT_n_o : out std_logic;
-      VME_DTACK_OE_o  : out std_logic;
-      VME_DATA_DIR_o  : out std_logic;
-      VME_DATA_OE_N_o : out std_logic;
-      VME_ADDR_DIR_o  : out std_logic;
-      VME_ADDR_OE_N_o : out std_logic;
-      master_o        : out t_wishbone_master_out;
-      master_i        : in  t_wishbone_master_in;
-      irq_i           : in  std_logic;
-      irq_ack_o       : out std_logic);
-  end component;
+ signal VME_BERR_n : std_logic;
+ signal VME_IRQ_n         : std_logic_vector(6 downto 0);
 
 
   component fd_ddr_pll
@@ -338,12 +314,12 @@ architecture rtl of svec_top is
   signal dac_dpll_data    : std_logic_vector(15 downto 0);
 
   signal phy_tx_data      : std_logic_vector(7 downto 0);
-  signal phy_tx_k         : std_logic;
+  signal phy_tx_k         : std_logic_vector(0 downto 0);
   signal phy_tx_disparity : std_logic;
   signal phy_tx_enc_err   : std_logic;
   signal phy_rx_data      : std_logic_vector(7 downto 0);
   signal phy_rx_rbclk     : std_logic;
-  signal phy_rx_k         : std_logic;
+  signal phy_rx_k         : std_logic_vector(0 downto 0);
   signal phy_rx_enc_err   : std_logic;
   signal phy_rx_bitslide  : std_logic_vector(3 downto 0);
   signal phy_rst          : std_logic;
@@ -389,11 +365,23 @@ architecture rtl of svec_top is
 
   signal dcm0_clk_ref_0, dcm0_clk_ref_180 : std_logic;
   signal fd0_tdc_start                    : std_logic;
+  signal fd0_tdc_start_predelay                    : std_logic;
+  signal fd0_tdc_start_iodelay_inc                    : std_logic;
+  signal fd0_tdc_start_iodelay_rst                    : std_logic;
+  signal fd0_tdc_start_iodelay_cal                    : std_logic;
+  signal fd0_tdc_start_iodelay_ce                    : std_logic;
+
   signal tdc0_data_out, tdc0_data_in      : std_logic_vector(27 downto 0);
   signal tdc0_data_oe                     : std_logic;
 
   signal dcm1_clk_ref_0, dcm1_clk_ref_180 : std_logic;
   signal fd1_tdc_start                    : std_logic;
+  signal fd1_tdc_start_predelay                    : std_logic;
+  signal fd1_tdc_start_iodelay_inc                    : std_logic;
+  signal fd1_tdc_start_iodelay_rst                    : std_logic;
+  signal fd1_tdc_start_iodelay_cal                    : std_logic;
+  signal fd1_tdc_start_iodelay_ce                    : std_logic;
+
   signal tdc1_data_out, tdc1_data_in      : std_logic_vector(27 downto 0);
   signal tdc1_data_oe                     : std_logic;
 
@@ -622,48 +610,67 @@ begin
       I => clk_20m_vcxo_i);
 
 
-  U_VME_Core : xvme64x_core
-    port map (
-      clk_i           => clk_sys,
-      rst_n_i         => powerup_rst_n,
-      VME_AS_n_i      => VME_AS_n_i,
-      VME_RST_n_i     => powerup_rst_n,
-      VME_WRITE_n_i   => VME_WRITE_n_i,
-      VME_AM_i        => VME_AM_i,
-      VME_DS_n_i      => VME_DS_n_i,
-      VME_GA_i        => VME_GA_i,
-      VME_BERR_o      => VME_BERR_o,
-      VME_DTACK_n_o   => VME_DTACK_n_o,
-      VME_RETRY_n_o   => VME_RETRY_n_o,
-      VME_RETRY_OE_o  => VME_RETRY_OE_o,
-      VME_LWORD_n_b_i => VME_LWORD_n_b,
-      VME_LWORD_n_b_o => VME_LWORD_n_b_out,
-      VME_ADDR_b_i    => VME_ADDR_b,
-      VME_DATA_b_o    => VME_DATA_b_out,
-      VME_ADDR_b_o    => VME_ADDR_b_out,
-      VME_DATA_b_i    => VME_DATA_b,
-      VME_IRQ_n_o     => VME_IRQ_n_o,
-      VME_IACK_n_i    => VME_IACK_n_i,
-      VME_IACKIN_n_i  => VME_IACKIN_n_i,
-      VME_IACKOUT_n_o => VME_IACKOUT_n_o,
-      VME_DTACK_OE_o  => VME_DTACK_OE_o,
-      VME_DATA_DIR_o  => VME_DATA_DIR_int,
-      VME_DATA_OE_N_o => VME_DATA_OE_N_o,
-      VME_ADDR_DIR_o  => VME_ADDR_DIR_int,
-      VME_ADDR_OE_N_o => VME_ADDR_OE_N_o,
-      master_o        => vme_master_out,
-      master_i        => vme_master_in,
-      irq_i           => vic_master_irq);
+    gen_with_vme64_core : if g_SIM_BYPASS_VME = 0 generate
+    U_VME_Core : xvme64x_core
+      generic map (
+        g_CLOCK_PERIOD    => 16,
+        g_DECODE_AM       => TRUE,
+        g_USER_CSR_EXT    => FALSE,
+        g_WB_GRANULARITY  => BYTE,
+        g_MANUFACTURER_ID => c_CERN_ID,
+        g_BOARD_ID        => c_SVEC_ID,
+        g_REVISION_ID     => c_SVEC_REVISION_ID,
+        g_PROGRAM_ID      => c_SVEC_PROGRAM_ID)
+      port map (
+        clk_i           => clk_sys,
+        rst_n_i         => local_reset_n,
+        vme_i.as_n      => VME_AS_n_i,
+        vme_i.rst_n     => VME_RST_n_i,
+        vme_i.write_n   => VME_WRITE_n_i,
+        vme_i.am        => VME_AM_i,
+        vme_i.ds_n      => VME_DS_n_i,
+        vme_i.ga        => VME_GA_i,
+        vme_i.lword_n   => VME_LWORD_n_b,
+        vme_i.addr      => VME_ADDR_b,
+        vme_i.data      => VME_DATA_b,
+        vme_i.iack_n    => VME_IACK_n_i,
+        vme_i.iackin_n  => VME_IACKIN_n_i,
+        vme_o.berr_n    => VME_BERR_n,
+        vme_o.dtack_n   => VME_DTACK_n_o,
+        vme_o.retry_n   => VME_RETRY_n_o,
+        vme_o.retry_oe  => VME_RETRY_OE_o,
+        vme_o.lword_n   => VME_LWORD_n_b_out,
+        vme_o.data      => VME_DATA_b_out,
+        vme_o.addr      => VME_ADDR_b_out,
+        vme_o.irq_n     => VME_IRQ_n,
+        vme_o.iackout_n => VME_IACKOUT_n_o,
+        vme_o.dtack_oe  => VME_DTACK_OE_o,
+        vme_o.data_dir  => VME_DATA_DIR_int,
+        vme_o.data_oe_n => VME_DATA_OE_N_o,
+        vme_o.addr_dir  => VME_ADDR_DIR_int,
+        vme_o.addr_oe_n => VME_ADDR_OE_N_o,
+        wb_o            => cnx_slave_in(c_MASTER_VME),
+        wb_i            => cnx_slave_out(c_MASTER_VME),
+        int_i           => vic_master_irq);
 
-  VME_DATA_b    <= VME_DATA_b_out    when VME_DATA_DIR_int = '1' else (others => 'Z');
-  VME_ADDR_b    <= VME_ADDR_b_out    when VME_ADDR_DIR_int = '1' else (others => 'Z');
-  VME_LWORD_n_b <= VME_LWORD_n_b_out when VME_ADDR_DIR_int = '1' else 'Z';
+    VME_DATA_b    <= VME_DATA_b_out    when VME_DATA_DIR_int = '1' else (others => 'Z');
+    VME_ADDR_b    <= VME_ADDR_b_out    when VME_ADDR_DIR_int = '1' else (others => 'Z');
+    VME_LWORD_n_b <= VME_LWORD_n_b_out when VME_ADDR_DIR_int = '1' else 'Z';
 
-  VME_ADDR_DIR_o <= VME_ADDR_DIR_int;
-  VME_DATA_DIR_o <= VME_DATA_DIR_int;
+    VME_ADDR_DIR_o <= VME_ADDR_DIR_int;
+    VME_DATA_DIR_o <= VME_DATA_DIR_int;
 
-  cnx_slave_in(c_MASTER_VME) <= vme_master_out;
-  vme_master_in              <= cnx_slave_out(c_MASTER_VME);
+    --  BERR and IRQ vme signals are inverted by the drivers. See SVEC schematics.
+    VME_BERR_o  <= not VME_BERR_n;
+    VME_IRQ_n_o <= not VME_IRQ_n;
+  end generate gen_with_vme64_core;
+
+  gen_without_vme64_core : if g_SIM_BYPASS_VME /= 0 generate
+    -- synthesis translate_off
+    cnx_slave_in(c_MASTER_VME) <= sim_wb_i;
+    sim_wb_o                     <= cnx_slave_out(c_MASTER_VME);
+  -- synthesis translate_on
+  end generate gen_without_vme64_core;
 
   -- Tristates for FMC0 EEPROM: fixme: wire to WRCore
   fmc0_scl_b <= '0' when (fd0_scl_out = '0') else 'Z';
@@ -700,7 +707,7 @@ begin
       g_interface_mode            => PIPELINED,
       g_address_granularity       => BYTE,
       g_softpll_enable_debugger   => false,
-      g_dpram_initf               => "wrc-release.ram")
+      g_dpram_initf               => "../../ip_cores/wr-cores/bin/wrpc/wrc_phy8.bram")
     port map (
       clk_sys_i    => clk_sys,
       clk_dmtd_i   => clk_dmtd,
@@ -880,12 +887,12 @@ begin
 
         ch1_ref_clk_i      => clk_125m_pllref,
         ch1_tx_data_i      => phy_tx_data,
-        ch1_tx_k_i         => phy_tx_k,
+        ch1_tx_k_i         => phy_tx_k(0),
         ch1_tx_disparity_o => phy_tx_disparity,
         ch1_tx_enc_err_o   => phy_tx_enc_err,
         ch1_rx_data_o      => phy_rx_data,
         ch1_rx_rbclk_o     => phy_rx_rbclk,
-        ch1_rx_k_o         => phy_rx_k,
+        ch1_rx_k_o         => phy_rx_k(0),
         ch1_rx_enc_err_o   => phy_rx_enc_err,
         ch1_rx_bitslide_o  => phy_rx_bitslide,
         ch1_rst_i          => phy_rst,
@@ -911,11 +918,32 @@ begin
       IBUF_LOW_PWR => false  -- Low power (TRUE) vs. performance (FALSE) setting for referenced
       )
     port map (
-      O  => fd0_tdc_start,              -- Buffer output
+      O  => fd0_tdc_start_predelay,              -- Buffer output
       I  => fd0_tdc_start_p_i,  -- Diff_p buffer input (connect directly to top-level port)
       IB => fd0_tdc_start_n_i  -- Diff_n buffer input (connect directly to top-level port)
       );
 
+  cmp_fd_tdc_start_delay0 : IODELAY2
+    generic map (
+      DELAY_SRC => "IDATAIN",
+      IDELAY_TYPE => "VARIABLE_FROM_ZERO",
+      DATA_RATE => "SDR"
+      )
+    port map (
+      IDATAIN => fd0_tdc_start_predelay,
+      DATAOUT2 => fd0_tdc_start,
+      INC => fd0_tdc_start_iodelay_inc,
+      CE =>  fd0_tdc_start_iodelay_ce,
+      RST =>  fd0_tdc_start_iodelay_rst,
+      CLK => dcm0_clk_ref_0,
+      ODATAIN => '0',
+      CAL => fd0_tdc_start_iodelay_cal,
+      T => '1',
+      IOCLK0 => dcm0_clk_ref_0,
+      IOCLK1 => '0'
+      );
+
+  
   U_DDR_PLL0 : fd_ddr_pll
     port map (
       RST       => ddr0_pll_reset,
@@ -990,6 +1018,11 @@ begin
       i2c_sda_i       => fd0_sda_in,
       fmc_present_n_i => fmc0_prsntm2c_n_i,
 
+      idelay_cal_o => fd0_tdc_start_iodelay_cal,
+      idelay_rst_o => fd0_tdc_start_iodelay_rst,
+      idelay_ce_o => fd0_tdc_start_iodelay_ce,
+      idelay_inc_o => fd0_tdc_start_iodelay_inc,
+            
       wb_adr_i   => cnx_master_out(c_SLAVE_FD0).adr,
       wb_dat_i   => cnx_master_out(c_SLAVE_FD0).dat,
       wb_dat_o   => cnx_master_in(c_SLAVE_FD0).dat,
@@ -1025,11 +1058,32 @@ begin
       IBUF_LOW_PWR => false  -- Low power (TRUE) vs. performance (FALSE) setting for referenced
       )
     port map (
-      O  => fd1_tdc_start,              -- Buffer output
+      O  => fd1_tdc_start_predelay,              -- Buffer output
       I  => fd1_tdc_start_p_i,  -- Diff_p buffer input (connect directly to top-level port)
       IB => fd1_tdc_start_n_i  -- Diff_n buffer input (connect directly to top-level port)
       );
 
+  cmp_fd_tdc_start_delay1 : IODELAY2
+    generic map (
+      DELAY_SRC => "IDATAIN",
+      IDELAY_TYPE => "VARIABLE_FROM_ZERO",
+      DATA_RATE => "SDR"
+      )
+    port map (
+      IDATAIN => fd1_tdc_start_predelay,
+      DATAOUT2 => fd1_tdc_start,
+      INC => fd1_tdc_start_iodelay_inc,
+      CE =>  fd1_tdc_start_iodelay_ce,
+      RST =>  fd1_tdc_start_iodelay_rst,
+      CLK => dcm1_clk_ref_0,
+      ODATAIN => '0',
+      CAL => fd1_tdc_start_iodelay_cal,
+      T => '1',
+      IOCLK0 => dcm1_clk_ref_0,
+      IOCLK1 => '0'
+      );
+
+    
   U_DDR_PLL1 : fd_ddr_pll
     port map (
       RST       => ddr1_pll_reset,
@@ -1105,6 +1159,11 @@ begin
       i2c_sda_i       => fd1_sda_in,
       fmc_present_n_i => fmc1_prsntm2c_n_i,
 
+      idelay_cal_o => fd1_tdc_start_iodelay_cal,
+      idelay_rst_o => fd1_tdc_start_iodelay_rst,
+      idelay_ce_o => fd1_tdc_start_iodelay_ce,
+      idelay_inc_o => fd1_tdc_start_iodelay_inc,
+      
       wb_adr_i   => cnx_master_out(c_SLAVE_FD1).adr,
       wb_dat_i   => cnx_master_out(c_SLAVE_FD1).dat,
       wb_dat_o   => cnx_master_in(c_SLAVE_FD1).dat,
