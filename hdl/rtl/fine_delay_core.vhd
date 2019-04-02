@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2019-03-21
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -195,7 +195,7 @@ entity fine_delay_core is
     owr_i    : in  std_logic;
 
     ---------------------------------------------------------------------------
-    -- Misc signals: I2C EEPROM, FMC presence
+    -- Misc signals: I2C EEPROM, FMC presence, I/O calibration
     ---------------------------------------------------------------------------
 
     i2c_scl_o     : out std_logic;
@@ -206,6 +206,11 @@ entity fine_delay_core is
     i2c_sda_i     : in  std_logic;
 
     fmc_present_n_i : in std_logic;
+
+    idelay_inc_o : out std_logic;
+    idelay_cal_o : out std_logic;
+    idelay_ce_o : out std_logic;
+    idelay_rst_o : out std_logic;
 
 
     ---------------------------------------------------------------------------
@@ -504,6 +509,12 @@ begin  -- rtl
       );
 
 
+  idelay_rst_o <= regs_fromwb.tdcsr_idelay_rst_o;
+  idelay_ce_o <= regs_fromwb.tdcsr_idelay_ce_o;
+  idelay_inc_o <= regs_fromwb.tdcsr_idelay_inc_o and regs_fromwb.tdcsr_idelay_ce_o;
+  idelay_cal_o <= regs_fromwb.tdcsr_idelay_cal_o;
+  
+  
   U_Acam_TSU : fd_acam_timestamper
     generic map (
       g_min_pulse_width => 3,
