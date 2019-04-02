@@ -404,7 +404,48 @@ peripheral {
          prefix = "ALUTRIG";
          type = MONOSTABLE;
       };
-   };
+
+
+      field {
+         clock = "clk_ref_i";
+
+         name = "IDELAY CE (pulse)";
+         description = "Write 1 to pulse the IDELAY CE line for 1 clock tick.";
+         prefix = "IDELAY_CE";
+         type = MONOSTABLE;
+			};
+
+			field {
+         clock = "clk_ref_i";
+         name = "IDELAY RST (GPIO)";
+         description = "State of IDELAY RST line";
+         prefix = "IDELAY_RST";
+         type = BIT;
+				 access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+			};
+
+			field {
+         clock = "clk_ref_i";
+         name = "IDELAY CAL (GPIO)";
+         description = "State of IDELAY CAL line";
+         prefix = "IDELAY_CAL";
+         type = BIT;
+				 access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+			};
+
+			field {
+         clock = "clk_ref_i";
+         name = "IDELAY CAL (GPIO)";
+         description = "State of IDELAY INC line";
+         prefix = "IDELAY_INC";
+         type = BIT;
+				 access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+			};
+			
+	 };
 
    reg {
       prefix = "CALR";
