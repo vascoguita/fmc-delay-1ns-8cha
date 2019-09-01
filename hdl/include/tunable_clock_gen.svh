@@ -10,8 +10,8 @@ module tunable_clock_gen
    parameter g_tunable 	       = 0;
    parameter g_tuning_range    = 20e-6; // 20 ppm
    parameter g_tuning_voltage  = 1.0;
-   parameter real g_period     = 8ns;
-   parameter real g_jitter     = 10ps;
+   parameter time g_period     = 8ns;
+   parameter time g_jitter     = 10ps;
 
    reg clk 		       = 1'b1;
 

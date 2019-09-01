@@ -182,6 +182,8 @@ module main;
       drv0 = new(acc, 'h80010000);
       drv0.init();
 
+      drv0.set_idelay_taps(30);
+      
       t_start=new;    
       drv0.get_time(t_start);
       t_start.coarse += 20000;

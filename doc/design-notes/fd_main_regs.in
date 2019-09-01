@@ -354,6 +354,26 @@ Stop disable
 @code{ALUTRIG}
 @tab @code{0} @tab 
 Pulse <code>Alutrigger</code> line
+@item @code{8}
+@tab W/O @tab
+@code{IDELAY_CE}
+@tab @code{0} @tab 
+IDELAY CE (pulse)
+@item @code{9}
+@tab R/W @tab
+@code{IDELAY_RST}
+@tab @code{0} @tab 
+IDELAY RST (GPIO)
+@item @code{10}
+@tab R/W @tab
+@code{IDELAY_CAL}
+@tab @code{0} @tab 
+IDELAY CAL (GPIO)
+@item @code{11}
+@tab R/W @tab
+@code{IDELAY_INC}
+@tab @code{0} @tab 
+IDELAY CAL (GPIO)
 @end multitable
 @multitable @columnfractions 0.15 0.85
 @headitem Field @tab Description
@@ -365,6 +385,10 @@ Pulse <code>Alutrigger</code> line
 @item @code{START_EN} @tab Controls the @code{StartDis} input of the TDC.@* write 1: enables the TDC start input.@* write 0: no effect.
 @item @code{STOP_DIS} @tab Controls the @code{StopDis} input of the TDC.@* write 1: disables the TDC stop input.@* write 0: no effect.
 @item @code{ALUTRIG} @tab Controls the TDC's @code{Alutrigger} line. Depending on the TDC's configuration, it can be used as a reset/FIFO clear/trigger signal.@* write 1: generates a pulse ACAM's @code{Alutrigger} line@* write 0: no effect.
+@item @code{IDELAY_CE} @tab Write 1 to pulse the IDELAY CE line for 1 clock tick.
+@item @code{IDELAY_RST} @tab State of IDELAY RST line
+@item @code{IDELAY_CAL} @tab State of IDELAY CAL line
+@item @code{IDELAY_INC} @tab State of IDELAY INC line
 @end multitable
 @regsection @code{CALR} - Calibration register
 Controls calibration logic.
