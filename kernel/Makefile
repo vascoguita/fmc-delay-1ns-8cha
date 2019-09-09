@@ -12,14 +12,16 @@ ZIO ?= ../zio
 # passed to the Kbuild
 ZIO_ABS ?= $(abspath $(ZIO) )
 
-GIT_VERSION = $(shell git describe --dirty --long --tags)
-export GIT_VERSION
 
+GIT_VERSION = $(shell git describe --dirty --long --tags)
 ZIO_VERSION     ?= $(shell cd $(ZIO_ABS);     git describe --always --dirty --long --tags)
 export ZIO_VERSION
 
 all modules:
-	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) ZIO_ABS=$(ZIO_ABS) modules
+	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) \
+		ZIO_ABS=$(ZIO_ABS)  \
+		VERSION=$(GIT_VERSION) \
+		modules
 
 install modules_install: modules
 	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) modules_install

@@ -19,7 +19,7 @@ ccflags-y += \
 	-I$(ZIO_ABS)/include \
 	-I$(src)
 
-ccflags-y += -DGIT_VERSION=\"$(GIT_VERSION)\"
+ccflags-y += -DVERSION=\"$(VERSION)\"
 
 # Extract ZIO minimum compatible version
 ccflags-y += -D__ZIO_MIN_MAJOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 2 | cut -d '.' -f 1; )
