@@ -22,6 +22,8 @@
 #include <linux/list.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
+#include <linux/ipmi-fru.h>
+#include <linux/fmc.h>
 
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
@@ -34,6 +36,8 @@ struct memory_ops memops = {
 /* Module parameters */
 static int fd_verbose = 0;
 module_param_named(verbose, fd_verbose, int, 0444);
+
+#define FA_EEPROM_TYPE "at24c64"
 
 /* FIXME: add parameters "file=" and "wrc=" like wr-nic-core does */
 
@@ -156,6 +160,47 @@ static int fd_resource_validation(struct platform_device *pdev)
 	return 0;
 }
 
+#define FD_FMC_NAME "FmcDelay1ns4cha"
+
+static bool fd_fmc_slot_is_valid(struct fd_dev *fd)
+{
+	int ret;
+	void *fru = NULL;
+	char *fmc_name = NULL;
+
+	if (!fmc_slot_fru_valid(fd->slot)) {
+		dev_err(&fd->pdev->dev, "Can't identify FMC card: invalid FRU\n");
+		return -EINVAL;
+	}
+
+	fru = kmalloc(FRU_SIZE_MAX, GFP_KERNEL);
+	if (!fru)
+		return -ENOMEM;
+
+	ret = fmc_slot_eeprom_read(fd->slot, fru, 0x0, FRU_SIZE_MAX);
+	if (ret != FRU_SIZE_MAX) {
+		dev_err(&fd->pdev->dev, "Failed to read FRU header\n");
+		goto err;
+	}
+
+	fmc_name = fru_get_product_name(fru);
+	ret = strcmp(fmc_name, FD_FMC_NAME);
+	if (ret) {
+		dev_err(&fd->pdev->dev,
+			"Invalid FMC card: expectd '%s', found '%s'\n",
+			FD_FMC_NAME, fmc_name);
+		goto err;
+	}
+
+	kfree(fmc_name);
+	kfree(fru);
+
+	return true;
+err:
+	kfree(fmc_name);
+	kfree(fru);
+	return false;
+}
 
 /* probe and remove are called by the FMC bus core */
 int fd_probe(struct platform_device *pdev)
@@ -163,12 +208,19 @@ int fd_probe(struct platform_device *pdev)
 	struct fd_modlist *m;
 	struct fd_dev *fd;
 	struct device *dev = &pdev->dev;
-	int i, ret, ch, err;
+	int i, ret, ch, err, slot_nr;
 	struct resource *r;
 
 	err = fd_resource_validation(pdev);
 	if (err)
 		return err;
+
+	fd = devm_kzalloc(&pdev->dev, sizeof(*fd), GFP_KERNEL);
+	if (!fd)
+		return -ENOMEM;
+
+	platform_set_drvdata(pdev, fd);
+	fd->pdev = pdev;
 
 	/* Assign IO operation */
 	switch (pdev->id_entry->driver_data) {
@@ -186,15 +238,7 @@ int fd_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	fd = devm_kzalloc(&pdev->dev, sizeof(*fd), GFP_KERNEL);
-	if (!fd) {
-		dev_err(dev, "can't allocate device\n");
-		return -ENOMEM;
-	}
-	platform_set_drvdata(pdev, fd);
-	fd->pdev = pdev;
 	fd->verbose = fd_verbose;
-
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
 	fd->fd_regs_base = ioremap(r->start, resource_size(r));
@@ -202,12 +246,42 @@ int fd_probe(struct platform_device *pdev)
 
 	spin_lock_init(&fd->lock);
 
-
 	/* Check the binary is there */
 	if (fd_readl(fd, FD_REG_IDR) != FD_MAGIC_FPGA) {
 		dev_err(dev, "wrong gateware\n");
 		return -ENODEV;
 	}
+
+	slot_nr = fd_readl(fd, FD_REG_FMC_SLOT_ID) + 1;
+	fd->slot = fmc_slot_get(pdev->dev.parent->parent, slot_nr);
+	if (IS_ERR(fd->slot)) {
+		dev_err(&fd->pdev->dev,
+			"Can't find FMC slot %d err: %ld\n",
+			slot_nr, PTR_ERR(fd->slot));
+		goto out_fmc;
+	}
+
+	if (!fmc_slot_present(fd->slot)) {
+		dev_err(&fd->pdev->dev,
+			"Can't identify FMC card: missing card\n");
+		goto out_fmc_pre;
+	}
+
+	if (strcmp(fmc_slot_eeprom_type_get(fd->slot), FA_EEPROM_TYPE)) {
+		dev_warn(&fd->pdev->dev,
+			 "use non standard EERPOM type \"%s\"\n",
+			 FA_EEPROM_TYPE);
+		err = fmc_slot_eeprom_type_set(fd->slot, FA_EEPROM_TYPE);
+		if (err) {
+			dev_err(&fd->pdev->dev,
+				"Failed to change EEPROM type to \"%s\"",
+				FA_EEPROM_TYPE);
+			goto out_fmc_eeprom;
+		}
+	}
+
+	if(!fd_fmc_slot_is_valid(fd))
+		goto out_fmc_err;
 
 	/* Retrieve calibration from the eeprom, and validate */
 	ret = fd_handle_calibration(fd, NULL);
@@ -265,6 +339,11 @@ err:
 	while (--m, --i >= 0)
 		if (m->exit)
 			m->exit(fd);
+out_fmc_err:
+out_fmc_eeprom:
+out_fmc_pre:
+	fmc_slot_put(fd->slot);
+out_fmc:
 	return ret;
 }
 
@@ -285,6 +364,7 @@ int fd_remove(struct platform_device *pdev)
 		if (m->exit)
 			m->exit(fd);
 	}
+	fmc_slot_put(fd->slot);
 
 	return 0;
 }

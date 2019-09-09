@@ -131,6 +131,7 @@ struct fd_time {
 #include <linux/platform_device.h>
 #include <linux/version.h>
 #include <linux/interrupt.h>
+#include <linux/fmc.h>
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,25)
 #include <linux/math64.h>
 #else
@@ -217,6 +218,7 @@ struct fd_dev {
 	struct tasklet_struct tlet;
 	struct fd_calibration calib;	/* a copy of what we have in flash */
 	struct fd_ch ch[FD_CH_NUMBER];
+	struct fmc_slot *slot;
 	uint32_t bin;
 	int acam_addr;			/* cache of currently active addr */
 	uint8_t ds18_id[8];
