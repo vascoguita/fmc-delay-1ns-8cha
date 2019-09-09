@@ -8,18 +8,18 @@ LINUX ?= /lib/modules/$(shell uname -r)/build
 
 ZIO ?= ../zio
 
-# ZIO_ABS has to be absolut path, due to beeing
-# passed to the Kbuild
 ZIO_ABS ?= $(abspath $(ZIO) )
+ZIO_EXTRA_SYMBOLS-y = $(ZIO_ABS)/Module.symvers
 
 
 GIT_VERSION = $(shell git describe --dirty --long --tags)
 ZIO_VERSION     ?= $(shell cd $(ZIO_ABS);     git describe --always --dirty --long --tags)
-export ZIO_VERSION
 
 all modules:
 	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) \
 		ZIO_ABS=$(ZIO_ABS)  \
+		ZIO_EXTRA_SYMBOLS-y=$(ZIO_EXTRA_SYMBOLS-y) \
+		ZIO_VERSION=$(ZIO_VERSION) \
 		VERSION=$(GIT_VERSION) \
 		modules
 

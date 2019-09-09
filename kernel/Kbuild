@@ -1,6 +1,5 @@
 
-KBUILD_EXTRA_SYMBOLS := \
-	$(ZIO_ABS)/Module.symvers
+KBUILD_EXTRA_SYMBOLS += $(ZIO_EXTRA_SYMBOLS-y)
 
 # add versions of supermodule. It is useful when fine-delay-sw is included as sub-module
 # of a bigger project that we want to track
