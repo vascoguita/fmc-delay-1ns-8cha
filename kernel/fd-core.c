@@ -344,6 +344,10 @@ out_fmc_eeprom:
 out_fmc_pre:
 	fmc_slot_put(fd->slot);
 out_fmc:
+	iounmap(fd->fd_regs_base);
+	devm_kfree(&pdev->dev, fd);
+	platform_set_drvdata(pdev, NULL);
+
 	return ret;
 }
 
@@ -364,6 +368,8 @@ int fd_remove(struct platform_device *pdev)
 		if (m->exit)
 			m->exit(fd);
 	}
+	iounmap(fd->fd_regs_base);
+
 	fmc_slot_put(fd->slot);
 
 	return 0;
