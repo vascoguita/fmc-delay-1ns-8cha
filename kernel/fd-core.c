@@ -28,11 +28,6 @@
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
 
-struct memory_ops memops = {
-	.read = NULL,
-	.write = NULL,
-};
-
 /* Module parameters */
 static int fd_verbose = 0;
 module_param_named(verbose, fd_verbose, int, 0444);
@@ -202,6 +197,39 @@ err:
 	return false;
 }
 
+static int fd_endianess(struct fd_dev *fd)
+{
+	uint32_t signature;
+
+	signature = ioread32(fd->fd_regs_base + FD_REG_IDR);
+	if (signature == FD_MAGIC_FPGA)
+		return 0;
+	signature = ioread32be(fd->fd_regs_base + FD_REG_IDR);
+	if (signature == FD_MAGIC_FPGA)
+		return 1;
+	return -1;
+}
+static int fd_memops_detect(struct fd_dev *fd)
+{
+	int ret;
+
+	ret = fd_endianess(fd);
+	if (ret < 0) {
+		dev_err(&fd->pdev->dev, "Failed to detect endianess\n");
+		return -EINVAL;
+	}
+
+	if (ret) {
+		fd->memops.read = ioread32be;
+		fd->memops.write = iowrite32be;
+	} else {
+		fd->memops.read = ioread32;
+		fd->memops.write = iowrite32;
+	}
+
+	return 0;
+}
+
 /* probe and remove are called by the FMC bus core */
 int fd_probe(struct platform_device *pdev)
 {
@@ -221,36 +249,14 @@ int fd_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, fd);
 	fd->pdev = pdev;
-
-	/* Assign IO operation */
-	switch (pdev->id_entry->driver_data) {
-	case FD_VER_SPEC:
-		memops.read = ioread32;
-		memops.write = iowrite32;
-		break;
-	case FD_VER_SVEC:
-		memops.read = ioread32be;
-		memops.write = iowrite32be;
-		break;
-	default:
-		dev_err(&pdev->dev, "Unknow version %lu\n",
-			pdev->id_entry->driver_data);
-		return -EINVAL;
-	}
-
 	fd->verbose = fd_verbose;
-
 	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
 	fd->fd_regs_base = ioremap(r->start, resource_size(r));
 	fd->fd_owregs_base = fd->fd_regs_base + 0x500;
-
 	spin_lock_init(&fd->lock);
-
-	/* Check the binary is there */
-	if (fd_readl(fd, FD_REG_IDR) != FD_MAGIC_FPGA) {
-		dev_err(dev, "wrong gateware\n");
-		return -ENODEV;
-	}
+	err = fd_memops_detect(fd);
+	if (err)
+		goto err_memops;
 
 	slot_nr = fd_readl(fd, FD_REG_FMC_SLOT_ID) + 1;
 	fd->slot = fmc_slot_get(pdev->dev.parent->parent, slot_nr);
@@ -344,6 +350,7 @@ out_fmc_eeprom:
 out_fmc_pre:
 	fmc_slot_put(fd->slot);
 out_fmc:
+err_memops:
 	iounmap(fd->fd_regs_base);
 	devm_kfree(&pdev->dev, fd);
 	platform_set_drvdata(pdev, NULL);
@@ -377,13 +384,9 @@ int fd_remove(struct platform_device *pdev)
 
 static const struct platform_device_id fd_id[] = {
 	{
-		.name = "fdelay-tdc-spec",
-		.driver_data = FD_VER_SPEC,
-	}, {
-		.name = "fdelay-tdc-svec",
-		.driver_data = FD_VER_SVEC,
+		.name = "fmc-fdelay-tdc",
+		.driver_data = FD_VER_TDC,
 	},
-
 	/* TODO we should support different version */
 };
 

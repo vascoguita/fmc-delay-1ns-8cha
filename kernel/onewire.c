@@ -57,12 +57,12 @@
 
 static void ow_writel(struct fd_dev *fd, uint32_t val, unsigned long reg)
 {
-	ft_iowrite(fd, val, fd->fd_owregs_base + reg);
+	fd_iowrite(fd, val, fd->fd_owregs_base + reg);
 }
 
 static uint32_t ow_readl(struct fd_dev *fd, unsigned long reg)
 {
-	return ft_ioread(fd, fd->fd_owregs_base + reg);
+	return fd_ioread(fd, fd->fd_owregs_base + reg);
 }
 
 static int ow_reset(struct fd_dev *fd, int port)

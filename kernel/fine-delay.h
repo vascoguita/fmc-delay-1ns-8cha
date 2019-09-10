@@ -2,8 +2,7 @@
 #define __FINE_DELAY_H__
 
 enum fd_versions {
-	FD_VER_SPEC = 0,
-	FD_VER_SVEC,
+	FD_VER_TDC = 0,
 };
 
 enum fd_mem_resource {
@@ -148,7 +147,6 @@ struct memory_ops {
 	void (*write)(u32 value, void *addr);
 };
 
-extern struct memory_ops memops;
 
 /* This is somehow generic, but I find no better place at this time */
 #ifndef SET_HI32
@@ -211,6 +209,7 @@ struct fd_dev {
 	unsigned long flags;
 	void *fd_regs_base;
 	void *fd_owregs_base;		/* regs_base + 0x500 */
+	struct memory_ops memops;
 	struct platform_device *pdev;
 	struct zio_device *zdev, *hwzdev;
 	struct timer_list fifo_timer;
@@ -254,24 +253,24 @@ static inline void fd_split_pico(uint64_t pico,
 	*frac = (*frac << 12) / 8000;
 }
 
-static inline u32 ft_ioread(struct fd_dev *ft, void *addr)
+static inline u32 fd_ioread(struct fd_dev *fd, void *addr)
 {
-	return memops.read(addr);
+	return fd->memops.read(addr);
 }
 
-static inline void ft_iowrite(struct fd_dev *ft,
+static inline void fd_iowrite(struct fd_dev *fd,
 			      u32 value, void *addr)
 {
-	memops.write(value, addr);
+	fd->memops.write(value, addr);
 }
 
 static inline uint32_t fd_readl(struct fd_dev *fd, unsigned long reg)
 {
-	return ft_ioread(fd, fd->fd_regs_base + reg);
+	return fd_ioread(fd, fd->fd_regs_base + reg);
 }
 static inline void fd_writel(struct fd_dev *fd, uint32_t v, unsigned long reg)
 {
-	ft_iowrite(fd, v, fd->fd_regs_base + reg);
+	fd_iowrite(fd, v, fd->fd_regs_base + reg);
 }
 
 static inline void __check_chan(int x)
