@@ -10,3 +10,9 @@
 [submodule "hdl/ip_cores/gn4124-core"]
 	path = hdl/ip_cores/gn4124-core
 	url = https://ohwr.org/project/gn4124-core.git
+[submodule "hdl/ip_cores/spec"]
+	path = hdl/ip_cores/spec
+	url = https://ohwr.org/project/spec.git
+[submodule "hdl/ip_cores/ddr3-sp6-core"]
+	path = hdl/ip_cores/ddr3-sp6-core
+	url = https://ohwr.org/project/ddr3-sp6-core.git
