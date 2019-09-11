@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2019-09-02
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -214,7 +214,6 @@ begin
       regs_o     => regs_in);
 
   wb_o.err <= '0';
-  wb_o.int <= '0';
   wb_o.rty <= '0';
 
   tag_tdc <= f_to_internal_time(tag_utc_i, tag_coarse_i, tag_frac_i);
