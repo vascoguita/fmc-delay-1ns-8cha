@@ -321,7 +321,8 @@ int fd_irq_init(struct fd_dev *fd)
 			  dev_name(&fd->pdev->dev), fd);
 		if (rv < 0) {
 			dev_err(&fd->pdev->dev,
-				"Failed to request the VIC interrupt\n");
+				"Failed to request the interrupt %i (%i)\n",
+				platform_get_irq(fd->pdev, 0), rv);
 			goto out_irq_request;
 		}
 
