@@ -415,9 +415,8 @@ extern int fd_eeprom_write(struct fd_dev *fd, int i2c_addr, uint32_t offset,
 			void *buf, size_t size);
 
 /* Function exported by calibration.c */
-extern int fd_handle_calibration(struct fd_dev *fd,
-				 struct fd_calibration *calib);
-extern struct bin_attribute dev_attr_eeprom;
-
+extern int fd_calib_init(struct fd_dev *fd);
+extern void fd_calib_exit(struct fd_dev *fd);
+extern struct bin_attribute dev_attr_calibration;
 #endif /* __KERNEL__ */
 #endif /* __FINE_DELAY_H__ */

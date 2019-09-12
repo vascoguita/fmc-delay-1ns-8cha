@@ -701,6 +701,7 @@ static int fd_zio_input(struct zio_cset *cset)
 static int fd_zio_probe(struct zio_device *zdev)
 {
 	struct fd_dev *fd;
+	int err;
 
 	/* link the new device from the fd structure */
 	fd = zdev->priv_d;
@@ -709,7 +710,22 @@ static int fd_zio_probe(struct zio_device *zdev)
 	fd->tdc_attrs[FD_CSET_INDEX(FD_ATTR_TDC_OFFSET)] = \
 		fd->calib.tdc_zero_offset;
 
+	err = device_create_bin_file(&zdev->head.dev, &dev_attr_calibration);
+	if (err) {
+		dev_warn(&fd->pdev->dev,
+			 "Cannot create sysfs attribute for calibration data\n");
+		return err;
+	}
+
+
 	/* We don't have csets at this point, so don't do anything more */
+	return 0;
+}
+
+static int fd_zio_remove(struct zio_device *zdev)
+{
+	device_remove_bin_file(&zdev->head.dev, &dev_attr_calibration);
+
 	return 0;
 }
 
@@ -804,6 +820,7 @@ static struct zio_driver fd_zdrv = {
 	},
 	.id_table = fd_table,
 	.probe = fd_zio_probe,
+	.remove = fd_zio_remove,
 	/* Take the version from ZIO git sub-module */
 	.min_version = ZIO_VERSION(__ZIO_MIN_MAJOR_VERSION,
 				   __ZIO_MIN_MINOR_VERSION,

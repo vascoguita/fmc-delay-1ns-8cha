@@ -282,10 +282,9 @@ int fd_probe(struct platform_device *pdev)
 	if(!fd_fmc_slot_is_valid(fd))
 		goto out_fmc_err;
 
-	/* Retrieve calibration from the eeprom, and validate */
-	ret = fd_handle_calibration(fd, NULL);
+	ret = fd_calib_init(fd);
 	if (ret < 0)
-		return ret;
+		goto err_calib;;
 
 	/* First, hardware reset */
 	fd_do_reset(fd, 1);
@@ -307,12 +306,6 @@ int fd_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err;
 
-	ret = device_create_bin_file(&fd->pdev->dev, &dev_attr_eeprom);
-	if (ret) {
-		dev_warn(&fd->pdev->dev,
-			 "Cannot create sysfs attribute, use default calibration data\n");
-	}
-
 	set_bit(FD_FLAG_INITED, &fd->flags);
 
 	/* set all output enable stages */
@@ -325,6 +318,7 @@ err:
 	while (--m, --i >= 0)
 		if (m->exit)
 			m->exit(fd);
+err_calib:
 out_fmc_err:
 out_fmc_eeprom:
 out_fmc_pre:
@@ -347,14 +341,13 @@ int fd_remove(struct platform_device *pdev)
 	if (!test_bit(FD_FLAG_INITED, &fd->flags)) /* FIXME: ditch this */
 		return 0; /* No init, no exit */
 
-	device_remove_bin_file(&fd->pdev->dev, &dev_attr_eeprom);
-
 	fd_irq_exit(fd);
 	while (--i >= 0) {
 		m = mods + i;
 		if (m->exit)
 			m->exit(fd);
 	}
+	fd_calib_exit(fd);
 	iounmap(fd->fd_regs_base);
 
 	fmc_slot_put(fd->slot);
