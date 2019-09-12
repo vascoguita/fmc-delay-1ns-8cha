@@ -229,12 +229,12 @@ int fd_probe(struct platform_device *pdev)
 	struct fd_modlist *m;
 	struct fd_dev *fd;
 	struct device *dev = &pdev->dev;
-	int i, ret, ch, err, slot_nr;
+	int i, ret, ch, slot_nr;
 	struct resource *r;
 
-	err = fd_resource_validation(pdev);
-	if (err)
-		return err;
+	ret = fd_resource_validation(pdev);
+	if (ret < 0)
+		return ret;
 
 	fd = devm_kzalloc(&pdev->dev, sizeof(*fd), GFP_KERNEL);
 	if (!fd)
@@ -247,8 +247,8 @@ int fd_probe(struct platform_device *pdev)
 	fd->fd_regs_base = ioremap(r->start, resource_size(r));
 	fd->fd_owregs_base = fd->fd_regs_base + 0x500;
 	spin_lock_init(&fd->lock);
-	err = fd_memops_detect(fd);
-	if (err)
+	ret = fd_memops_detect(fd);
+	if (ret)
 		goto err_memops;
 
 	slot_nr = fd_readl(fd, FD_REG_FMC_SLOT_ID) + 1;
@@ -270,8 +270,8 @@ int fd_probe(struct platform_device *pdev)
 		dev_warn(&fd->pdev->dev,
 			 "use non standard EERPOM type \"%s\"\n",
 			 FA_EEPROM_TYPE);
-		err = fmc_slot_eeprom_type_set(fd->slot, FA_EEPROM_TYPE);
-		if (err) {
+		ret = fmc_slot_eeprom_type_set(fd->slot, FA_EEPROM_TYPE);
+		if (ret < 0) {
 			dev_err(&fd->pdev->dev,
 				"Failed to change EEPROM type to \"%s\"",
 				FA_EEPROM_TYPE);
