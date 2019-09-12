@@ -313,19 +313,6 @@ int fd_probe(struct platform_device *pdev)
 			 "Cannot create sysfs attribute, use default calibration data\n");
 	}
 
-	if (0) {
-		struct timespec ts1, ts2, ts3;
-		/* Temporarily, test the time stuff */
-		fd_time_set(fd, NULL, NULL);
-		fd_time_get(fd, NULL, &ts1);
-		msleep(100);
-		fd_time_get(fd, NULL, &ts2);
-		getnstimeofday(&ts3);
-		printk("%li.%li\n%li.%li\n%li.%li\n",
-		       ts1.tv_sec, ts1.tv_nsec,
-		       ts2.tv_sec, ts2.tv_nsec,
-		       ts3.tv_sec, ts3.tv_nsec);
-	}
 	set_bit(FD_FLAG_INITED, &fd->flags);
 
 	/* set all output enable stages */
