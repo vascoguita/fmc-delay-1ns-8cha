@@ -145,13 +145,6 @@ static int fd_resource_validation(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	r = platform_get_resource(pdev, IORESOURCE_BUS, FD_BUS_FMC_SLOT);
-	if (!r) {
-		dev_err(&pdev->dev,
-			"The Fine-Delay needs to be assigned to an FMC slot\n");
-		return -ENXIO;
-	}
-
 	return 0;
 }
 
