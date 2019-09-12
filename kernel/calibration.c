@@ -116,7 +116,7 @@ static ssize_t fd_write_eeprom(struct file *file, struct kobject *kobj,
 }
 struct bin_attribute dev_attr_eeprom = {
 	.attr = {
-		.name = "eeprom",
+		.name = "calibration",
 		.mode = S_IWUSR,
 	},
 	.size = (8 * 1024), /* 8 KiB */

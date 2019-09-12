@@ -317,7 +317,7 @@ int fd_probe(struct platform_device *pdev)
 	ret = device_create_bin_file(&fd->pdev->dev, &dev_attr_eeprom);
 	if (ret) {
 		dev_warn(&fd->pdev->dev,
-			 "Cannot create EEPROM sysfs attribute, use default calibration data\n");
+			 "Cannot create sysfs attribute, use default calibration data\n");
 	}
 
 	if (0) {
