@@ -406,14 +406,6 @@ extern void fd_irq_exit(struct fd_dev *fd);
 extern int fd_spec_init(void);
 extern void fd_spec_exit(void);
 
-/* Functions exported by i2c.c */
-extern int fd_i2c_init(struct fd_dev *fd);
-extern void fd_i2c_exit(struct fd_dev *fd);
-extern int fd_eeprom_read(struct fd_dev *fd, int i2c_addr, uint32_t offset,
-			 void *buf, size_t size);
-extern int fd_eeprom_write(struct fd_dev *fd, int i2c_addr, uint32_t offset,
-			void *buf, size_t size);
-
 /* Function exported by calibration.c */
 extern int fd_calib_init(struct fd_dev *fd);
 extern void fd_calib_exit(struct fd_dev *fd);
