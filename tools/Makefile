@@ -13,7 +13,7 @@ DESTDIR ?= /usr/local
 
 GIT_VERSION := $(shell git describe --dirty --long --tags)
 
-CFLAGS += -I../kernel -I../lib -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+CFLAGS += -I../kernel -I../lib -Wno-trigraphs -Wall -Werror -ggdb $(EXTRACFLAGS)
 CFLAGS += -DGIT_VERSION="\"$(GIT_VERSION)\""
 
 LDFLAGS = -L../lib
