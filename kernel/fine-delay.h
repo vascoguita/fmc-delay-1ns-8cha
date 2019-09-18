@@ -123,6 +123,25 @@ struct fd_time {
 };
 
 
+struct fd_calibration { /* All of these are big endian */
+	uint32_t magic;			/* magic ID: 0xf19ede1a */
+	uint32_t hash;			/* jhash of it all, with this zeroed */
+	uint16_t size;
+	uint16_t version;
+	uint32_t date;			/* hex: 0x20130410 = Apr 4th 2013 */
+
+	/* SY89295 delay/temperature polynomial coefficients */
+	int64_t frr_poly[3];
+
+	/* Output-to-internal-timebase offset in ps. Add to start/end output */
+	int32_t zero_offset[4];
+
+	/* TDC-to-internal-timebase offset in ps. Add to stamps and delays */
+	int32_t tdc_zero_offset;
+
+	/* Default DAC value for VCXO. Set during init and for local timing */
+	uint32_t vcxo_default_tune;
+};
 
 #ifdef __KERNEL__ /* All the rest is only of kernel users */
 #include <linux/spinlock.h>
@@ -158,26 +177,6 @@ struct memory_ops {
 #    define GET_HI32(var)               0
 #  endif
 #endif
-
-struct fd_calibration { /* All of these are big endian */
-	uint32_t magic;			/* magic ID: 0xf19ede1a */
-	uint32_t hash;			/* jhash of it all, with this zeroed */
-	uint16_t size;
-	uint16_t version;
-	uint32_t date;			/* hex: 0x20130410 = Apr 4th 2013 */
-
-	/* SY89295 delay/temperature polynomial coefficients */
-	int64_t frr_poly[3];
-
-	/* Output-to-internal-timebase offset in ps. Add to start/end output */
-	int32_t zero_offset[4];
-
-	/* TDC-to-internal-timebase offset in ps. Add to stamps and delays */
-	int32_t tdc_zero_offset;
-
-	/* Default DAC value for VCXO. Set during init and for local timing */
-	uint32_t vcxo_default_tune;
-};
 
 /* Channels are called 1..4 in all docs. Internally it's 0..3 */
 #define FD_CH_1		0
