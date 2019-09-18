@@ -1,8 +1,21 @@
 #ifndef __FINE_DELAY_H__
 #define __FINE_DELAY_H__
 
-#define FDELAY_GATEWARE_NAME_SPEC "fmc/spec-fine-delay.bin"
-#define FDELAY_GATEWARE_NAME_SVEC "fmc/svec-fine-delay.bin"
+enum fd_versions {
+	FD_VER_TDC = 0,
+};
+
+enum fd_mem_resource {
+	FD_MEM_BASE = 0,
+};
+
+enum fd_bus_resource {
+	FD_BUS_FMC_SLOT = 0,
+};
+
+enum fd_irq_resource {
+	FD_IRQ = 0,
+};
 
 #define FDELAY_VERSION		2 /* version of the layout of registers */
 /*
@@ -110,34 +123,6 @@ struct fd_time {
 };
 
 
-
-#ifdef __KERNEL__ /* All the rest is only of kernel users */
-#include <linux/spinlock.h>
-#include <linux/timer.h>
-#include <linux/fmc.h>
-#include <linux/version.h>
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,25)
-#include <linux/math64.h>
-#else
-/* Hack to compile under 2.6.24: this comes from 2418f4f2 (Roman Zippel) */
-static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
-{
-	*remainder = do_div(dividend, divisor);
-	return dividend;
-}
-#endif
-
-/* This is somehow generic, but I find no better place at this time */
-#ifndef SET_HI32
-#  if BITS_PER_LONG > 32
-#    define SET_HI32(var, value)        ((var) |= (value) << 32)
-#    define GET_HI32(var)               ((var) >> 32)
-#  else
-#    define SET_HI32(var, value)        ((var) |= 0)
-#    define GET_HI32(var)               0
-#  endif
-#endif
-
 struct fd_calibration { /* All of these are big endian */
 	uint32_t magic;			/* magic ID: 0xf19ede1a */
 	uint32_t hash;			/* jhash of it all, with this zeroed */
@@ -157,6 +142,41 @@ struct fd_calibration { /* All of these are big endian */
 	/* Default DAC value for VCXO. Set during init and for local timing */
 	uint32_t vcxo_default_tune;
 };
+
+#ifdef __KERNEL__ /* All the rest is only of kernel users */
+#include <linux/spinlock.h>
+#include <linux/timer.h>
+#include <linux/platform_device.h>
+#include <linux/version.h>
+#include <linux/interrupt.h>
+#include <linux/fmc.h>
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,25)
+#include <linux/math64.h>
+#else
+/* Hack to compile under 2.6.24: this comes from 2418f4f2 (Roman Zippel) */
+static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
+{
+	*remainder = do_div(dividend, divisor);
+	return dividend;
+}
+#endif
+
+struct memory_ops {
+	u32 (*read)(void *addr);
+	void (*write)(u32 value, void *addr);
+};
+
+
+/* This is somehow generic, but I find no better place at this time */
+#ifndef SET_HI32
+#  if BITS_PER_LONG > 32
+#    define SET_HI32(var, value)        ((var) |= (value) << 32)
+#    define GET_HI32(var)               ((var) >> 32)
+#  else
+#    define SET_HI32(var, value)        ((var) |= 0)
+#    define GET_HI32(var)               0
+#  endif
+#endif
 
 /* Channels are called 1..4 in all docs. Internally it's 0..3 */
 #define FD_CH_1		0
@@ -186,15 +206,17 @@ struct fd_sw_fifo {
 struct fd_dev {
 	spinlock_t lock;
 	unsigned long flags;
-	int fd_regs_base;		/* sdb_find_device(cern, f19ede1a) */
-	int fd_owregs_base;		/* regs_base + 0x500 */
-	struct fmc_device *fmc;
+	void *fd_regs_base;
+	void *fd_owregs_base;		/* regs_base + 0x500 */
+	struct memory_ops memops;
+	struct platform_device *pdev;
 	struct zio_device *zdev, *hwzdev;
 	struct timer_list fifo_timer;
 	struct timer_list temp_timer;
 	struct tasklet_struct tlet;
 	struct fd_calibration calib;	/* a copy of what we have in flash */
 	struct fd_ch ch[FD_CH_NUMBER];
+	struct fmc_slot *slot;
 	uint32_t bin;
 	int acam_addr;			/* cache of currently active addr */
 	uint8_t ds18_id[8];
@@ -230,13 +252,24 @@ static inline void fd_split_pico(uint64_t pico,
 	*frac = (*frac << 12) / 8000;
 }
 
+static inline u32 fd_ioread(struct fd_dev *fd, void *addr)
+{
+	return fd->memops.read(addr);
+}
+
+static inline void fd_iowrite(struct fd_dev *fd,
+			      u32 value, void *addr)
+{
+	fd->memops.write(value, addr);
+}
+
 static inline uint32_t fd_readl(struct fd_dev *fd, unsigned long reg)
 {
-	return fmc_readl(fd->fmc, fd->fd_regs_base + reg);
+	return fd_ioread(fd, fd->fd_regs_base + reg);
 }
 static inline void fd_writel(struct fd_dev *fd, uint32_t v, unsigned long reg)
 {
-	fmc_writel(fd->fmc, v, fd->fd_regs_base + reg);
+	fd_iowrite(fd, v, fd->fd_regs_base + reg);
 }
 
 static inline void __check_chan(int x)
@@ -372,17 +405,9 @@ extern void fd_irq_exit(struct fd_dev *fd);
 extern int fd_spec_init(void);
 extern void fd_spec_exit(void);
 
-/* Functions exported by i2c.c */
-extern int fd_i2c_init(struct fd_dev *fd);
-extern void fd_i2c_exit(struct fd_dev *fd);
-extern int fd_eeprom_read(struct fd_dev *fd, int i2c_addr, uint32_t offset,
-			 void *buf, size_t size);
-extern int fd_eeprom_write(struct fd_dev *fd, int i2c_addr, uint32_t offset,
-			void *buf, size_t size);
-
 /* Function exported by calibration.c */
-int fd_handle_eeprom_calibration(struct fd_dev *fd);
-signed long fmc_sdb_find_nth_device (struct sdb_array *tree, uint64_t vid, uint32_t did, int *ordinal, uint32_t *size );
-
+extern int fd_calib_init(struct fd_dev *fd);
+extern void fd_calib_exit(struct fd_dev *fd);
+extern struct bin_attribute dev_attr_calibration;
 #endif /* __KERNEL__ */
 #endif /* __FINE_DELAY_H__ */

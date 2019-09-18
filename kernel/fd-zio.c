@@ -23,8 +23,6 @@
 #include <linux/zio-buffer.h>
 #include <linux/zio-trigger.h>
 
-#include <linux/fmc.h>
-
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
 #include "hw/fd_channel_regs.h"
@@ -660,7 +658,7 @@ static int fd_zio_output(struct zio_cset *cset)
 	ctrl = zio_get_ctrl(cset->chan->active_block);
 
 	if (fd->verbose > 1) {
-		dev_info(&fd->fmc->dev,
+		dev_info(&fd->pdev->dev,
 			 "%s: attrs for cset %i: ", __func__, cset->index);
 		for (i = FD_ATTR_DEV__LAST; i < FD_ATTR_OUT__LAST; i++)
 			printk("%08x%c", ctrl->attr_channel.ext_val[i],
@@ -703,6 +701,7 @@ static int fd_zio_input(struct zio_cset *cset)
 static int fd_zio_probe(struct zio_device *zdev)
 {
 	struct fd_dev *fd;
+	int err;
 
 	/* link the new device from the fd structure */
 	fd = zdev->priv_d;
@@ -711,7 +710,22 @@ static int fd_zio_probe(struct zio_device *zdev)
 	fd->tdc_attrs[FD_CSET_INDEX(FD_ATTR_TDC_OFFSET)] = \
 		fd->calib.tdc_zero_offset;
 
+	err = device_create_bin_file(&zdev->head.dev, &dev_attr_calibration);
+	if (err) {
+		dev_warn(&fd->pdev->dev,
+			 "Cannot create sysfs attribute for calibration data\n");
+		return err;
+	}
+
+
 	/* We don't have csets at this point, so don't do anything more */
+	return 0;
+}
+
+static int fd_zio_remove(struct zio_device *zdev)
+{
+	device_remove_bin_file(&zdev->head.dev, &dev_attr_calibration);
+
 	return 0;
 }
 
@@ -806,6 +820,7 @@ static struct zio_driver fd_zdrv = {
 	},
 	.id_table = fd_table,
 	.probe = fd_zio_probe,
+	.remove = fd_zio_remove,
 	/* Take the version from ZIO git sub-module */
 	.min_version = ZIO_VERSION(__ZIO_MIN_MAJOR_VERSION,
 				   __ZIO_MIN_MINOR_VERSION,
@@ -867,7 +882,6 @@ static void __fd_init_outputs(struct fd_dev *fd)
 int fd_zio_init(struct fd_dev *fd)
 {
 	int err = 0;
-	int dev_id;
 
 	fd->hwzdev = zio_allocate_device();
 	if (IS_ERR(fd->hwzdev))
@@ -877,9 +891,7 @@ int fd_zio_init(struct fd_dev *fd)
 	fd->hwzdev->owner = THIS_MODULE;
 	fd->hwzdev->priv_d = fd;
 
-	dev_id = fd->fmc->device_id;
-
-	err = zio_register_device(fd->hwzdev, "fd", dev_id);
+	err = zio_register_device(fd->hwzdev, "fd", fd->pdev->id);
 	if (err) {
 		zio_free_device(fd->hwzdev);
 		return err;

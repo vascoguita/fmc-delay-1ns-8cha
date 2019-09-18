@@ -21,9 +21,9 @@
 #include <linux/init.h>
 #include <linux/list.h>
 #include <linux/io.h>
-
+#include <linux/platform_device.h>
+#include <linux/ipmi-fru.h>
 #include <linux/fmc.h>
-#include <linux/fmc-sdb.h>
 
 #include "fine-delay.h"
 #include "hw/fd_main_regs.h"
@@ -32,9 +32,7 @@
 static int fd_verbose = 0;
 module_param_named(verbose, fd_verbose, int, 0444);
 
-static struct fmc_driver fd_drv; /* forward declaration */
-FMC_PARAM_BUSID(fd_drv);
-FMC_PARAM_GATEWARE(fd_drv);
+#define FA_EEPROM_TYPE "at24c64"
 
 /* FIXME: add parameters "file=" and "wrc=" like wr-nic-core does */
 
@@ -97,7 +95,7 @@ int fd_reset_again(struct fd_dev *fd)
 		msleep(10);
 	}
 	if (time_after_eq(jiffies, j)) {
-		dev_err(&fd->fmc->dev,
+		dev_err(&fd->pdev->dev,
 			"%s: timeout waiting for GCR lock bit\n", __func__);
 		return -EIO;
 	}
@@ -124,130 +122,174 @@ static struct fd_modlist mods[] = {
 	{"reset-again", fd_reset_again},
 	SUBSYS(acam),
 	SUBSYS(time),
-	SUBSYS(i2c),
 	SUBSYS(zio),
 };
 
+
+
+static int fd_resource_validation(struct platform_device *pdev)
+{
+	struct resource *r;
+
+	r = platform_get_resource(pdev, IORESOURCE_IRQ, FD_IRQ);
+	if (!r) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay needs an interrupt number\n");
+		return -ENXIO;
+	}
+	if (!r->name) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay IRQ needs to be named\n");
+		return -ENXIO;
+	}
+
+	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
+	if (!r) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay needs base address\n");
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+#define FD_FMC_NAME "FmcDelay1ns4cha"
+
+static bool fd_fmc_slot_is_valid(struct fd_dev *fd)
+{
+	int ret;
+	void *fru = NULL;
+	char *fmc_name = NULL;
+
+	if (!fmc_slot_fru_valid(fd->slot)) {
+		dev_err(&fd->pdev->dev, "Can't identify FMC card: invalid FRU\n");
+		return -EINVAL;
+	}
+
+	fru = kmalloc(FRU_SIZE_MAX, GFP_KERNEL);
+	if (!fru)
+		return -ENOMEM;
+
+	ret = fmc_slot_eeprom_read(fd->slot, fru, 0x0, FRU_SIZE_MAX);
+	if (ret != FRU_SIZE_MAX) {
+		dev_err(&fd->pdev->dev, "Failed to read FRU header\n");
+		goto err;
+	}
+
+	fmc_name = fru_get_product_name(fru);
+	ret = strcmp(fmc_name, FD_FMC_NAME);
+	if (ret) {
+		dev_err(&fd->pdev->dev,
+			"Invalid FMC card: expectd '%s', found '%s'\n",
+			FD_FMC_NAME, fmc_name);
+		goto err;
+	}
+
+	kfree(fmc_name);
+	kfree(fru);
+
+	return true;
+err:
+	kfree(fmc_name);
+	kfree(fru);
+	return false;
+}
+
+static int fd_endianess(struct fd_dev *fd)
+{
+	uint32_t signature;
+
+	signature = ioread32(fd->fd_regs_base + FD_REG_IDR);
+	if (signature == FD_MAGIC_FPGA)
+		return 0;
+	signature = ioread32be(fd->fd_regs_base + FD_REG_IDR);
+	if (signature == FD_MAGIC_FPGA)
+		return 1;
+	return -1;
+}
+static int fd_memops_detect(struct fd_dev *fd)
+{
+	int ret;
+
+	ret = fd_endianess(fd);
+	if (ret < 0) {
+		dev_err(&fd->pdev->dev, "Failed to detect endianess\n");
+		return -EINVAL;
+	}
+
+	if (ret) {
+		fd->memops.read = ioread32be;
+		fd->memops.write = iowrite32be;
+	} else {
+		fd->memops.read = ioread32;
+		fd->memops.write = iowrite32;
+	}
+
+	return 0;
+}
+
 /* probe and remove are called by the FMC bus core */
-int fd_probe(struct fmc_device *fmc)
+int fd_probe(struct platform_device *pdev)
 {
 	struct fd_modlist *m;
 	struct fd_dev *fd;
-	struct device *dev = &fmc->dev;
-	char *fwname = "invalid";
-	int i, index, ret, ch, ord;
+	struct device *dev = &pdev->dev;
+	int i, ret, ch, slot_nr;
+	struct resource *r;
 
-	/* Validate the new FMC device */
-	index = fmc->op->validate(fmc, &fd_drv);
-	if (index < 0) {
-		dev_info(dev, "not using \"%s\" according to "
-			 "modparam\n", KBUILD_MODNAME);
-		return -ENODEV;
-	}
-
-	fd = devm_kzalloc(&fmc->dev, sizeof(*fd), GFP_KERNEL);
-	if (!fd) {
-		dev_err(dev, "can't allocate device\n");
-		return -ENOMEM;
-	}
-
-	/*
-	 * If the carrier is still using the golden bitstream or the user is
-	 * asking for a particular one, then program our bistream, otherwise
-	 * we already have our bitstream
-	 */
-	if (fmc->flags & FMC_DEVICE_HAS_GOLDEN || fd_drv.gw_n) {
-		if (fd_drv.gw_n)
-			fwname = ""; /* reprogram will pick from module parameter */
-		else if (!strcmp(fmc->carrier_name, "SVEC"))
-			fwname = FDELAY_GATEWARE_NAME_SVEC;
-		else if (!strcmp(fmc->carrier_name, "SPEC"))
-			fwname = FDELAY_GATEWARE_NAME_SPEC;
-		dev_info(fmc->hwdev, "Gateware (%s)\n", fwname);
-
-		/* We first write a new binary (and lm32) within the carrier */
-		ret = fmc_reprogram(fmc, &fd_drv, fwname, 0 /* SDB entry point */);
-		if (ret < 0) {
-			dev_err(fmc->hwdev, "write firmware \"%s\": error %i\n",
-				fwname, ret);
-			if (ret == -ESRCH) {
-				dev_info(fmc->hwdev, "%s: no gateware at index %i\n",
-					 KBUILD_MODNAME, index);
-				return -ENODEV;
-			}
-			return ret;
-		}
-		dev_info(fmc->hwdev, "Gateware successfully loaded\n");
-	} else {
-		dev_info(fmc->hwdev,
-			 "Gateware already there. Set the \"gateware\" parameter to overwrite the current gateware\n");
-	}
-
-	ret = fmc_scan_sdb_tree(fmc, 0);
-	if (ret == -EBUSY) {
-		/* Not a problem, it's already there. We assume that
-		   it's the correct one */
-		ret = 0;
-	}
-
-	/* Now use SDB to find the base addresses */
-
-	ord = fmc->slot_id;
-
-	fd->fd_regs_base = fmc_sdb_find_nth_device ( fmc->sdb, 0xce42, 0xf19ede1a, &ord, NULL );
-	if( (signed long)fd->fd_regs_base < 0)
-	{
-	    dev_err(dev, "Can't find the FD core. Wrong gateware?\n");
-	}
-
-	dev_dbg(dev, "fd_regs_base is %x\n", fd->fd_regs_base);
-
-	fd->fd_owregs_base = fd->fd_regs_base + 0x500;
-
-	spin_lock_init(&fd->lock);
-	fmc->mezzanine_data = fd;
-	fd->fmc = fmc;
-	fd->verbose = fd_verbose;
-
-	/* Check the binary is there */
-	if (fd_readl(fd, FD_REG_IDR) != FD_MAGIC_FPGA) {
-		dev_err(dev, "wrong gateware\n");
-		return -ENODEV;
-	}
-
-	/* Retrieve calibration from the eeprom, and validate */
-	ret = fd_handle_eeprom_calibration(fd);
+	ret = fd_resource_validation(pdev);
 	if (ret < 0)
 		return ret;
 
-	/*
-	 * Now, check the release field of the sdb record for our core.
-	 * Unfortunately we have no fmc primitive to see the device record.
-	 * So keep at the first level, knowing fdelay leaves there (FIXME)
-	 */
-	for (i = 0; i < fmc->sdb->len; i++) {
-		union  sdb_record *r;
-		struct sdb_product *p;
-		struct sdb_component *c;
+	fd = devm_kzalloc(&pdev->dev, sizeof(*fd), GFP_KERNEL);
+	if (!fd)
+		return -ENOMEM;
 
-		r = fmc->sdb->record + i;
-		if (r->empty.record_type != sdb_type_device)
-			continue;
-		c = &r->dev.sdb_component;
-		p = &c->product;
-		if (be64_to_cpu(p->vendor_id) != 0xce42LL)
-			continue;
-		if (be32_to_cpu(p->device_id) != 0xf19ede1a)
-			continue;
-		if (be32_to_cpu(p->version) < 3) {
-			dev_err(dev, "Core version %i < 3; refusing to work\n",
-				be32_to_cpu(p->version));
-			return -EINVAL;
-		}
-		break;
+	platform_set_drvdata(pdev, fd);
+	fd->pdev = pdev;
+	fd->verbose = fd_verbose;
+	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
+	fd->fd_regs_base = ioremap(r->start, resource_size(r));
+	fd->fd_owregs_base = fd->fd_regs_base + 0x500;
+	spin_lock_init(&fd->lock);
+	ret = fd_memops_detect(fd);
+	if (ret)
+		goto err_memops;
+
+	slot_nr = fd_readl(fd, FD_REG_FMC_SLOT_ID) + 1;
+	fd->slot = fmc_slot_get(pdev->dev.parent->parent, slot_nr);
+	if (IS_ERR(fd->slot)) {
+		dev_err(&fd->pdev->dev,
+			"Can't find FMC slot %d err: %ld\n",
+			slot_nr, PTR_ERR(fd->slot));
+		goto out_fmc;
 	}
-	if (i == fmc->sdb->len)
-		dev_warn(dev, "Can't find 0xf19ede1a dev for version check\n");
+
+	if (!fmc_slot_present(fd->slot)) {
+		dev_err(&fd->pdev->dev,
+			"Can't identify FMC card: missing card\n");
+		goto out_fmc_pre;
+	}
+
+	if (strcmp(fmc_slot_eeprom_type_get(fd->slot), FA_EEPROM_TYPE)) {
+		dev_warn(&fd->pdev->dev,
+			 "use non standard EERPOM type \"%s\"\n",
+			 FA_EEPROM_TYPE);
+		ret = fmc_slot_eeprom_type_set(fd->slot, FA_EEPROM_TYPE);
+		if (ret < 0) {
+			dev_err(&fd->pdev->dev,
+				"Failed to change EEPROM type to \"%s\"",
+				FA_EEPROM_TYPE);
+			goto out_fmc_eeprom;
+		}
+	}
+
+	if(!fd_fmc_slot_is_valid(fd))
+		goto out_fmc_err;
+
+	ret = fd_calib_init(fd);
+	if (ret < 0)
+		goto err_calib;;
 
 	/* First, hardware reset */
 	fd_do_reset(fd, 1);
@@ -269,44 +311,36 @@ int fd_probe(struct fmc_device *fmc)
 	if (ret < 0)
 		goto err;
 
-	if (0) {
-		struct timespec ts1, ts2, ts3;
-		/* Temporarily, test the time stuff */
-		fd_time_set(fd, NULL, NULL);
-		fd_time_get(fd, NULL, &ts1);
-		msleep(100);
-		fd_time_get(fd, NULL, &ts2);
-		getnstimeofday(&ts3);
-		printk("%li.%li\n%li.%li\n%li.%li\n",
-		       ts1.tv_sec, ts1.tv_nsec,
-		       ts2.tv_sec, ts2.tv_nsec,
-		       ts3.tv_sec, ts3.tv_nsec);
-	}
 	set_bit(FD_FLAG_INITED, &fd->flags);
 
 	/* set all output enable stages */
 	for (ch = 1; ch <= FD_CH_NUMBER; ch++)
 		fd_gpio_set(fd, FD_GPIO_OUTPUT_EN(ch));
 
-	/* Pin the carrier */
-	if (!try_module_get(fmc->owner))
-		goto out_mod;
-
 	return 0;
 
-out_mod:
-	fd_irq_exit(fd);
 err:
 	while (--m, --i >= 0)
 		if (m->exit)
 			m->exit(fd);
+err_calib:
+out_fmc_err:
+out_fmc_eeprom:
+out_fmc_pre:
+	fmc_slot_put(fd->slot);
+out_fmc:
+err_memops:
+	iounmap(fd->fd_regs_base);
+	devm_kfree(&pdev->dev, fd);
+	platform_set_drvdata(pdev, NULL);
+
 	return ret;
 }
 
-int fd_remove(struct fmc_device *fmc)
+int fd_remove(struct platform_device *pdev)
 {
 	struct fd_modlist *m;
-	struct fd_dev *fd = fmc->mezzanine_data;
+	struct fd_dev *fd = platform_get_drvdata(pdev);
 	int i = ARRAY_SIZE(mods);
 
 	if (!test_bit(FD_FLAG_INITED, &fd->flags)) /* FIXME: ditch this */
@@ -318,29 +352,32 @@ int fd_remove(struct fmc_device *fmc)
 		if (m->exit)
 			m->exit(fd);
 	}
+	fd_calib_exit(fd);
+	iounmap(fd->fd_regs_base);
 
-	/* Release the carrier */
-	module_put(fmc->owner);
+	fmc_slot_put(fd->slot);
 
 	return 0;
 }
 
-static struct fmc_fru_id fd_fru_id[] = {
+static const struct platform_device_id fd_id[] = {
 	{
-		.product_name = "FmcDelay1ns4cha",
+		.name = "fmc-fdelay-tdc",
+		.driver_data = FD_VER_TDC,
 	},
+	/* TODO we should support different version */
 };
 
-static struct fmc_driver fd_drv = {
-	.version = FMC_VERSION,
-	.driver.name = KBUILD_MODNAME,
+
+static struct platform_driver fd_platform_driver = {
+	.driver = {
+		.name = KBUILD_MODNAME,
+	},
 	.probe = fd_probe,
 	.remove = fd_remove,
-	.id_table = {
-		.fru_id = fd_fru_id,
-		.fru_id_nr = ARRAY_SIZE(fd_fru_id),
-	},
+	.id_table = fd_id,
 };
+
 
 static int fd_init(void)
 {
@@ -349,7 +386,7 @@ static int fd_init(void)
 	ret = fd_zio_register();
 	if (ret < 0)
 		return ret;
-	ret = fmc_driver_register(&fd_drv);
+	ret = platform_driver_register(&fd_platform_driver);
 	if (ret < 0) {
 		fd_zio_unregister();
 		return ret;
@@ -359,14 +396,14 @@ static int fd_init(void)
 
 static void fd_exit(void)
 {
-	fmc_driver_unregister(&fd_drv);
+	platform_driver_unregister(&fd_platform_driver);
 	fd_zio_unregister();
 }
 
 module_init(fd_init);
 module_exit(fd_exit);
 
-MODULE_VERSION(GIT_VERSION);
+MODULE_VERSION(VERSION);
 MODULE_LICENSE("GPL and additional rights"); /* LGPL */
 
 ADDITIONAL_VERSIONS;

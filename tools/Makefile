@@ -13,7 +13,7 @@ DESTDIR ?= /usr/local
 
 GIT_VERSION := $(shell git describe --dirty --long --tags)
 
-CFLAGS += -I../kernel -I../lib -Wno-trigraphs -Wall -ggdb $(EXTRACFLAGS)
+CFLAGS += -I../kernel -I../lib -Wno-trigraphs -Wall -Werror -ggdb $(EXTRACFLAGS)
 CFLAGS += -DGIT_VERSION="\"$(GIT_VERSION)\""
 
 LDFLAGS = -L../lib
@@ -29,7 +29,7 @@ progs += fmc-fdelay-pulse
 progs += fmc-fdelay-status
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
-all modules: $(progs)
+all modules: $(progs) fmc-fdelay-calibration
 
 clean:
 	rm -f $(progs) *.o *~
@@ -37,6 +37,8 @@ clean:
 COMMON_SRCS = tools-util.c
 
 $(progs): $(COMMON_SRCS:.c=.o)
+
+fmc-fdelay-calibration:
 
 # make nothing for modules_install, but avoid errors
 modules_install:

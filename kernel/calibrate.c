@@ -64,7 +64,7 @@ static uint64_t output_delay_ps(struct fd_dev *fd, int ch, int fine, int n,
 	uint64_t *results;
 	uint64_t res, acc = 0;
 	int rem;
-	struct device *dev = &fd->fmc->dev;
+	struct device *dev = &fd->pdev->dev;
 
 	results = kmalloc(n * sizeof(*results), GFP_KERNEL);
 	if (!results)
@@ -146,7 +146,7 @@ static int fd_find_8ns_tap(struct fd_dev *fd, int ch)
 	int l = 0, mid, r = FD_NUM_TAPS - 1;
 	uint64_t bias, dly;
 	struct delay_stats stats;
-	struct device *dev = &fd->fmc->dev;
+	struct device *dev = &fd->pdev->dev;
 
 	/*
 	 * Measure the delay at zero setting, so it can be further
@@ -203,7 +203,7 @@ int fd_calibrate_outputs(struct fd_dev *fd)
 		fd_ch_writel(fd, ch, new, FD_REG_FRR);
 		fd->ch[ch].frr_cur = new;
 		if (fd->verbose > 1) {
-			dev_info(&fd->fmc->dev,
+			dev_info(&fd->pdev->dev,
 				 "%s: ch%i: 8ns @%i (f %i, off %i, t %i.%02i)\n",
 				 __func__, FD_CH_EXT(ch),
 				 new, fitted, fd->ch[ch].frr_offset,
@@ -231,7 +231,7 @@ void fd_update_calibration(unsigned long arg)
 		fd_ch_writel(fd, ch, new, FD_REG_FRR);
 		fd->ch[ch].frr_cur = new;
 
-		dev_dbg(&fd->fmc->dev,
+		dev_dbg(&fd->pdev->dev,
 			"%s: ch%i: 8ns @%i (f %i, off %i, t %i.%02i)\n",
 			__func__, FD_CH_EXT(ch),
 			new, fitted, fd->ch[ch].frr_offset,
@@ -241,4 +241,3 @@ void fd_update_calibration(unsigned long arg)
 
 	mod_timer(&fd->temp_timer, jiffies + HZ * fd_calib_period_s);
 }
-

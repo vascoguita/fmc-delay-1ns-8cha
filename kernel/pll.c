@@ -39,7 +39,7 @@ int fd_pll_init(struct fd_dev *fd)
 	int i;
 	unsigned long j;
 	const struct ad9516_reg *r;
-	struct device *dev = &fd->fmc->dev;
+	struct device *dev = &fd->pdev->dev;
 
 	if (pll_writel(fd, 0x99, 0x000) < 0)
 		goto out;

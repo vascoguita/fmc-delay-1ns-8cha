@@ -10,66 +10,15 @@
  * option, any later version.
  */
 
-#include <linux/moduleparam.h>
 #include <linux/time.h>
-#include <linux/firmware.h>
 #include <linux/jhash.h>
+#include <linux/stat.h>
+#include <linux/slab.h>
+#include <linux/zio.h>
 #include "fine-delay.h"
-#include <sdb-lib/libsdbfs.h>
-
-/* At factory config time, it's possible to load a file and/or write eeprom */
-static char *calibration_load;
-static int calibration_save;
-static int calibration_check;
-static int calibration_default;
-
-module_param(calibration_load, charp, 0444);
-module_param(calibration_default, int, 0444);
-module_param(calibration_save, int, 0444);
-module_param(calibration_check, int, 0444);
-
-/* Stupid dumping tool */
-static void dumpstruct(char *name, void *ptr, int size)
-{
-	int i;
-	unsigned char *p = ptr;
-
-	printk("%s: (size 0x%x)\n", name, size);
-	for (i = 0; i < size; ) {
-		printk("%02x", p[i]);
-		i++;
-		printk(i & 3 ? " " : i & 0xf ? "  " : "\n");
-	}
-	if (i & 0xf)
-		printk("\n");
-}
-
-/* The user requested to load the configuration from file */
-static void fd_i2c_load_calib(struct fd_dev *fd,
-			      struct fd_calibration *calib, char *name)
-{
-	const struct firmware *fw;
-	int err;
-
-	err = request_firmware(&fw, name, fd->fmc->hwdev);
-	if (err < 0) {
-		dev_warn(fd->fmc->hwdev, "can't load \"%s\"\n", name);
-		return;
-	}
-	if (fw->size != sizeof(*calib)) {
-		dev_warn(fd->fmc->hwdev, "File \"%s\" has size != %zi\n",
-			 name, sizeof(*calib));
-	} else {
-		memcpy(calib, fw->data, fw->size);
-		dev_info(fd->fmc->hwdev,
-			 "calibration data loaded from \"%s\"\n", name);
-	}
-	release_firmware(fw);
-	return;
-}
 
 static struct fd_calibration fd_calib_default = {
-	.magic = 0xf19ede1a,
+	.magic = FD_MAGIC_FPGA,
 	.version = 3,
 	.date = 0x20130427,
 	.frr_poly = { -165202LL, -29825595LL, 3801939743082LL },
@@ -78,69 +27,29 @@ static struct fd_calibration fd_calib_default = {
 	.vcxo_default_tune = 41711,
 };
 
-/* sdbfs-related function */
-static int fd_read_calibration_eeprom(struct fmc_device *fmc,
-				      struct fd_calibration *calib)
+static off_t fd_calib_find_offset(const void *data, size_t len)
 {
-	int i, ret;
-	static struct sdbfs fs;
+	int i;
 
-	fs.data = fmc->eeprom;
-	fs.datalen = fmc->eeprom_len;
+	for (i = 0; i < len; i += 4) {
+		uint32_t sign = be32_to_cpup((const uint32_t *)(data + i));
 
-	/* Look for sdb entry point at powers of 2 and onwards */
-	for (i = 0x40; i < 0x1000; i *= 2) {
-		fs.entrypoint = i;
-		ret = sdbfs_dev_create(&fs, 0);
-		if (ret == 0)
-			break;
+		if (sign == FD_MAGIC_FPGA)
+			return i;
 	}
-	if (ret)
-		return ret;
 
-	/* Open "cali" as a device id, vendor is "FileData" -- big endian */
-	ret = sdbfs_open_id(&fs,
-			    be64_to_cpu(0x46696c6544617461LL),
-			    be32_to_cpu(0x63616c69) /* "cali" */);
-	if (ret)
-		return ret;
-	ret = sdbfs_fread(&fs, 0, (void *)calib, sizeof(*calib));
-	sdbfs_dev_destroy(&fs);
-	return ret;
+	return -ENODATA;
 }
 
-/* This is the only thing called by outside */
-int fd_handle_eeprom_calibration(struct fd_dev *fd)
+/**
+ * @calib: calibration data
+ *
+ * We know for sure that our structure is only made of 16bit fields
+ */
+static void fd_calib_endianess_to_cpus(struct fd_calibration *calib)
 {
-	struct fd_calibration *calib;
-	struct device *d = &fd->fmc->dev;
 	int i;
-	u32 hash, horig;
 
-	/* Retrieve and validate the calibration */
-	calib = &fd->calib;
-
-	i = fd_read_calibration_eeprom(fd->fmc, calib);
-	if (i != sizeof(*calib))
-		dev_warn(d, "Calibration NOT read from eeprom (got %i)\n", i);
-
-	if (calibration_check)
-		dumpstruct("Calibration data from eeprom:", calib,
-			   sizeof(*calib));
-
-	/* Verify hash (used later) */
-	horig = be32_to_cpu(calib->hash);
-	calib->hash = 0;
-	hash = jhash(calib, sizeof(*calib), 0);
-
-	/* FIXME: validate with gateware version */
-
-	if (calibration_load) {
-		fd_i2c_load_calib(fd, calib, calibration_load);
-		hash = horig; /* whatever it is */
-	}
-
-	/* convert endianneess */
 	calib->magic = be32_to_cpu(calib->magic);
 	calib->size = be16_to_cpu(calib->size);
 	calib->version = be16_to_cpu(calib->version);
@@ -151,45 +60,177 @@ int fd_handle_eeprom_calibration(struct fd_dev *fd)
 		calib->zero_offset[i] = be32_to_cpu(calib->zero_offset[i]);
 	calib->tdc_zero_offset = be32_to_cpu(calib->tdc_zero_offset);
 	calib->vcxo_default_tune = be32_to_cpu(calib->vcxo_default_tune);
+}
 
-	if (calibration_default) {
-		dev_info(d, "calibration: overriding with default values\n");
-		*calib = fd_calib_default;
-		hash = horig; /* whatever it is */
-	}
+/**
+ * @calib: calibration data
+ *
+ * We know for sure that our structure is only made of 16bit fields
+ */
+static void fd_calib_cpu_to_endianess(struct fd_calibration *calib)
+{
+	int i;
 
-	if (fd->verbose) {
-		dev_info(d, "calibration: version %i, date %08x\n",
-			 calib->version, calib->date);
-		if (calibration_check) {
-			/* dump human-readable values */
-			dev_info(d, "calib: magic 0x%08x\n", calib->magic);
-			for (i = 0; i < ARRAY_SIZE(calib->frr_poly); i++)
-				dev_info(d, "calib: poly[%i] = %lli\n", i,
-					 (long long)calib->frr_poly[i]);
-			for (i = 0; i < ARRAY_SIZE(calib->zero_offset); i++)
-				dev_info(d, "calib: offset[%i] = %li\n", i,
-					 (long)calib->zero_offset[i]);
-			dev_info(d, "calib: tdc_offset %i\n", calib->tdc_zero_offset);
-			dev_info(d, "calib: vcxo %i\n", calib->vcxo_default_tune);
-		}
-	}
+	calib->magic = cpu_to_be32(calib->magic);
+	calib->size = cpu_to_be16(calib->size);
+	calib->version = cpu_to_be16(calib->version);
+	calib->date = cpu_to_be32(calib->date);
+	for (i = 0; i < ARRAY_SIZE(calib->frr_poly); i++)
+		calib->frr_poly[i] = cpu_to_be64(calib->frr_poly[i]);
+	for (i = 0; i < ARRAY_SIZE(calib->zero_offset); i++)
+		calib->zero_offset[i] = cpu_to_be32(calib->zero_offset[i]);
+	calib->tdc_zero_offset = cpu_to_be32(calib->tdc_zero_offset);
+	calib->vcxo_default_tune = cpu_to_be32(calib->vcxo_default_tune);
+
+}
+
+static int fd_verify_calib(struct device *msgdev, struct fd_calibration *calib)
+{
+	uint32_t horig = 0, hash = 0;
+
+	horig = be32_to_cpu(calib->hash);
+	calib->hash = 0;
+	hash = jhash(calib, sizeof(*calib), 0);
 
 	if (hash != horig) {
-		dev_err(d, "Calibration hash %08x is wrong (expected %08x)\n",
+		dev_err(msgdev,
+			"Calibration hash %08x is wrong (expected %08x)\n",
 			hash, horig);
 		return -EINVAL;
 	}
-	if (calib->version < 3) {
-		dev_err(d, "Calibration version %i < 3: refusing to work\n",
-			fd->calib.version);
-		return -EINVAL;
-	}
 
-	if (calibration_save) {
-		/* FIXME:  save to eeprom: re-convert endianness and hash */
-		dev_warn(d, "Saving is not supported\n");
-	}
+	calib->hash = hash;
 
 	return 0;
+}
+
+static void __fd_calib_write(struct fd_dev *fd, struct fd_calibration *calib)
+{
+	struct fd_calibration *calib_good = calib;
+	int err;
+
+	err = fd_verify_calib(&fd->pdev->dev, calib);
+	if (err) {
+		dev_info(&fd->pdev->dev, "Apply Calibration Identity\n");
+		calib_good = &fd_calib_default;
+	} else {
+		fd_calib_endianess_to_cpus(calib);
+
+		if (calib->version < 3) {
+			dev_err(&fd->pdev->dev,
+				"Calibration version %i < 3: refusing to work\n. Use identity",
+				calib->version);
+			calib_good = &fd_calib_default;
+		}
+	}
+
+	memcpy(&fd->calib, calib_good, sizeof(fd->calib));
+
+
+	if (fd->verbose) {
+		int i;
+
+		dev_info(&fd->pdev->dev,
+			 "calibration: version %i, date %08x\n",
+			 fd->calib.version, fd->calib.date);
+		/* dump human-readable values */
+		dev_info(&fd->pdev->dev, "calib: magic 0x%08x\n",
+			 fd->calib.magic);
+		for (i = 0; i < ARRAY_SIZE(fd->calib.frr_poly); i++)
+			dev_info(&fd->pdev->dev, "calib: poly[%i] = %lli\n",
+				 i, (long long)fd->calib.frr_poly[i]);
+		for (i = 0; i < ARRAY_SIZE(fd->calib.zero_offset); i++)
+			dev_info(&fd->pdev->dev, "calib: offset[%i] = %li\n",
+				 i, (long)fd->calib.zero_offset[i]);
+		dev_info(&fd->pdev->dev, "calib: tdc_offset %i\n",
+			 fd->calib.tdc_zero_offset);
+		dev_info(&fd->pdev->dev, "calib: vcxo %i\n",
+			 fd->calib.vcxo_default_tune);
+	}
+}
+
+static ssize_t fd_calib_write(struct file *file, struct kobject *kobj,
+			      struct bin_attribute *attr,
+			      char *buf, loff_t off, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct fd_dev *fd = to_zio_dev(dev)->priv_d;
+	struct fd_calibration *calib = (struct fd_calibration *)buf;
+
+	if (off != 0 || count != sizeof(*calib))
+		return -EINVAL;
+
+	__fd_calib_write(fd, calib);
+
+	return count;
+}
+
+static ssize_t fd_calib_read(struct file *file, struct kobject *kobj,
+			     struct bin_attribute *attr,
+			     char *buf, loff_t off, size_t count)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct fd_dev *fd = to_zio_dev(dev)->priv_d;
+	struct fd_calibration *calib = (struct fd_calibration *) buf;
+
+
+	if (off != 0 || count < sizeof(fd->calib))
+		return -EINVAL;
+
+	memcpy(calib, &fd->calib, sizeof(fd->calib));
+	fd_calib_cpu_to_endianess(calib);
+
+	return count;
+}
+
+struct bin_attribute dev_attr_calibration = {
+	.attr = {
+		.name = "calibration_data",
+		.mode = 0644,
+	},
+	.size = sizeof(struct fd_calibration),
+	.write = fd_calib_write,
+	.read = fd_calib_read,
+};
+
+#define IPMI_FRU_SIZE 256
+#define FD_EEPROM_SIZE (1024 * 8) /* 8KiB */
+
+int fd_calib_init(struct fd_dev *fd)
+{
+	struct fd_calibration calib;
+	const size_t data_len = FD_EEPROM_SIZE - IPMI_FRU_SIZE;
+	void *data;
+	off_t calib_offset;
+	int ret;
+
+	data = kmalloc(data_len, GFP_KERNEL);
+	if (!data)
+		goto err;
+	ret = fmc_slot_eeprom_read(fd->slot, data, IPMI_FRU_SIZE, data_len);
+	if (ret < 0) {
+		kfree(data);
+		goto err;
+	}
+
+	calib_offset = fd_calib_find_offset(data, data_len);
+	kfree(data);
+	if (calib_offset < 0)
+		goto err;
+	memcpy(&calib, data + calib_offset, sizeof(calib));
+	__fd_calib_write(fd, &calib);
+
+	return 0;
+
+err:
+	dev_warn(&fd->pdev->dev,
+		 "Failed to get calibration from EEPROM: using identity calibration\n");
+	memcpy(&fd->calib, &fd_calib_default, sizeof(fd->calib));
+
+	return 0;
+}
+
+void fd_calib_exit(struct fd_dev *fd)
+{
+
 }

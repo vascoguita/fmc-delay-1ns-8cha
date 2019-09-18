@@ -1,6 +1,6 @@
 # include parent_common.mk for buildsystem's defines
 # use absolute path for REPO_PARENT
-REPO_PARENT=$(shell /bin/pwd)/..
+REPO_PARENT ?= $(shell /bin/pwd)/..
 -include $(REPO_PARENT)/parent_common.mk
 
 all: kernel lib tools
@@ -10,24 +10,22 @@ CONFIG_WR_NIC=n
 export CONFIG_WR_NIC
 
 # The user can override, using environment variables, all these three:
-FMC_BUS ?= fmc-bus
 ZIO ?= zio
 
-# FMC_BUS_ABS and ZIO_ABS has to be absolut path, due to beeing
+# ZIO_ABS has to be absolut path, due to beeing
 # passed to the Kbuild
-FMC_BUS_ABS ?= $(abspath $(FMC_BUS) )
 ZIO_ABS ?= $(abspath $(ZIO) )
 
-export FMC_BUS_ABS
 export ZIO_ABS
 
 ZIO_VERSION = $(shell cd $(ZIO_ABS); git describe --always --dirty --long --tags)
 export ZIO_VERSION
 
 
-DIRS = $(FMC_BUS_ABS) $(ZIO_ABS) kernel lib tools
+DIRS = $(ZIO_ABS) kernel lib tools
 
-kernel: $(FMC_BUS_ABS) $(ZIO_ABS)
+$(SPEC_SW_ABS):
+kernel: $(ZIO_ABS)
 lib: $(ZIO_ABS)
 tools: lib
 
@@ -50,7 +48,7 @@ $(DIRS):
 	$(MAKE) -C $@ $(TARGET)
 
 
-SUBMOD = $(FMC_BUS_ABS) $(ZIO_ABS)
+SUBMOD = $(ZIO_ABS)
 
 prereq_install_warn:
 	@test -f .prereq_installed || \
@@ -60,12 +58,7 @@ prereq_install:
 	for d in $(SUBMOD); do $(MAKE) -C $$d modules_install || exit 1; done
 	touch .prereq_installed
 
-$(FMC_BUS_ABS): fmc-bus-init_repo
 $(ZIO_ABS): zio-init_repo
-
-# init submodule if missing
-fmc-bus-init_repo:
-	@test -d $(FMC_BUS_ABS)/doc || ( echo "Checking out submodule $(FMC_BUS_ABS)"; git submodule update --init $(FMC_BUS_ABS) )
 
 # init submodule if missing
 zio-init_repo:

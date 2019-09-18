@@ -1,31 +1,31 @@
+-include Makefile.specific
 # include parent_common.mk for buildsystem's defines
 # use absolute path for REPO_PARENT
-REPO_PARENT?=$(shell /bin/pwd)/../..
+REPO_PARENT ?= $(shell /bin/pwd)/../..
 -include $(REPO_PARENT)/parent_common.mk
 
 LINUX ?= /lib/modules/$(shell uname -r)/build
 
-FMC_BUS ?= ../fmc-bus
+FMC ?=
 ZIO ?= ../zio
 
-# FMC_BUS_ABS and ZIO_ABS has to be absolut path, due to beeing
-# passed to the Kbuild
-FMC_BUS_ABS ?= $(abspath $(FMC_BUS) )
 ZIO_ABS ?= $(abspath $(ZIO) )
+ZIO_EXTRA_SYMBOLS-y = $(ZIO_ABS)/Module.symvers
+
+FMC_ABS ?= $(abspath $(FMC))
+FMC_EXTRA_SYMBOLS-y = $(FMC_ABS)/drivers/fmc/Module.symvers
 
 GIT_VERSION = $(shell git describe --dirty --long --tags)
-export GIT_VERSION
-
-FMC_BUS_VERSION ?= $(shell cd $(FMC_BUS_ABS); git describe --always --dirty --long --tags)
 ZIO_VERSION     ?= $(shell cd $(ZIO_ABS);     git describe --always --dirty --long --tags)
-export FMC_BUS_VERSION
-export ZIO_VERSION
 
 all modules:
-	rm -f fmc-bus-link
-	ln -s $(FMC_BUS_ABS) fmc-bus-link
-	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) FMC_BUS_ABS=$(FMC_BUS_ABS) ZIO_ABS=$(ZIO_ABS) modules
-	rm -f fmc-bus-link
+	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) \
+		ZIO_ABS=$(ZIO_ABS) FMC_ABS=$(FMC_ABS) \
+		ZIO_EXTRA_SYMBOLS-y=$(ZIO_EXTRA_SYMBOLS-y) \
+		FMC_EXTRA_SYMBOLS-y=$(FMC_EXTRA_SYMBOLS-y) \
+		ZIO_VERSION=$(ZIO_VERSION) \
+		VERSION=$(GIT_VERSION) \
+		modules
 
 install modules_install: modules
 	$(MAKE) -C $(LINUX) M=$(shell /bin/pwd) modules_install

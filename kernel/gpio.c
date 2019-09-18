@@ -47,7 +47,7 @@ static int gpio_writel_with_retry(struct fd_dev *fd, int val, int reg)
 		if(rv >= 0 && (rv == val))
 		{
 			if(SPI_RETRIES-1-retries > 0)
-				dev_info(&fd->fmc->dev,
+				dev_info(&fd->pdev->dev,
 					"%s: succeded after %d retries\n",
 				       __func__, SPI_RETRIES - 1 - retries);
 			return 0;
@@ -87,7 +87,7 @@ void fd_gpio_set_clr(struct fd_dev *fd, int mask, int set)
 int fd_gpio_init(struct fd_dev *fd)
 {
 	int i, val;
-	struct device *dev = &fd->fmc->dev;
+	struct device *dev = &fd->pdev->dev;
 
 	fd->mcp_iodir = 0xffff;
 	fd->mcp_olat = 0;
