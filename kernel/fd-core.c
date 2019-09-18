@@ -137,6 +137,11 @@ static int fd_resource_validation(struct platform_device *pdev)
 			"The Fine-Delay needs an interrupt number\n");
 		return -ENXIO;
 	}
+	if (!r->name) {
+		dev_err(&pdev->dev,
+			"The Fine-Delay IRQ needs to be named\n");
+		return -ENXIO;
+	}
 
 	r = platform_get_resource(pdev, IORESOURCE_MEM, FD_MEM_BASE);
 	if (!r) {

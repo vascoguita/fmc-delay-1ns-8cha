@@ -311,14 +311,15 @@ int fd_irq_init(struct fd_dev *fd)
 			 jiffies_to_msecs(fd_timer_period_jiffies));
 		mod_timer(&fd->fifo_timer, jiffies + fd_timer_period_jiffies);
 	} else {
-		dev_dbg(&fd->pdev->dev, "Using interrupts for input\n");
+		struct resource *r;
 
 		/* Disable interrupts */
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
 
 		tasklet_init(&fd->tlet, fd_tlet, (unsigned long)fd);
-		rv = request_irq(platform_get_irq(fd->pdev, 0), fd_irq_handler, 0,
-			  dev_name(&fd->pdev->dev), fd);
+		r = platform_get_resource(fd->pdev, IORESOURCE_IRQ, FD_IRQ);
+		rv = request_any_context_irq(r->start, fd_irq_handler, 0,
+					     r->name, fd);
 		if (rv < 0) {
 			dev_err(&fd->pdev->dev,
 				"Failed to request the interrupt %i (%i)\n",
