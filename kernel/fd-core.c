@@ -32,7 +32,7 @@
 static int fd_verbose = 0;
 module_param_named(verbose, fd_verbose, int, 0444);
 
-#define FA_EEPROM_TYPE "at24c64"
+#define FD_EEPROM_TYPE "at24c64"
 
 /* FIXME: add parameters "file=" and "wrc=" like wr-nic-core does */
 
@@ -271,15 +271,15 @@ int fd_probe(struct platform_device *pdev)
 		goto out_fmc_pre;
 	}
 
-	if (strcmp(fmc_slot_eeprom_type_get(fd->slot), FA_EEPROM_TYPE)) {
+	if (strcmp(fmc_slot_eeprom_type_get(fd->slot), FD_EEPROM_TYPE)) {
 		dev_warn(&fd->pdev->dev,
 			 "use non standard EERPOM type \"%s\"\n",
-			 FA_EEPROM_TYPE);
-		ret = fmc_slot_eeprom_type_set(fd->slot, FA_EEPROM_TYPE);
+			 FD_EEPROM_TYPE);
+		ret = fmc_slot_eeprom_type_set(fd->slot, FD_EEPROM_TYPE);
 		if (ret < 0) {
 			dev_err(&fd->pdev->dev,
 				"Failed to change EEPROM type to \"%s\"",
-				FA_EEPROM_TYPE);
+				FD_EEPROM_TYPE);
 			goto out_fmc_eeprom;
 		}
 	}
