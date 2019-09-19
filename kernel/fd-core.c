@@ -323,6 +323,7 @@ err:
 	while (--m, --i >= 0)
 		if (m->exit)
 			m->exit(fd);
+	fd_calib_exit(fd);
 err_calib:
 out_fmc_err:
 out_fmc_eeprom:
