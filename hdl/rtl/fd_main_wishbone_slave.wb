@@ -404,7 +404,48 @@ peripheral {
          prefix = "ALUTRIG";
          type = MONOSTABLE;
       };
-   };
+
+
+      field {
+         clock = "clk_ref_i";
+
+         name = "IDELAY CE (pulse)";
+         description = "Write 1 to pulse the IDELAY CE line for 1 clock tick.";
+         prefix = "IDELAY_CE";
+         type = MONOSTABLE;
+			};
+
+			field {
+         clock = "clk_ref_i";
+         name = "IDELAY RST (GPIO)";
+         description = "State of IDELAY RST line";
+         prefix = "IDELAY_RST";
+         type = BIT;
+				 access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+			};
+
+			field {
+         clock = "clk_ref_i";
+         name = "IDELAY CAL (GPIO)";
+         description = "State of IDELAY CAL line";
+         prefix = "IDELAY_CAL";
+         type = BIT;
+				 access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+			};
+
+			field {
+         clock = "clk_ref_i";
+         name = "IDELAY CAL (GPIO)";
+         description = "State of IDELAY INC line";
+         prefix = "IDELAY_INC";
+         type = BIT;
+				 access_bus = READ_WRITE;
+         access_dev = READ_ONLY;
+			};
+			
+	 };
 
    reg {
       prefix = "CALR";
@@ -1031,7 +1072,21 @@ peripheral {
       };
    };
 
-
+	reg {
+		 name = "FMC Slot ID Register";
+		 description = "Index of the hardware FMC slot the card is in.";
+		 prefix = "FMC_SLOT_ID";
+		 
+		 field {
+				name = "Slot ID";
+				prefix = "SLOT_ID";
+				type = SLV;
+				size = 4;
+				access_bus = READ_ONLY;
+				access_dev = WRITE_ONLY;
+		 };
+	};
+		 
    irq {
       name = "Timestamp Buffer interrupt.";
       description = "Triggers when there are timestamps in the readout buffer";

@@ -1,7 +1,11 @@
 action = "simulation"
 target = "xilinx"
 fetchto = "../../ip_cores"
-vlog_opt="+incdir+../../include/wb +incdir+../../include/vme64x_bfm +incdir+../../include"
+sim_tool="modelsim"
+sim_top="main"
+
+include_dirs = ["../../include/wb", "../../include/vme64x_bfm", "../../include" ];
+syn_device="xc6slx150t"
 
 files = [ "main.sv" ]
 

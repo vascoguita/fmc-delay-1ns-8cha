@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2018-08-03
+-- Last update: 2019-09-20
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -65,7 +65,11 @@ entity fine_delay_core is
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity : t_wishbone_address_granularity := WORD;
 
-    g_with_debug_output : boolean := false
+    g_with_debug_output : boolean := false;
+
+    -- index of the slot the core is assigned to, written to
+    -- FMC_SLOT_ID register
+    g_fmc_slot_id : integer := 0
     );
   port (
 
@@ -195,7 +199,7 @@ entity fine_delay_core is
     owr_i    : in  std_logic;
 
     ---------------------------------------------------------------------------
-    -- Misc signals: I2C EEPROM, FMC presence
+    -- Misc signals: I2C EEPROM, FMC presence, I/O calibration
     ---------------------------------------------------------------------------
 
     i2c_scl_o     : out std_logic;
@@ -206,6 +210,11 @@ entity fine_delay_core is
     i2c_sda_i     : in  std_logic;
 
     fmc_present_n_i : in std_logic;
+
+    idelay_inc_o : out std_logic;
+    idelay_cal_o : out std_logic;
+    idelay_ce_o : out std_logic;
+    idelay_rst_o : out std_logic;
 
 
     ---------------------------------------------------------------------------
@@ -504,6 +513,12 @@ begin  -- rtl
       );
 
 
+  idelay_rst_o <= regs_fromwb.tdcsr_idelay_rst_o;
+  idelay_ce_o <= regs_fromwb.tdcsr_idelay_ce_o;
+  idelay_inc_o <= regs_fromwb.tdcsr_idelay_inc_o and regs_fromwb.tdcsr_idelay_ce_o;
+  idelay_cal_o <= regs_fromwb.tdcsr_idelay_cal_o;
+  
+  
   U_Acam_TSU : fd_acam_timestamper
     generic map (
       g_min_pulse_width => 3,
@@ -780,7 +795,8 @@ begin  -- rtl
   regs_towb_local.gcr_ddr_locked_i  <= pll_status_i;
   regs_towb_local.gcr_fmc_present_i <= not fmc_present_n_i;
 
-
+  regs_towb_local.fmc_slot_id_slot_id_i <= std_logic_vector(to_unsigned(g_fmc_slot_id, 4 ));
+  
   -- Debug PWM driver for adjusting Peltier temperature. Drivers SPI MOSI line
   -- with PWM waveform when none of the SPI peripherals is in use (we have no
   -- spare pins in the FMC connector left)

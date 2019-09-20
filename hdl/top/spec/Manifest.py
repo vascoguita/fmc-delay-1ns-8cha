@@ -1,15 +1,16 @@
-files = ["synthesis_descriptor.vhd", "spec_top.vhd", "spec_top.ucf", "spec_reset_gen.vhd"]
+files = ["spec_top.vhd", "spec_top.ucf"]
 
 fetchto = "../../ip_cores"
 
 modules = {
     "local" : [
-        "../../rtl",
-        "../../platform",
-    ],
-    "git" : [
-        "git://ohwr.org/hdl-core-lib/wr-cores.git",
-        "git://ohwr.org/hdl-core-lib/gn4124-core.git",
-        "git://ohwr.org/hdl-core-lib/general-cores.git",
-    ],
-}
+	"../../rtl", 
+	"../../platform",
+	"../../ip_cores/general-cores",
+	"../../ip_cores/wr-cores",
+	"../../ip_cores/wr-cores/board/spec",
+	"../../ip_cores/gn4124-core",
+	"../../ip_cores/spec",
+	"../../ip_cores/ddr3-sp6-core"
+     ]
+    }
