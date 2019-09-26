@@ -30,6 +30,7 @@ subdirs-ccflags-y = $(ccflags-y)
 
 obj-m := fmc-fine-delay.o
 obj-m += fmc-fine-delay-spec.o
+obj-m += fmc-fine-delay-svec.o
 
 fmc-fine-delay-objs	=  fd-zio.o fd-irq.o fd-core.o
 fmc-fine-delay-objs	+= onewire.o spi.o gpio.o
@@ -37,3 +38,4 @@ fmc-fine-delay-objs	+= acam.o calibrate.o pll.o time.o
 fmc-fine-delay-objs	+= calibration.o
 
 fmc-fine-delay-spec-objs := fmc-fine-delay-spec-core.o
+fmc-fine-delay-svec-objs := fmc-fine-delay-svec-core.o
