@@ -23,8 +23,8 @@ ccflags-y += \
 ccflags-y += -DVERSION=\"$(VERSION)\"
 
 # Extract ZIO minimum compatible version
-ccflags-y += -D__ZIO_MIN_MAJOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 2 | cut -d '.' -f 1; )
-ccflags-y += -D__ZIO_MIN_MINOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 2 | cut -d '.' -f 2; )
+ccflags-y += -D__ZIO_MIN_MAJOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 1 | cut -d '.' -f 1 | tr -d 'v'; )
+ccflags-y += -D__ZIO_MIN_MINOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 1 | cut -d '.' -f 2; )
 
 subdirs-ccflags-y = $(ccflags-y)
 
