@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-29
--- Last update: 2013-07-02
+-- Last update: 2019-09-28
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -110,6 +110,12 @@ architecture behavioral of fd_acam_timestamp_postprocessor is
 
   signal adsfr_d0 : signed(17 downto 0);
   
+  signal tag_valid   : std_logic;
+  signal tag_utc     : std_logic_vector(c_TIMESTAMP_UTC_BITS-1 downto 0);
+  signal tag_coarse  : std_logic_vector(c_TIMESTAMP_COARSE_BITS-1 downto 0);
+  signal tag_frac    : std_logic_vector(g_frac_bits-1 downto 0);
+  signal tag_dbg_raw : std_logic_vector(31 downto 0);
+
 begin  -- behavioral
 
   -- Place an intermediate register on the ADSFR register (user as multiplicand
@@ -130,10 +136,11 @@ begin  -- behavioral
   begin
     if rising_edge(clk_ref_i) then
       if rst_n_i = '0' then
-        tag_valid_o  <= '0';
-        tag_coarse_o <= (others => '0');
-        tag_utc_o    <= (others => '0');
-        tag_frac_o   <= (others => '0');
+        tag_valid   <= '0';
+        tag_coarse  <= (others => '0');
+        tag_utc     <= (others => '0');
+        tag_frac    <= (others => '0');
+        tag_dbg_raw <= (others => '0');
       else
 
         -- Pipeline stage 1:
@@ -204,36 +211,56 @@ begin  -- behavioral
 
         if(regs_i.tsbcr_raw_o = '0') then
           
-          tag_utc_o <= std_logic_vector(post_tag_utc);
-          tag_coarse_o <= std_logic_vector(
+          tag_utc    <= std_logic_vector(post_tag_utc);
+          tag_coarse <= std_logic_vector(
             signed(post_tag_coarse)     -- index of start pulse (mod 16 = 0)
             + signed(acam_timebase_offset_i)  -- start-to-timescale offset
             + signed(post_frac_multiplied_d0(post_frac_multiplied_d0'left downto c_SCALER_SHIFT + g_frac_bits))); 
           -- extra coarse counts from ACAM's frac part after rescaling
 
 
-          tag_frac_o  <= std_logic_vector(post_frac_multiplied_d0(c_SCALER_SHIFT + g_frac_bits-1 downto c_SCALER_SHIFT));
-          tag_valid_o <= pp_pipe(4);
+          tag_frac  <= std_logic_vector(post_frac_multiplied_d0(c_SCALER_SHIFT + g_frac_bits-1 downto c_SCALER_SHIFT));
+          tag_valid <= pp_pipe(4);
 
         elsif(raw_valid_i = '1') then
           
-          tag_utc_o                   <= raw_utc_i;
-          tag_coarse_o                <= raw_coarse_i & raw_start_offset_i;
-          tag_frac_o                  <= raw_frac_i(11 downto 0);
-          tag_dbg_raw_o(10 downto 0)  <= raw_frac_i(22 downto 12);
-          tag_dbg_raw_o(15 downto 11) <= acam_timebase_offset_i(4 downto 0);
-          tag_dbg_raw_o(23 downto 16) <= raw_coarse_i(7 downto 0);
-          tag_dbg_raw_o(30 downto 24) <= raw_utc_i(6 downto 0);
-          tag_dbg_raw_o(31)           <= acam_timebase_offset_i(5);
+          tag_utc                   <= raw_utc_i;
+          tag_coarse                <= raw_coarse_i & raw_start_offset_i;
+          tag_frac                  <= raw_frac_i(11 downto 0);
+          tag_dbg_raw(10 downto 0)  <= raw_frac_i(22 downto 12);
+          tag_dbg_raw(15 downto 11) <= acam_timebase_offset_i(4 downto 0);
+          tag_dbg_raw(23 downto 16) <= raw_coarse_i(7 downto 0);
+          tag_dbg_raw(30 downto 24) <= raw_utc_i(6 downto 0);
+          tag_dbg_raw(31)           <= acam_timebase_offset_i(5);
 
-          tag_valid_o <= '1';
+          tag_valid <= '1';
         else
-          tag_valid_o <= '0';
+          tag_valid <= '0';
         end if;
 
 
       end if;
     end if;
   end process;
+
+  -- One more set of registers to help with timing
+  p_output_reg : process(clk_ref_i)
+  begin
+    if rising_edge(clk_ref_i) then
+      if rst_n_i = '0' then
+        tag_valid_o   <= '0';
+        tag_coarse_o  <= (others => '0');
+        tag_utc_o     <= (others => '0');
+        tag_frac_o    <= (others => '0');
+        tag_dbg_raw_o <= (others => '0');
+      else
+        tag_valid_o   <= tag_valid;
+        tag_coarse_o  <= tag_coarse;
+        tag_utc_o     <= tag_utc;
+        tag_frac_o    <= tag_frac;
+        tag_dbg_raw_o <= tag_dbg_raw;
+      end if;
+    end if;
+  end process p_output_reg;
 
 end behavioral;
