@@ -10,7 +10,7 @@ FMC ?=
 ZIO ?= ../zio
 
 ZIO_ABS ?= $(abspath $(ZIO) )
-ZIO_EXTRA_SYMBOLS-y = $(ZIO_ABS)/Module.symvers
+ZIO_EXTRA_SYMBOLS-y = $(ZIO_ABS)/drivers/zio/Module.symvers
 
 FMC_ABS ?= $(abspath $(FMC))
 FMC_EXTRA_SYMBOLS-y = $(FMC_ABS)/drivers/fmc/Module.symvers
