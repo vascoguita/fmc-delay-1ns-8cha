@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2019-03-21
+-- Last update: 2019-10-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -356,7 +356,8 @@ package fine_delay_pkg is
       g_simulation               : boolean := false;
       g_with_direct_timestamp_io : boolean := false;
       g_interface_mode           : t_wishbone_interface_mode;
-      g_address_granularity      : t_wishbone_address_granularity);
+      g_address_granularity      : t_wishbone_address_granularity;
+      g_fmc_slot_id              : integer := 0);
     port (
       clk_ref_0_i          : in  std_logic;
       clk_ref_180_i        : in  std_logic;
