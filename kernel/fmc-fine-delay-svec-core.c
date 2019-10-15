@@ -114,10 +114,10 @@ static const struct platform_device_id fd_svec_id_table[] = {
 		.name = "fdelay-svec",
 		.driver_data = FD_SVEC_VER,
 	}, {
-		.name = "id:000010DC574ECAFE",
+		.name = "id:000010DC574ECAFF",
 		.driver_data = FD_SVEC_VER,
 	}, {
-		.name = "id:000010dc574ecafe",
+		.name = "id:000010dc574ecaff",
 		.driver_data = FD_SVEC_VER,
 	},
 	{},
