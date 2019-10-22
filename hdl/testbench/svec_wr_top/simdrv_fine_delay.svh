@@ -42,26 +42,10 @@ class CSimDrv_FineDelay;
 
    task set_idelay_taps( int taps );
       uint64_t tdcsr;
-      
-      readl(`ADDR_FD_TDCSR, tdcsr);
 
-      // calibrate the iodelay
-      writel( `ADDR_FD_TDCSR , tdcsr | `FD_TDCSR_IDELAY_CAL );
-      #3us;
-      writel( `ADDR_FD_TDCSR , tdcsr  );
+      $display("Set Idelay taps : %d\n", taps);
       
-      $display("Set IDELAY tap count = %d", taps);
-      
-      writel( `ADDR_FD_TDCSR, tdcsr | `FD_TDCSR_IDELAY_RST );
-      writel( `ADDR_FD_TDCSR, tdcsr | `FD_TDCSR_IDELAY_INC );
-            
-      for(int i = 0; i<taps;i++)
-	begin
-	   writel(`ADDR_FD_TDCSR , tdcsr | `FD_TDCSR_IDELAY_CE | `FD_TDCSR_IDELAY_INC );
-	   #1us;
-	end
-      
-
+      writel(`ADDR_FD_IODELAY_ADJ, taps);
    endtask // set_idelay_taps
    
     
