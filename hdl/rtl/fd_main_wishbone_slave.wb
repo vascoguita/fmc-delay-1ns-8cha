@@ -414,37 +414,6 @@ peripheral {
          prefix = "IDELAY_CE";
          type = MONOSTABLE;
 			};
-
-			field {
-         clock = "clk_ref_i";
-         name = "IDELAY RST (GPIO)";
-         description = "State of IDELAY RST line";
-         prefix = "IDELAY_RST";
-         type = BIT;
-				 access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-			};
-
-			field {
-         clock = "clk_ref_i";
-         name = "IDELAY CAL (GPIO)";
-         description = "State of IDELAY CAL line";
-         prefix = "IDELAY_CAL";
-         type = BIT;
-				 access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-			};
-
-			field {
-         clock = "clk_ref_i";
-         name = "IDELAY CAL (GPIO)";
-         description = "State of IDELAY INC line";
-         prefix = "IDELAY_INC";
-         type = BIT;
-				 access_bus = READ_WRITE;
-         access_dev = READ_ONLY;
-			};
-			
 	 };
 
    reg {
@@ -1084,6 +1053,22 @@ peripheral {
 				size = 4;
 				access_bus = READ_ONLY;
 				access_dev = WRITE_ONLY;
+		 };
+	};
+
+	reg {
+		 name = "I/O Delay Adjust Register";
+		 description = "Setup time adjust for certain signals (e.g. TDC_START).";
+		 prefix = "IODELAY_ADJ";
+		 
+		 field {
+				name = "Number of delay line taps.";
+				prefix = "N_TAPS";
+				type = SLV;
+				size = 6;
+				access_bus = READ_WRITE;
+				access_dev = READ_WRITE;
+				load = LOAD_EXT;
 		 };
 	};
 		 

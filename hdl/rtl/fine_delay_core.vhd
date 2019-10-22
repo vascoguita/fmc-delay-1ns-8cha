@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2019-09-11
+-- Last update: 2019-10-22
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -366,6 +366,12 @@ architecture rtl of fine_delay_core is
   signal spi_cs_dac_n, spi_cs_pll_n, spi_cs_gpio_n, spi_mosi : std_logic;
 
   signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
+
+  signal iodelay_ntaps : std_logic_vector(5 downto 0);
+  signal iodelay_cnt : unsigned(5 downto 0);
+  signal iodelay_div : unsigned(4 downto 0);
+  signal iodelay_tick : std_logic;
+  signal iodelay_cal_done : std_logic;
   
 begin  -- rtl
 
@@ -513,10 +519,6 @@ begin  -- rtl
       );
 
 
-  idelay_rst_o <= regs_fromwb.tdcsr_idelay_rst_o;
-  idelay_ce_o <= regs_fromwb.tdcsr_idelay_ce_o;
-  idelay_inc_o <= regs_fromwb.tdcsr_idelay_inc_o and regs_fromwb.tdcsr_idelay_ce_o;
-  idelay_cal_o <= regs_fromwb.tdcsr_idelay_cal_o;
   
   
   U_Acam_TSU : fd_acam_timestamper
@@ -854,5 +856,62 @@ begin  -- rtl
   gen_without_dbg_out : if(not g_with_debug_output) generate
     dbg_o <= (others => '0');
   end generate gen_without_dbg_out;
+
+  p_handle_iodelay: process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if rst_n_sys = '0' then
+        idelay_cal_o <= '0';
+        idelay_inc_o <= '1';
+        idelay_rst_o <= '0';
+        idelay_ce_o <= '0';
+        iodelay_cal_done <= '0';
+        iodelay_cnt <= (others => '0');
+        iodelay_div <= (others => '0');
+        iodelay_tick <= '0';
+      else
+
+        if iodelay_cal_done = '0' then
+          idelay_cal_o <= '1';
+          iodelay_cnt <= iodelay_cnt + 1;
+          if iodelay_cnt = 15 then
+            iodelay_cnt <= (others => '0');
+            iodelay_cal_done <= '1';
+          end if;
+        else
+          idelay_cal_o <= '0';
+        end if;
+
+        iodelay_div <= iodelay_div + 1;
+        if iodelay_div = 0 then
+          iodelay_tick <= '1';
+        else
+          iodelay_tick <= '0';
+        end if;
+
+        if regs_fromwb.iodelay_adj_n_taps_load_o = '1' then
+          iodelay_cnt <= unsigned(regs_fromwb.iodelay_adj_n_taps_o);
+          idelay_rst_o <= '1';
+          iodelay_ntaps <= regs_fromwb.iodelay_adj_n_taps_o;
+        else
+          idelay_rst_o <= '0';
+        end if;
+
+        if iodelay_cal_done = '1' and iodelay_tick = '1' and iodelay_cnt /= 0 then
+          idelay_ce_o <= '1';
+          iodelay_cnt <= iodelay_cnt - 1;
+        else
+          idelay_ce_o <= '0';
+        end if;
+        
+        
+        
+      end if;
+      
+    end if;
+      
+    end process;
+  regs_towb_local.iodelay_adj_n_taps_i <= iodelay_ntaps;
+  
   
 end rtl;
