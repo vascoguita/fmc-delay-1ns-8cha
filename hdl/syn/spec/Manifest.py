@@ -11,7 +11,7 @@ syn_grade = "-3"
 syn_package = "fgg484"
 syn_project = "spec_fine_delay.xise"
 syn_tool = "ise"
-syn_top = "spec_top"
+syn_top = "spec_fine_delay_top"
 
 spec_template_ucf = ['wr', 'onewire', 'spi']
 board = "spec"

@@ -1,4 +1,4 @@
-files = ["svec_top.vhd", "svec_top.ucf"]
+files = ["svec_fine_delay_top.vhd", "svec_fine_delay_top.ucf"]
 
 fetchto = "../../ip_cores"
 
@@ -11,6 +11,5 @@ modules = {
 	"../../ip_cores/wr-cores/board/svec",
 	"../../ip_cores/vme64x-core",
 	"../../ip_cores/svec",
-	"../../ip_cores/ddr3-sp6-core"
      ]
     }

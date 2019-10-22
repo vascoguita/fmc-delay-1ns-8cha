@@ -374,6 +374,7 @@ begin  -- architecture arch
       sfp_tx_fault_i      => sfp_tx_fault_i,
       sfp_tx_disable_o    => sfp_tx_disable_o,
       sfp_los_i           => sfp_los_i,
+      clk_dmtd_125m_o     => clk_dmtd_125m,
       clk_sys_62m5_o      => clk_sys_62m5,
       rst_sys_62m5_n_o    => rst_sys_62m5_n,
       clk_ref_125m_o      => clk_ref_125m,
