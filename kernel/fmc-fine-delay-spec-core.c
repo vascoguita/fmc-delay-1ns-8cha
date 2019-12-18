@@ -91,10 +91,10 @@ static const struct platform_device_id fd_spec_id_table[] = {
 		.name = "fdelay-spec",
 		.driver_data = FD_SPEC_VER,
 	}, {
-		.name = "id:000010DC574ECAFE",
+		.name = "id:000010DC574F0001",
 		.driver_data = FD_SPEC_VER,
 	}, {
-		.name = "id:000010dc574ecafe",
+		.name = "id:000010dc574f0001",
 		.driver_data = FD_SPEC_VER,
 	},
 	{},
