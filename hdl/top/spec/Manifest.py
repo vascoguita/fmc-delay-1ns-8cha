@@ -10,6 +10,7 @@ modules = {
 	"../../ip_cores/wr-cores",
 	"../../ip_cores/wr-cores/board/spec",
 	"../../ip_cores/gn4124-core",
-	"../../ip_cores/spec"
+	"../../ip_cores/spec",
+	"../../ip_cores/ddr3-sp6-core"
      ]
     }

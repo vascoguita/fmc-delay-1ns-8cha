@@ -4,7 +4,7 @@
 -- https://ohwr.org/projects/fmc-delay-1ns-8cha
 --------------------------------------------------------------------------------
 --
--- unit name:   spec_top
+-- unit name:   spec_fine_delay_top
 --
 -- description: Top entity for Fine Delay reference design.
 --
@@ -35,7 +35,10 @@ use work.wr_board_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.fine_delay_pkg.all;
 
-entity spec_top is
+library unisim;
+use unisim.vcomponents.all;
+
+entity spec_fine_delay_top is
   generic (
     g_WRPC_INITF    : string  := "../../ip_cores/wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
@@ -174,9 +177,9 @@ entity spec_top is
     fmc0_scl_b : inout std_logic;
     fmc0_sda_b : inout std_logic);
 
-end entity spec_top;
+end entity spec_fine_delay_top;
 
-architecture arch of spec_top is
+architecture arch of spec_fine_delay_top is
 
 
   component IBUFDS is
@@ -288,14 +291,20 @@ architecture arch of spec_top is
 
   signal fmc0_fd_owr_en : std_logic;
   signal fmc0_fd_owr_in : std_logic;
-  
+
+  signal fmc0_fd_tdc_start_predelay                    : std_logic;
+  signal fmc0_tdc_start_iodelay_inc                    : std_logic;
+  signal fmc0_tdc_start_iodelay_rst                    : std_logic;
+  signal fmc0_tdc_start_iodelay_cal                    : std_logic;
+  signal fmc0_tdc_start_iodelay_ce                    : std_logic;
+
   
 begin  -- architecture arch
 
   cmp_xwb_metadata : entity work.xwb_metadata
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
-      g_DEVICE_ID    => x"574E_cafe", -- WRTD Node (WN) 1
+      g_DEVICE_ID    => x"574f_0001", -- SPEC + 1xFine Delay
       g_VERSION      => x"0100_0000",
       g_CAPABILITIES => x"0000_0000",
       g_COMMIT_ID    => (others => '0'))
@@ -305,7 +314,7 @@ begin  -- architecture arch
       wb_i    => cnx_slave_in(c_WB_SLAVE_METADATA),
       wb_o    => cnx_slave_out(c_WB_SLAVE_METADATA));
 
-  inst_spec_template : entity work.spec_template_wr
+  inst_spec_base : entity work.spec_base_wr
     generic map (
       g_WITH_VIC      => TRUE,
       g_WITH_ONEWIRE  => FALSE,
@@ -315,8 +324,9 @@ begin  -- architecture arch
       g_APP_OFFSET    => c_METADATA_ADDR,
       g_NUM_USER_IRQ  => 5,
       g_DPRAM_INITF   => g_WRPC_INITF,
+      g_AUX_CLKS      => 1,
       g_FABRIC_IFACE  => plain,
-      g_SIMULATION    => g_SIMULATION)
+      g_SIMULATION    => f_int2bool(g_SIMULATION))
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
       clk_125m_pllref_n_i => clk_125m_pllref_n_i,
@@ -353,7 +363,7 @@ begin  -- architecture arch
       pcbrev_i            => pcbrev_i,
       led_act_o           => led_act_o,
       led_link_o          => led_link_o,
-      button1_i           => button1_n_i,
+      button1_n_i         => button1_n_i,
       uart_rxd_i          => uart_rxd_i,
       uart_txd_o          => uart_txd_o,
       clk_20m_vcxo_i      => clk_20m_vcxo_i,
@@ -375,10 +385,10 @@ begin  -- architecture arch
       sfp_tx_disable_o    => sfp_tx_disable_o,
       sfp_los_i           => sfp_los_i,
       clk_dmtd_125m_o     => clk_dmtd_125m,
-      clk_sys_62m5_o      => clk_sys_62m5,
-      rst_sys_62m5_n_o    => rst_sys_62m5_n,
-      clk_ref_125m_o      => clk_ref_125m,
-      rst_ref_125m_n_o    => rst_ref_125m_n,
+      clk_62m5_sys_o      => clk_sys_62m5,
+      rst_62m5_sys_n_o    => rst_sys_62m5_n,
+      clk_125m_ref_o      => clk_ref_125m,
+      rst_125m_ref_n_o    => rst_ref_125m_n,
       irq_user_i          => irq_vector,
       tm_link_up_o        => tm_link_up,
       tm_time_valid_o     => tm_time_valid,
@@ -388,9 +398,6 @@ begin  -- architecture arch
       pps_p_o             => open,
       pps_led_o           => pps_led,
       link_ok_o           => wrabbit_en,
-      ddr_dma_clk_i => '0',
-      ddr_dma_rst_n_i => '0',
-      ddr_dma_wb_i => c_DUMMY_WB_SLAVE_D64_IN,
       app_wb_o            => cnx_master_out(c_WB_MASTER_GENNUM),
       app_wb_i            => cnx_master_in(c_WB_MASTER_GENNUM));
 
@@ -438,9 +445,29 @@ begin  -- architecture arch
       IBUF_LOW_PWR => false  -- Low power (TRUE) vs. performance (FALSE) setting for referenced
       )
     port map (
-      O  => fmc0_fd_tdc_start,               -- Buffer output
+      O  => fmc0_fd_tdc_start_predelay,               -- Buffer output
       I  => fmc0_fd_tdc_start_p_i,  -- Diff_p buffer input (connect directly to top-level port)
       IB => fmc0_fd_tdc_start_n_i  -- Diff_n buffer input (connect directly to top-level port)
+      );
+
+   cmp_fd_tdc_start_delay0 : IODELAY2
+    generic map (
+      DELAY_SRC => "IDATAIN",
+      IDELAY_TYPE => "VARIABLE_FROM_ZERO",
+      DATA_RATE => "SDR"
+      )
+    port map (
+      IDATAIN => fmc0_fd_tdc_start_predelay,
+      DATAOUT2 => fmc0_fd_tdc_start,
+      INC => fmc0_tdc_start_iodelay_inc,
+      CE =>  fmc0_tdc_start_iodelay_ce,
+      RST =>  fmc0_tdc_start_iodelay_rst,
+      CLK => clk_sys_62m5,
+      ODATAIN => '0',
+      CAL => fmc0_tdc_start_iodelay_cal,
+      T => '1',
+      IOCLK0 => fmc0_dcm_clk_ref_0,
+      IOCLK1 => '0'
       );
 
   cmp0_fd_ddr_pll : entity work.fd_ddr_pll
@@ -473,6 +500,11 @@ begin  -- architecture arch
       dcm_reset_o   => open,
       dcm_locked_i  => fmc0_ddr_pll_locked,
 
+      idelay_cal_o => fmc0_tdc_start_iodelay_cal,
+      idelay_rst_o => fmc0_tdc_start_iodelay_rst,
+      idelay_ce_o => fmc0_tdc_start_iodelay_ce,
+      idelay_inc_o => fmc0_tdc_start_iodelay_inc,
+      
       trig_a_i          => fmc0_fd_trig_a_i,
       tdc_cal_pulse_o   => fmc0_fd_tdc_cal_pulse_o,
       tdc_start_i       => fmc0_fd_tdc_start,

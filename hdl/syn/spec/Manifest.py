@@ -9,11 +9,11 @@ if locals().get('fetchto', None) is None:
 syn_device = "xc6slx45t"
 syn_grade = "-3"
 syn_package = "fgg484"
-syn_project = "spec_fine_delay.xise"
+syn_project = "spec_fine_delay_top.xise"
 syn_tool = "ise"
 syn_top = "spec_fine_delay_top"
 
-spec_template_ucf = ['wr', 'onewire', 'spi']
+spec_base_ucf = ['wr', 'onewire', 'spi']
 board = "spec"
 ctrls = ["bank3_64b_32b" ]
 

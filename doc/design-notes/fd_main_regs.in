@@ -125,19 +125,27 @@ Timestamp Buffer Debug Values Register
 REG @tab
 @code{TSBR_ADVANCE} @tab
 Timestamp Buffer Advance Register
+@item @code{0x7c} @tab
+REG @tab
+@code{FMC_SLOT_ID} @tab
+FMC Slot ID Register
 @item @code{0x80} @tab
+REG @tab
+@code{IODELAY_ADJ} @tab
+I/O Delay Adjust Register
+@item @code{0xa0} @tab
 REG @tab
 @code{EIC_IDR} @tab
 Interrupt disable register
-@item @code{0x84} @tab
+@item @code{0xa4} @tab
 REG @tab
 @code{EIC_IER} @tab
 Interrupt enable register
-@item @code{0x88} @tab
+@item @code{0xa8} @tab
 REG @tab
 @code{EIC_IMR} @tab
 Interrupt mask register
-@item @code{0x8c} @tab
+@item @code{0xac} @tab
 REG @tab
 @code{EIC_ISR} @tab
 Interrupt status register
@@ -359,21 +367,6 @@ Pulse <code>Alutrigger</code> line
 @code{IDELAY_CE}
 @tab @code{0} @tab 
 IDELAY CE (pulse)
-@item @code{9}
-@tab R/W @tab
-@code{IDELAY_RST}
-@tab @code{0} @tab 
-IDELAY RST (GPIO)
-@item @code{10}
-@tab R/W @tab
-@code{IDELAY_CAL}
-@tab @code{0} @tab 
-IDELAY CAL (GPIO)
-@item @code{11}
-@tab R/W @tab
-@code{IDELAY_INC}
-@tab @code{0} @tab 
-IDELAY CAL (GPIO)
 @end multitable
 @multitable @columnfractions 0.15 0.85
 @headitem Field @tab Description
@@ -386,9 +379,6 @@ IDELAY CAL (GPIO)
 @item @code{STOP_DIS} @tab Controls the @code{StopDis} input of the TDC.@* write 1: disables the TDC stop input.@* write 0: no effect.
 @item @code{ALUTRIG} @tab Controls the TDC's @code{Alutrigger} line. Depending on the TDC's configuration, it can be used as a reset/FIFO clear/trigger signal.@* write 1: generates a pulse ACAM's @code{Alutrigger} line@* write 0: no effect.
 @item @code{IDELAY_CE} @tab Write 1 to pulse the IDELAY CE line for 1 clock tick.
-@item @code{IDELAY_RST} @tab State of IDELAY RST line
-@item @code{IDELAY_CAL} @tab State of IDELAY CAL line
-@item @code{IDELAY_INC} @tab State of IDELAY INC line
 @end multitable
 @regsection @code{CALR} - Calibration register
 Controls calibration logic.
@@ -814,6 +804,26 @@ Debug value
 @code{ADV}
 @tab @code{0} @tab 
 Advance buffer readout
+@end multitable
+@regsection @code{FMC_SLOT_ID} - FMC Slot ID Register
+Index of the hardware FMC slot the card is in.
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{3...0}
+@tab R/O @tab
+@code{SLOT_ID}
+@tab @code{X} @tab 
+Slot ID
+@end multitable
+@regsection @code{IODELAY_ADJ} - I/O Delay Adjust Register
+Setup time adjust for certain signals (e.g. TDC_START).
+@multitable @columnfractions .10 .10 .15 .10 .55
+@headitem Bits @tab Access @tab Prefix @tab Default @tab Name
+@item @code{5...0}
+@tab R/W @tab
+@code{N_TAPS}
+@tab @code{X} @tab 
+Number of delay line taps.
 @end multitable
 @regsection @code{EIC_IDR} - Interrupt disable register
 Writing 1 disables handling of the interrupt associated with corresponding bit. Writin 0 has no effect.

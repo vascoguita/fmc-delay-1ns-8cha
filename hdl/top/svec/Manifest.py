@@ -11,5 +11,6 @@ modules = {
 	"../../ip_cores/wr-cores/board/svec",
 	"../../ip_cores/vme64x-core",
 	"../../ip_cores/svec",
+	"../../ip_cores/ddr3-sp6-core",
      ]
     }
