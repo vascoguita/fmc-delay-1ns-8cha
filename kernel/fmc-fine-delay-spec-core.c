@@ -13,38 +13,29 @@ enum fd_spec_dev_offsets {
 	FD_SPEC_FDT_MEM_END = 0x0000E1FF,
 };
 
-/* MFD devices */
-enum spec_fpga_mfd_devs_enum {
-	FD_SPEC_MFD_FDT = 0,
-};
-
-static struct resource fd_spec_fdt_res[] = {
-	{
-		.name = "fmc-fdelay-tdc-mem",
-		.flags = IORESOURCE_MEM,
-		.start = FD_SPEC_FDT_MEM_START,
-		.end = FD_SPEC_FDT_MEM_END,
-	}, {
-		.name = "fmc-fdelay-tdc-irq",
-		.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
-		.start = 0,
-		.end = 0,
-	},
-};
-
-static const struct mfd_cell fd_spec_mfd_devs[] = {
-	[FD_SPEC_MFD_FDT] = {
-		.name = "fmc-fdelay-tdc",
-		.platform_data = NULL,
-		.pdata_size = 0,
-		.num_resources = ARRAY_SIZE(fd_spec_fdt_res),
-		.resources = fd_spec_fdt_res,
-	},
-};
-
-
 static int fd_spec_probe(struct platform_device *pdev)
 {
+	static struct resource fd_spec_fdt_res[] = {
+		{
+			.name = "fmc-tdc-mem",
+			.flags = IORESOURCE_MEM,
+		},
+		{
+			.name = "fmc-tdc-irq",
+			.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
+		}
+	};
+	struct platform_device_info pdevinfo = {
+		.parent = &pdev->dev,
+		.name = "fmc-fdelay-tdc",
+		.id = PLATFORM_DEVID_AUTO,
+		.res = fd_spec_fdt_res,
+		.num_res = ARRAY_SIZE(fd_spec_fdt_res),
+		.data = NULL,
+		.size_data = 0,
+		.dma_mask = 0,
+	};
+	struct platform_device *pdev_child;
 	struct resource *rmem;
 	int irq;
 
@@ -60,21 +51,24 @@ static int fd_spec_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	/*
-	 * We know that this design uses the HTVIC IRQ controller.
-	 * This IRQ controller has a linear mapping, so it is enough
-	 * to give the first one as input
-	 */
+	fd_spec_fdt_res[0].parent = rmem;
+	fd_spec_fdt_res[0].start = rmem->start + FD_SPEC_FDT_MEM_START;
+	fd_spec_fdt_res[0].end = rmem->start + FD_SPEC_FDT_MEM_END;
+	fd_spec_fdt_res[1].start = irq;
 
-	return mfd_add_devices(&pdev->dev, PLATFORM_DEVID_AUTO,
-			       fd_spec_mfd_devs,
-			       ARRAY_SIZE(fd_spec_mfd_devs),
-			       rmem, irq, NULL);
+
+	pdev_child = platform_device_register_full(&pdevinfo);
+	if (IS_ERR(pdev_child))
+		return PTR_ERR(pdev_child);
+	platform_set_drvdata(pdev, pdev_child);
+	return 0;
 }
 
 static int fd_spec_remove(struct platform_device *pdev)
 {
-	mfd_remove_devices(&pdev->dev);
+	struct platform_device *pdev_child = platform_get_drvdata(pdev);
+
+	platform_device_unregister(pdev_child);
 
 	return 0;
 }
