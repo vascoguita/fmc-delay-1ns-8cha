@@ -229,3 +229,17 @@ float fdelay_read_temperature(struct fdelay_board *userb)
 	fdelay_sysfs_get(b, "temperature", &t);
 	return (float)t/16.0;
 }
+
+static const char *fdelay_error_string[] = {
+};
+
+/**
+ * It returns the error message associated to the given error code
+ * @param[in] err error code
+ */
+const char *fdelay_strerror(int err)
+{
+	if (err < __FDELAY_ERR_MIN || err > __FDELAY_ERR_MAX)
+		return strerror(err);
+	return fdelay_error_string[err - __FDELAY_ERR_MIN];
+}

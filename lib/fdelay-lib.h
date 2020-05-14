@@ -22,6 +22,11 @@ extern "C" {
 #include <stdint.h>
 #include "fine-delay.h"
 
+#define __FDELAY_ERR_MIN 4096
+enum fmctdc_error_numbers {
+	__FDELAY_ERR_MAX = __FDELAY_ERR_MIN,
+};
+
 /* Convenience macro for converting the physical output connector
    numbers (as seen on the mezzanine's front panel) to convention used
    by the drive (0..3). We keep 0..3 indexing to maintain library
@@ -67,6 +72,7 @@ struct fdelay_pulse_ps {
 
 extern int fdelay_init(void);
 extern void fdelay_exit(void);
+extern const char *fdelay_strerror(int err);
 
 extern struct fdelay_board *fdelay_open(int offset, int dev_id);
 extern struct fdelay_board *fdelay_open_by_lun(int lun);
