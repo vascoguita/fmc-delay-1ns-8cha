@@ -17,7 +17,7 @@ char git_version[] = "git version: " GIT_VERSION;
 
 void help(char *name)
 {
-	fprintf(stderr, "%s: Use \"%s [-V] [-i <index>] [-d <dev>] [<opts>]\n",
+	fprintf(stderr, "%s: Use \"%s [-V] [-d <dev>] [<opts>]\n",
 		name, name);
 	fprintf(stderr, " options:\n"
 		"   -o <output>     ouput channel: 1..4 (default 1)\n"
@@ -213,8 +213,7 @@ void parse_width(struct fdelay_pulse *p, char *s)
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
-	int nboards;
-	int i, opt, index = -1, dev = -1, err = 0;
+	int i, opt, dev = -1, err = 0;
 	/* our parameters */
 	int count = 0, channel = -1;
 	int trigger_wait = 0, verbose = 0;
@@ -228,35 +227,18 @@ int main(int argc, char **argv)
 	/* print versions if needed */
 	print_version(argc, argv);
 
-	nboards = fdelay_init();
-
-	if (nboards < 0) {
-		fprintf(stderr, "%s: fdelay_init(): %s\n", argv[0],
-			strerror(errno));
+	err = fdelay_init();
+	if (err) {
+		fprintf(stderr, "%s: library initialization failed\n", argv[0]);
 		exit(1);
 	}
-	if (nboards == 0) {
-		fprintf(stderr, "%s: no boards found\n", argv[0]);
-		exit(1);
-	}
-	if (nboards == 1)
-		index = 0; /* so it works with no arguments */
 
 	parse_default(&p);
 
 	/* Parse our specific arguments */
-	while ((opt = getopt(argc, argv, "d:i:ho:c:m:r:D:T:w:tp1v")) != -1) {
+	while ((opt = getopt(argc, argv, "d:ho:c:m:r:D:T:w:tp1v")) != -1) {
 		switch (opt) {
 			char *rest;
-
-		case 'i':
-			index = strtol(optarg, &rest, 0);
-			if (rest && *rest) {
-				fprintf(stderr, "%s: Not a number \"%s\"\n",
-					argv[0], optarg);
-				exit(1);
-			}
-			break;
 		case 'd':
 			dev = strtol(optarg, &rest, 0);
 			if (rest && *rest) {
@@ -337,13 +319,13 @@ int main(int argc, char **argv)
 	if (optind != argc)
 		help(argv[0]); /* too many arguments */
 
-	if (index < 0 && dev < 0) {
-		fprintf(stderr, "%s: several boards, please pass -i or -d\n",
+	if (dev < 0) {
+		fprintf(stderr, "%s: several boards, please pass -d\n",
 			argv[0]);
 		exit(1);
 	}
 
-	b = fdelay_open(index, dev);
+	b = fdelay_open(dev);
 	if (!b) {
 		fprintf(stderr, "%s: fdelay_open(): %s\n", argv[0],
 			strerror(errno));

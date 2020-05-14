@@ -2,8 +2,7 @@
  * Simple code that is repeated over several tools
  */
 
-extern void tools_getopt_d_i(int argc, char **argv,
-			     int *dev, int *index);
+extern void tools_getopt_d_i(int argc, char **argv, int *dev);
 extern int  tools_need_help(int argc, char **argv);
 
 #define TOOLS_UMODE_USER    0

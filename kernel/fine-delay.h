@@ -17,7 +17,8 @@ enum fd_irq_resource {
 	FD_IRQ = 0,
 };
 
-#define FDELAY_VERSION		2 /* version of the layout of registers */
+#define FDELAY_VERSION_MAJ	2 /* version of the layout of registers */
+
 /*
  * ZIO concatenates device, cset and channel extended attributes in the 32
  * values that are reported in the control block. So we are limited to

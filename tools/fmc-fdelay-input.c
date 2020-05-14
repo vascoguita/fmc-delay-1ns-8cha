@@ -15,7 +15,7 @@ char git_version[] = "git version: " GIT_VERSION;
 
 void help(char *name)
 {
-	fprintf(stderr, "%s: Use \"%s [-V] [-i <index>] [-d <dev>] [<opts>]\n",
+	fprintf(stderr, "%s: Use \"%s [-V] [-d <dev>] [<opts>]\n",
 		name, name);
 	fprintf(stderr, " options:\n"
 		"   -c <count>      default is 0 and means forever\n"
@@ -41,8 +41,7 @@ void dump_input(struct fdelay_time *t, int np, int umode)
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
-	int nboards;
-	int opt, index = -1, dev = -1;
+	int opt, err, dev = -1;
 	int nonblock = 0, count = 0;
 	int umode = TOOLS_UMODE_USER;
 
@@ -54,33 +53,16 @@ int main(int argc, char **argv)
 	/* print versions if needed */
 	print_version(argc, argv);
 
-	nboards = fdelay_init();
-
-	if (nboards < 0) {
-		fprintf(stderr, "%s: fdelay_init(): %s\n", argv[0],
-			strerror(errno));
+	err = fdelay_init();
+	if (err) {
+		fprintf(stderr, "%s: library initialization failed\n", argv[0]);
 		exit(1);
 	}
-	if (nboards == 0) {
-		fprintf(stderr, "%s: no boards found\n", argv[0]);
-		exit(1);
-	}
-	if (nboards == 1)
-		index = 0; /* so it works with no arguments */
 
 	/* Parse our specific arguments, starting back from argv[1] */
-	while ((opt = getopt(argc, argv, "d:i:hc:nrf")) != -1) {
+	while ((opt = getopt(argc, argv, "d:hc:nrf")) != -1) {
 		switch (opt) {
 			char *rest;
-
-		case 'i':
-			index = strtol(optarg, &rest, 0);
-			if (rest && *rest) {
-				fprintf(stderr, "%s: Not a number \"%s\"\n",
-					argv[0], optarg);
-				exit(1);
-			}
-			break;
 		case 'd':
 			dev = strtol(optarg, &rest, 0);
 			if (rest && *rest) {
@@ -117,13 +99,13 @@ int main(int argc, char **argv)
 	if (optind != argc)
 		help(argv[0]); /* too many arguments */
 
-	if (index < 0 && dev < 0) {
-		fprintf(stderr, "%s: several boards, please pass -i or -d\n",
+	if (dev < 0) {
+		fprintf(stderr, "%s: several boards, please pass -d\n",
 			argv[0]);
 		exit(1);
 	}
 
-	b = fdelay_open(index, dev);
+	b = fdelay_open(dev);
 	if (!b) {
 		fprintf(stderr, "%s: fdelay_open(): %s\n", argv[0],
 			strerror(errno));

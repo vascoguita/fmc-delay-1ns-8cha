@@ -21,22 +21,13 @@ void print_version(int argc, char **argv)
 
 }
 
-void tools_getopt_d_i(int argc, char **argv,
-				    int *dev, int *index)
+void tools_getopt_d_i(int argc, char **argv, int *dev)
 {
 	char *rest;
 	int opt;
 
-	while ((opt = getopt(argc, argv, "d:i:h")) != -1) {
+	while ((opt = getopt(argc, argv, "d:h")) != -1) {
 		switch (opt) {
-		case 'i':
-			*index = strtol(optarg, &rest, 0);
-			if (rest && *rest) {
-				fprintf(stderr, "%s: Not a number \"%s\"\n",
-					argv[0], optarg);
-				exit(1);
-			}
-			break;
 		case 'd':
 			*dev = strtol(optarg, &rest, 0);
 			if (rest && *rest) {

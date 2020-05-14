@@ -42,7 +42,7 @@ ZIO_ATTR_DEFINE_STD(ZIO_DEV, fd_zattr_dev_std) = {
 /* Extended attributes for the device */
 static struct zio_attribute fd_zattr_dev[] = {
 	ZIO_ATTR_EXT("version", S_IRUGO,	FD_ATTR_DEV_VERSION,
-		      FDELAY_VERSION),
+		      FDELAY_VERSION_MAJ),
 	ZIO_ATTR_EXT("utc-h", _RW_,		FD_ATTR_DEV_UTC_H, 0),
 	ZIO_ATTR_EXT("utc-l", _RW_,		FD_ATTR_DEV_UTC_L, 0),
 	ZIO_ATTR_EXT("coarse", _RW_,		FD_ATTR_DEV_COARSE, 0),

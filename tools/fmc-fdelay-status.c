@@ -14,7 +14,7 @@ void help(char *name)
 {
 
 	fprintf(stderr, "fmc-fdelay-status: reports channel programming\n");
-	fprintf(stderr, "Use: \"%s [-V] [-i <index>] [-d <dev>] [-r]\"\n", name);
+	fprintf(stderr, "Use: \"%s [-V] [-d <dev>] [-r]\"\n", name);
 	fprintf(stderr, "   -r: display raw hardware configuration");
 	exit(1);
 }
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
 	struct fdelay_pulse p;
-	int nboards, ch, index = -1, dev = -1, raw = 0, opt;
+	int ch, err, dev = -1, raw = 0, opt;
 
 	/* Standard part of the file (repeated code) */
 	if (tools_need_help(argc, argv))
@@ -32,32 +32,15 @@ int main(int argc, char **argv)
 	/* print versions if needed */
 	print_version(argc, argv);
 
-	nboards = fdelay_init();
-
-	if (nboards < 0) {
-		fprintf(stderr, "%s: fdelay_init(): %s\n", argv[0],
-			strerror(errno));
+	err = fdelay_init();
+	if (err) {
+		fprintf(stderr, "%s: library initialization failed\n", argv[0]);
 		exit(1);
 	}
-	if (nboards == 0) {
-		fprintf(stderr, "%s: no boards found\n", argv[0]);
-		exit(1);
-	}
-	if (nboards == 1)
-		index = 0; /* so it works with no arguments */
 
-
-	while ((opt = getopt(argc, argv, "i:d:rh")) != -1) {
+	while ((opt = getopt(argc, argv, "d:rh")) != -1) {
 		char *rest;
 		switch (opt) {
-		case 'i':
-			index = strtol(optarg, &rest, 0);
-			if (rest && *rest) {
-				fprintf(stderr, "%s: Not a number \"%s\"\n",
-					argv[0], optarg);
-				exit(1);
-			}
-			break;
 		case 'd':
 			dev = strtol(optarg, &rest, 0);
 			if (rest && *rest) {
@@ -75,13 +58,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (index < 0 && dev < 0) {
-		fprintf(stderr, "%s: several boards, please pass -i or -d\n",
+	if (dev < 0) {
+		fprintf(stderr, "%s: several boards, please pass -d\n",
 			argv[0]);
 		exit(1);
 	}
 
-	b = fdelay_open(index, dev);
+	b = fdelay_open(dev);
 	if (!b) {
 		fprintf(stderr, "%s: fdelay_open(): %s\n", argv[0],
 			strerror(errno));

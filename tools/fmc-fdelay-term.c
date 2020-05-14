@@ -12,7 +12,7 @@ char git_version[] = "git version: " GIT_VERSION;
 
 void help(char *name)
 {
-	fprintf(stderr, "%s: Use \"%s [-V] [-i <index>] [-d <dev>] [on|off]\n",
+	fprintf(stderr, "%s: Use \"%s [-V] [-d <dev>] [on|off]\n",
 		name, name);
 	exit(1);
 }
@@ -20,8 +20,9 @@ void help(char *name)
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
-	int nboards, hwval, newval;
-	int index = -1, dev = -1;
+	int hwval, newval;
+	int dev = -1;
+	int err;
 
 
 	/* Standard part of the file (repeated code) */
@@ -31,24 +32,16 @@ int main(int argc, char **argv)
 	/* print versions if needed */
 	print_version(argc, argv);
 
-	nboards = fdelay_init();
-
-	if (nboards < 0) {
-		fprintf(stderr, "%s: fdelay_init(): %s\n", argv[0],
-			strerror(errno));
+	err = fdelay_init();
+	if (err) {
+		fprintf(stderr, "%s: library initialization failed\n", argv[0]);
 		exit(1);
 	}
-	if (nboards == 0) {
-		fprintf(stderr, "%s: no boards found\n", argv[0]);
-		exit(1);
-	}
-	if (nboards == 1)
-		index = 0; /* so it works with no arguments */
 
-	tools_getopt_d_i(argc, argv, &dev, &index);
+	tools_getopt_d_i(argc, argv, &dev);
 
-	if (index < 0 && dev < 0) {
-		fprintf(stderr, "%s: several boards, please pass -i or -d\n",
+	if (dev < 0) {
+		fprintf(stderr, "%s: several boards, please pass -d\n",
 			argv[0]);
 		exit(1);
 	}
@@ -65,7 +58,7 @@ int main(int argc, char **argv)
 			help(argv[0]);
 	}
 	/* Finally work */
-	b = fdelay_open(index, dev);
+	b = fdelay_open(dev);
 	if (!b) {
 		fprintf(stderr, "%s: fdelay_open(): %s\n", argv[0],
 			strerror(errno));
@@ -73,7 +66,6 @@ int main(int argc, char **argv)
 	}
 
 	hwval = fdelay_get_config_tdc(b);
-	int err = 0;
 
 	switch(newval) {
 	case 1:

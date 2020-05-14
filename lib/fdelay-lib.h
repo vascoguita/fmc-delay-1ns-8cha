@@ -24,7 +24,8 @@ extern "C" {
 
 #define __FDELAY_ERR_MIN 4096
 enum fmctdc_error_numbers {
-	__FDELAY_ERR_MAX = __FDELAY_ERR_MIN,
+	FDELAY_ERR_VERSION_MISMATCH = __FDELAY_ERR_MIN,
+	__FDELAY_ERR_MAX,
 };
 
 /* Convenience macro for converting the physical output connector
@@ -74,7 +75,7 @@ extern int fdelay_init(void);
 extern void fdelay_exit(void);
 extern const char *fdelay_strerror(int err);
 
-extern struct fdelay_board *fdelay_open(int offset, int dev_id);
+extern struct fdelay_board *fdelay_open(int dev_id);
 extern struct fdelay_board *fdelay_open_by_lun(int lun);
 extern int fdelay_close(struct fdelay_board *);
 

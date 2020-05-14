@@ -2,11 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <glob.h>
 
-#define FDELAY_INTERNAL /* hack... */
 #include "fdelay-lib.h"
-
 #include "tools-common.h"
 
 char git_version[] = "git version: " GIT_VERSION;
@@ -20,9 +18,8 @@ void help(char *name)
 
 int main(int argc, char **argv)
 {
-	int i, j;
-	struct __fdelay_board *b;
-	struct fdelay_board *ub;
+	glob_t g;
+	int err, i;
 
 	if (tools_need_help(argc, argv))
 		help(argv[0]);
@@ -36,21 +33,32 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	i = fdelay_init();
-	if (i < 0) {
-		fprintf(stderr, "%s: fdelay_init(): %s\n", argv[0],
-			strerror(errno));
+	err = fdelay_init();
+	if (err) {
+		fprintf(stderr, "%s: library initialization failed\n",
+			argv[0]);
 		exit(1);
 	}
-	printf("%s: found %i board%s\n", argv[0], i, i ? "" : "s");
 
-	for (j = 0; j < i; j++) {
-		ub = fdelay_open(j, -1);
-		b = (typeof(b))ub;
-		printf("  dev_id %04x, %s, %s\n", b->dev_id, b->devbase,
-		       b->sysbase);
+	err = glob("/dev/zio/fd-[A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9][A-Fa-f0-9]-0-0-ctrl",
+		   GLOB_NOSORT, NULL, &g);
+	if (err == GLOB_NOMATCH)
+		goto out_glob;
+
+	for (i = 0; i < g.gl_pathc; i++) {
+		uint32_t dev_id;
+		char dev_id_str[7]= "0x";
+
+		/* Keep only the ID */
+		strncpy(dev_id_str + 2,
+			g.gl_pathv[i] + strlen("/dev/zio/fd-"), 4);
+		dev_id = strtol(dev_id_str, NULL, 0);
+		printf("  Fine-Delay Device ID %04x\n", dev_id);
 	}
+
+	globfree(&g);
+
+out_glob:
 	fdelay_exit();
 	return 0;
 }
-
