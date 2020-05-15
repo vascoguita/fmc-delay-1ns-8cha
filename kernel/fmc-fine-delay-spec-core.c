@@ -17,11 +17,11 @@ static int fd_spec_probe(struct platform_device *pdev)
 {
 	static struct resource fd_spec_fdt_res[] = {
 		{
-			.name = "fmc-tdc-mem",
+			.name = "fmc-fdelay-tdc-mem",
 			.flags = IORESOURCE_MEM,
 		},
 		{
-			.name = "fmc-tdc-irq",
+			.name = "fmc-fdelay-tdc-irq",
 			.flags = IORESOURCE_IRQ | IORESOURCE_IRQ_HIGHLEVEL,
 		}
 	};
