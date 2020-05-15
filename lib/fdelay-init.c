@@ -68,6 +68,7 @@ struct fdelay_board *fdelay_open(int dev_id)
 	b = malloc(sizeof(*b));
 	if (!b)
 		return NULL;
+	memset(b, 0, sizeof(*b));
 
 	/* get sysfs */
 	snprintf(path, sizeof(path),
