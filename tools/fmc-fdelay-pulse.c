@@ -213,7 +213,7 @@ void parse_width(struct fdelay_pulse *p, char *s)
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
-	int i, opt, dev = -1, err = 0;
+	int i, opt, dev = -1, err = 0, flags;
 	/* our parameters */
 	int count = 0, channel = -1;
 	int trigger_wait = 0, verbose = 0;
@@ -378,6 +378,19 @@ int main(int argc, char **argv)
 
 	report_output_config(channel, &p, TOOLS_UMODE_USER);
 
+	flags = fdelay_get_config_tdc(b);
+	if (flags < 0) {
+		err = flags;
+		goto out;
+	}
+	flags &= ~FD_TDCF_DISABLE_INPUT;
+	err = fdelay_set_config_tdc(b, flags);
+	if (err) {
+		fprintf(stderr, "%s: failed to configure TDC: %s\n", argv[0],
+				fdelay_strerror(errno));
+		goto out;
+	}
+
 	if ((err = fdelay_config_pulse(b, channel, &p)) < 0) {
 		fprintf(stderr, "%s: fdelay_config_pulse(): %s\n",
 			argv[0], strerror(-err));
@@ -394,7 +407,8 @@ int main(int argc, char **argv)
 		trigger_wait = !i;
 	}
 
+out:
 	fdelay_close(b);
 	fdelay_exit();
-	return 0;
+	return err;
 }

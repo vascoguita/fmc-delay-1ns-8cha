@@ -43,7 +43,7 @@ int main(int argc, char **argv)
 	struct fdelay_board *b;
 	int opt, err, dev = -1;
 	int nonblock = 0, count = 0;
-	int umode = TOOLS_UMODE_USER;
+	int umode = TOOLS_UMODE_USER, flags;
 
 
 	/* Standard part of the file (repeated code) */
@@ -112,6 +112,18 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	flags = fdelay_get_config_tdc(b);
+	if (flags < 0) {
+		err = flags;
+		goto out;
+	}
+	flags &= ~(FD_TDCF_DISABLE_INPUT | FD_TDCF_DISABLE_TSTAMP);
+	err = fdelay_set_config_tdc(b, flags);
+	if (err) {
+		fprintf(stderr, "%s: failed to configure TDC: %s\n", argv[0],
+				fdelay_strerror(errno));
+		goto out;
+	}
 	/* now read pulses, "np" at a time */
 	while (1) {
 		struct fdelay_time pdata[16];
@@ -121,6 +133,7 @@ int main(int argc, char **argv)
 			np = count;
 		ret = fdelay_read(b, pdata, np, nonblock);
 		if (ret < 0) {
+			err = ret;
 			fprintf(stderr, "%s: fdelay_read: %s\n", argv[0],
 				strerror(errno));
 			break;
@@ -141,7 +154,8 @@ int main(int argc, char **argv)
 			break;
 	}
 
+out:
 	fdelay_close(b);
 	fdelay_exit();
-	return 0;
+	return err;
 }
