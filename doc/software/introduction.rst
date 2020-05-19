@@ -84,7 +84,7 @@ Modes of Operation
 * **Time to Digital Converter**: tags all trigger pulses and delivers the
   timestamps to the user's application.
 
-.. image:: drawings/func.eps
+.. image:: drawings/func.png
 	   :alt: *fine-delay* operating modes.
 
 Modes (pulse delay/generator) can be selected independently for each output.
@@ -96,7 +96,7 @@ does not interfere with the operation of the channels being time tagged.
 Mechanical/Environmental
 ========================
 
-.. image:: drawings/front_panels.eps
+.. image:: drawings/front_panels.png
 	   :alt: *fine-delay* front panel connector layout.
 
 **Mechanical and environmental specs:**
@@ -145,7 +145,7 @@ Electrical
 Timing
 ======
 
-.. image:: drawings/io_timing.eps
+.. image:: drawings/io_timing.png
 	   :alt: *fine-delay* timing parameter definitions.
 
 **Time base:**
@@ -199,7 +199,7 @@ Principles of Operation
    if you are an electronics engineer, you can skip this section, as
    you will most likely find it rather boring.
 
-.. image:: drawings/analog_digital_delays.eps
+.. image:: drawings/analog_digital_delays.png
    :alt: Principle of operation of analog and digital delay generators.
 
 Contrary to typical analog delay cards, which work by comparing an analog ramp
