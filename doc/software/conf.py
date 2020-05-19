@@ -19,7 +19,7 @@
 
 project = 'Fmc Fine-Delay Software'
 copyright = '2020, Alessandro Rubini'
-author = 'Alessandro Rubini'
+author = 'Alessandro Rubini <rubini@gnudd.com>, Tomasz Wlostowski <Tomasz.Wlostowski@cern.ch>'
 
 
 # -- General configuration ---------------------------------------------------
