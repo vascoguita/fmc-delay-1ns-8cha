@@ -1,0 +1,36 @@
+===============
+Troubleshooting
+===============
+
+This chapters lists a few errors that may happen and how to deal with
+them.
+
+make modules_install misbehaves
+===============================
+
+The command ``sudo make modules_install`` may place the modules in the wrong
+directory or fail with an error like:::
+
+   make: \*\*\* /lib/modules/2.6.37+/build: No such file or directory.
+
+
+This happens when you compiled by setting ``LINUX=`` and your
+*sudo* is not propagating the environment to its child processes.
+In this case, you should run this command instead::
+
+   sudo make modules_install  LINUX=$LINUX
+
+
+Version Mismatch
+================
+
+The *fdelay* library may report a version mismatch like this:::
+
+   spusa# ./lib/fmc-fdelay-board-time  get
+   fdelay_init: version mismatch, lib(1) != drv(2)
+   ./lib/fmc-fdelay-board-time: fdelay_init(): Input/output error
+
+This reports a difference in the way ZIO attributes are laid out, so user
+space may exchange wrong data in the ZIO control block, or may try to
+access inexistent files in */sys*. I suggest recompiling both the kernel
+driver and user space from a single release of the source package.
