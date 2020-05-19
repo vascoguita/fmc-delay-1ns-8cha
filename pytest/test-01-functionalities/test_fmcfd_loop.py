@@ -65,7 +65,7 @@ class TestFmcfdLoop(object):
         required pulses and we are able to read them all from the input
         channel.
         """
-        period = 1000000000  # 1kHz
+        period = 10000000000  # 100Hz
         poll = select.poll()
         poll.register(fmcfd_tdc.fileno, select.POLLIN)
         ts = []
