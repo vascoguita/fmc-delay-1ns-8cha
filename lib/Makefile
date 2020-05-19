@@ -36,6 +36,7 @@ CFLAGS +=  $(EXTRACFLAGS)
 LDFLAGS = -L. -lfdelay
 
 DESTDIR ?= /usr/local
+CPPCHECK ?= cppcheck
 
 modules all: lib
 
@@ -69,5 +70,9 @@ install:
 
 modules_install:
 
+cppcheck:
+	$(CPPCHECK) -q -I. -I../kernel -I $(ZIO_ABS)/include --suppress=missingIncludeSystem --enable=warning,style,information,missingInclude *.c *.h
+
 -include .depend
 
+.PHONY=cppcheck

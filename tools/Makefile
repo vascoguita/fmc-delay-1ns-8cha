@@ -28,6 +28,8 @@ progs += fmc-fdelay-input
 progs += fmc-fdelay-pulse
 progs += fmc-fdelay-status
 
+CPPCHECK ?= cppcheck
+
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(progs) fmc-fdelay-calibration
 
@@ -47,3 +49,5 @@ install:
 	install -d $(DESTDIR)/bin
 	install -D $(progs) $(DESTDIR)/bin
 
+cppcheck:
+	$(CPPCHECK) -q -I. -I../kernel -I$(LIBTDC) --suppress=missingIncludeSystem --enable=all *.c *.h
