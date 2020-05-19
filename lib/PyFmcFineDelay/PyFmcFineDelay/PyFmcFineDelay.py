@@ -456,7 +456,7 @@ class FmcFineDelay(object):
 
         def fread(self, n=1, flags=0):
             ts = (FmcFineDelayTime * n)()
-            libfdelay.fdelay_fread(self.tkn, ts, n, flags)
+            ret = libfdelay.fdelay_fread(self.tkn, ts, n, flags)
             return list(ts)[:ret]
 
         def flush(self):
