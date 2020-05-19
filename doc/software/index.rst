@@ -12,10 +12,3 @@ Welcome to Fmc Fine-Delay Software's documentation!
    tools
    developer-info
    troubleshooting
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
