@@ -462,8 +462,7 @@ class FmcFineDelay(object):
         def flush(self):
             while True:
                 try:
-                    ret = self.read(10, os.O_NONBLOCK)
-                    if ret == 0:
+                    if len(self.read(1024, os.O_NONBLOCK)) == 0:
                         break
                 except OSError:
                     break

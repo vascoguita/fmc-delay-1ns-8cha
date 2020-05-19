@@ -48,6 +48,15 @@ class TestFmcfdLoop(object):
       chan 4 o-------`
     """
 
+    def test_output_flush(self, fmcfd, fmcfd_chan, fmcfd_tdc):
+        poll = select.poll()
+        poll.register(fmcfd_tdc.fileno, select.POLLIN)
+        fmcfd_chan.pulse_generate(fmcfd.time + FmcFineDelayTime(2, 0, 0),
+                                  200000, 400000, 16)
+        assert len(poll.poll(4000)) > 0
+        fmcfd_tdc.flush()
+        assert len(poll.poll(4000)) ==0
+
     @pytest.mark.parametrize("count", [1, 2, 3, 5, 7, 10,
                                        100, 1000, 10000, 65535])
     def test_output_counter(self, fmcfd, fmcfd_chan, fmcfd_tdc, count):
