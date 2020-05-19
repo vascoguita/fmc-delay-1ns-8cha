@@ -17,15 +17,10 @@ http://www.ohwr.org/projects/fine-delay-sw/documents
   This place hosts the pdf documentation for some official
   release, but we prefer to use the *files* tab, below.
 
-http://www.ohwr.org/projects/fine-delay-sw/files
-  Here we place the *.tar.gz* file for every release,
-  including the *git* tree and compiled documentation (for
-  those who lack TeX), as well as manuals.
-
-git://ohwr.org/fmc-projects/fmc-delay-1ns-8cha/fine-delay-sw.git
+https://ohwr.org/project/fine-delay-sw.git
   Read-only repositories for the software and documentation.
 
-git@@ohwr.org:fmc-projects/fmc-delay-1ns-8cha/fine-delay-sw.git
+ssh://git@ohwr.org:7999/project/fine-delay-sw.git
   Read-write repositories, for those authorized.
 
 .. note::
@@ -66,23 +61,28 @@ are required:
 
 * For the PCI version: a standard PC with at least one free 4x (or wider)
   PCI-Express slot.
-* For the VME version: a VME64x crate with a MEN A20 CPU.
+* For the VME version: a VME64x crate with a MEN A20/A25 CPU.
 * 50-ohm cables with 1-pin LEMO 00 plugs for connecting the I/O signals.
-* Any Linux (kernel 2.6 or 3.0+) distribution. Backports are provided down to
-  kernel ``2.6.24``.
+* Any Linux distribution (validated with
+  CentOS 7 3.10.0-957.1.3.rt56.913.el7.x86_64)
 
 Modes of Operation
 ==================
 
 *fine-delay* can work in one or more of the following modes:
 
-* **Pulse Delay**: produces one or more pulse(s) on selected outputs
-  a given time after an input trigger pulse (fig. 1a).
-* **Pulse Generator**: produces one or more pulse(s) on selected outputs
-  starting at an absolute time value programmed by the user (fig. 1b).
+Pulse Delay
+  It produces one or more pulse(s) on selected outputs
+  a given time after an input trigger pulse.
+
+Pulse Generator
+  Itproduces one or more pulse(s) on selected outputs
+  starting at an absolute time value programmed by the user.
   In this mode, time base is usually provided by the White Rabbit network.
-* **Time to Digital Converter**: tags all trigger pulses and delivers the
-  timestamps to the user's application.
+
+Time to Digital Converter
+  It tags all trigger pulses and delivers the timestamps to the user's
+  application.
 
 .. image:: drawings/func.png
 	   :alt: *fine-delay* operating modes.
@@ -108,14 +108,16 @@ Mechanical/Environmental
 Electrical
 ==========
 
-**Inputs/Outputs:**
+Inputs/Outputs
+--------------
 
 * 1 trigger input (LEMO 00).
 * 4 pulse outputs (LEMO 00).
 * 2 LEDs (termination status and trigger indicator).
 * Carrier communication via 160-pin Low Pin Count FMC connector.
 
-**Trigger input:**
+Trigger input
+-------------
 
 * TTL/LVTTL levels, DC-coupled. Reception of a trigger pulse is indicated by
   blinking the "TRIG" LED in the front panel.
@@ -126,7 +128,8 @@ Electrical
   (up to +28 V).
 * Maximum input pulse edge rise time: 20 ns.
 
-**Outputs:**
+Outputs
+-------
 
 * TTL-compatible levels DC-coupled: Voh = 3 V, Vol = 200 mV (50 Ohm load),
   Voh = 6 V, Vol = 400 mV (high impedance).
@@ -136,7 +139,8 @@ Electrical
 * Protected against continuous short circuit, overcurrent and overvoltage
   (up to +28 V).
 
-**Power supply:**
+Power supply
+------------
 
 * Used power supplies: P12V0, P3V3, P3V3_AUX, VADJ (voltage monitor only).
 * Typical current consumption: 200 mA (P12V0) + 1.5 A (P3V3).
@@ -148,7 +152,8 @@ Timing
 .. image:: drawings/io_timing.png
 	   :alt: *fine-delay* timing parameter definitions.
 
-**Time base:**
+Time base
+---------
 
 * On-board oscillator accuracy: +/- 2.5 ppm (i.e. max. 2.5 ns error for a
   delay of 1 ms).
@@ -156,7 +161,8 @@ Timing
   characteristics of the grandmaster clock and the carrier used. On SPEC
   v 4.0 FMC carrier, the accuracy is better than 1 ns.
 
-**Input timing:**
+Input timing
+------------
 
 * Minimum pulse width: :math:`t_{IW}` = 50 ns. Pulses below 24 ns are rejected.
 * Minimum gap between the last delayed output pulse and subsequent trigger
@@ -164,7 +170,8 @@ Timing
 * Input TDC performance: 400 ps pp accuracy, 27 ps resolution,
   70 ps trigger-to-trigger rms jitter (measured at 500 kHz pulse rate).
 
-**Output timing:**
+Output timing
+-------------
 
 * Resolution: 10 ps.
 * Accuracy (pulse generator mode): 300 ps.
@@ -180,7 +187,8 @@ Timing
   of the pulse, 10 ps for subsequent pulses if the condition above is met,
   otherwise 4 ns.
 
-**Delay mode specific parameters:**
+Delay mode specific parameters
+------------------------------
 
 * Delay accuracy: < 1 ns.
 * Trigger-to-output jitter: 80 ps rms.
@@ -205,7 +213,8 @@ Principles of Operation
 Contrary to typical analog delay cards, which work by comparing an analog ramp
 triggered by the input pulse with a voltage proportional to the desired delay,
 *fine-delay* is a digital delay generator, which relies on time tag arithmetic.
-The principle of operation of both generators is illustrated in figure 3.
+The principle of operation of both generators is illustrated in the figure
+above.
 
 When a trigger pulse comes to the input, *fine-delay* first produces its'
 precise time tag using a Time-to-Digital converter (TDC). Afterwards,
