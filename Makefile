@@ -5,10 +5,6 @@ REPO_PARENT ?= $(shell /bin/pwd)/..
 
 all: kernel lib tools
 
-# a hack, to prevent compiling wr-nic.ko, which won't work on older kernels
-CONFIG_WR_NIC=n
-export CONFIG_WR_NIC
-
 # The user can override, using environment variables, all these three:
 ZIO ?= zio
 
