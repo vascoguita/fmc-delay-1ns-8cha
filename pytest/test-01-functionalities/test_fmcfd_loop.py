@@ -154,16 +154,17 @@ class TestFmcfdLoop(object):
         assert ts[0].coarse - start.coarse <= 1 # there is a ~1ns cable
 
 
-    @pytest.mark.parametrize("width,period", [(200000, 1000000),
-                                              (200000, 10000000),
-                                              (200000, 100000000),
-                                              (200000, 1000000000),
-                                              (200000, 10000000000),
-                                              (200000, 100000000000),
-                                              (200000, 1000000000000),
-                                              ])
+    @pytest.mark.parametrize("width,period_ps", [(200000, 1000000),
+                                                (200000, 10000000),
+                                                (200000, 100000000),
+                                                (200000, 1000000000),
+                                                (200000, 10000000000),
+                                                (200000, 100000000000),
+                                                (200000, 1000000000000),
+                                                ])
     @pytest.mark.parametrize("count", [10])
-    def test_output_period(self, fmcfd_chan, fmcfd_tdc, width, period, count):
+    def test_output_period(self, fmcfd_chan, fmcfd_tdc,
+                           width, period_ps, count):
         """
         The test produces pulses on the given channels and catch them using
         the on board TDC. The period between two timestamps must be as close
@@ -172,7 +173,7 @@ class TestFmcfdLoop(object):
         ts = []
 
         start = fmcfd_chan.dev.time + FmcFineDelayTime(2, 0, 0, 0, 0)
-        fmcfd_chan.pulse_generate(start, width, period, count)
+        fmcfd_chan.pulse_generate(start, width, period_ps, count)
         time.sleep(2 + (count * period_ps) / 1000000000000.0)
         assert len(fmcfd_tdc.poll(10000)) > 0
         ts = fmcfd_tdc.read(count, os.O_NONBLOCK)
