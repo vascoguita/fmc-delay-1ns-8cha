@@ -7,6 +7,7 @@ SPDX-FileCopyrightText: 2020 CERN  (home.cern)
 """
 
 import atexit
+import select
 import errno
 import time
 import os
@@ -399,6 +400,8 @@ class FmcFineDelay(object):
 
         def __init__(self, tkn):
             self.tkn = tkn
+            self.poll_desc = select.poll()
+            self.poll_desc.register(self.fileno, select.POLLIN)
 
         @property
         def enable_input(self):
@@ -448,6 +451,9 @@ class FmcFineDelay(object):
 
         def __config_set(self, flags):
             return libfdelay.fdelay_set_config_tdc(self.tkn, flags)
+
+        def poll(self, timeout=10):
+            return self.poll_desc.poll(timeout)
 
         def read(self, n=1, flags=0):
             ts = (FmcFineDelayTime * n)()
