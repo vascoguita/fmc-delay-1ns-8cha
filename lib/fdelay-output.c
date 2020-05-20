@@ -60,13 +60,14 @@ static  int __fdelay_get_ch_fd(struct __fdelay_board *b,
 			       int channel, int *fdc)
 {
 	int ch14 = channel + 1;
-	char fname[128];
 
 	if (channel < 0 || channel > 3) {
 		errno = EINVAL;
 		return -1;
 	}
 	if (b->fdc[ch14] <= 0) {
+		char fname[128];
+
 		sprintf(fname, "%s-%i-0-ctrl", b->devbase, ch14);
 		b->fdc[ch14] = open(fname, O_WRONLY | O_NONBLOCK);
 		if (b->fdc[ch14] < 0)
@@ -113,7 +114,7 @@ int fdelay_config_pulse(struct fdelay_board *userb,
 	a[FD_ATTR_OUT_DELTA_FINE] = pulse->loop.frac; /* only 0..f */
 
 	int mode = pulse->mode & 0x7f;
-	
+
 	/* hotfix: the ZIO has a bug blocking the output when the output raw_io function returns an error.
 	therefore we temporarily have to check the output programming correctness in the user library. */
 	if (mode == FD_OUT_MODE_DELAY || mode == FD_OUT_MODE_DISABLED)
@@ -339,7 +340,7 @@ int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 
 	if (fdelay_get_config_pulse(userb, channel, &pulse) < 0)
 		return -1;
-	
+
 	memset(ps, 0, sizeof(struct fdelay_pulse_ps));
 	ps->mode = pulse.mode;
 	ps->rep = pulse.rep;

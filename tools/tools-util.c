@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include "fdelay-lib.h"
 #include "tools-common.h"
@@ -60,20 +61,20 @@ void tools_report_time(char *name, struct fdelay_time *t, int umode)
 	printf("%s ", name);
 	switch(umode) {
 	case TOOLS_UMODE_USER:
-		printf ("%10llu:%03llu,%03llu,%03llu,%03llu ps\n",
-			(long long)(t->utc),
-			(picoseconds / (1000LL * 1000 * 1000)),
-			(picoseconds / (1000LL * 1000) % 1000),
-			(picoseconds / (1000LL) % 1000),
-			(picoseconds % 1000LL));
+		printf ("%10"PRIu64":%03llu,%03llu,%03llu,%03llu ps\n",
+			t->utc,
+			(picoseconds / (1000ULL * 1000 * 1000)),
+			(picoseconds / (1000ULL * 1000) % 1000),
+			(picoseconds / (1000ULL) % 1000),
+			(picoseconds % 1000ULL));
 		break;
 	case TOOLS_UMODE_FLOAT:
-		printf ("float %10llu.%012llu\n", (long long)(t->utc),
+		printf ("float %10"PRIu64".%012llu\n", t->utc,
 			picoseconds);
 		break;
 	case TOOLS_UMODE_RAW:
-		printf("raw   utc %10lli,  coarse %9li,  frac %9li\n",
-		       (long long)t->utc, (long)t->coarse, (long)t->frac);
+		printf("raw   utc %10"PRIu64",  coarse %9"PRIu32",  frac %9"PRIu32"\n",
+		       t->utc, t->coarse, t->frac);
 		break;
 	}
 }

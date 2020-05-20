@@ -98,7 +98,7 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
-		int err = fdelay_check_wr_mode(b);
+		err = fdelay_check_wr_mode(b);
 		printf("WR Status: ");
 		switch(err)
 		{
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 			default:   	printf("error: %s\n", strerror(errno)); break;
 		}
 		printf("Time: %lli.%09li\n", (long long)t.utc, (long)t.coarse * 8);
-		
+
 		fdelay_close(b);
 		fdelay_exit();
 		return 0;
@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 		setbuf(stdout, NULL);
 		printf("Locking the card to WR: ");
 
-		int err = fdelay_wr_mode(b, 1);
+		err = fdelay_wr_mode(b, 1);
 
 		if(err == ENOTSUP)
 		{

@@ -67,8 +67,9 @@ int fdelay_get_config_tdc(struct fdelay_board *userb)
 
 static int __fdelay_open_tdc(struct __fdelay_board *b)
 {
-	char fname[128];
 	if (b->fdc[0] <= 0) {
+		char fname[128];
+
 		sprintf(fname, "%s-0-0-ctrl", b->devbase);
 		b->fdc[0] = open(fname, O_RDONLY | O_NONBLOCK);
 	}
@@ -102,12 +103,12 @@ int fdelay_fileno_tdc(struct fdelay_board *userb)
  *         empty
  */
 int fdelay_read(struct fdelay_board *userb, struct fdelay_time *t, int n,
-		       int flags)
+		int flags)
 {
 	__define_board(b, userb);
 	struct zio_control ctrl;
 	uint32_t *attrs;
-	int i, j, fd;
+	int i, fd;
 	fd_set set;
 
 	fd = __fdelay_open_tdc(b);
@@ -115,6 +116,8 @@ int fdelay_read(struct fdelay_board *userb, struct fdelay_time *t, int n,
 		return fd; /* errno already set */
 
 	for (i = 0; i < n;) {
+		int j;
+
 		j = read(fd, &ctrl, sizeof(ctrl));
 		if (j < 0 && errno != EAGAIN)
 			return -1;
@@ -166,9 +169,11 @@ int fdelay_read(struct fdelay_board *userb, struct fdelay_time *t, int n,
  */
 int fdelay_fread(struct fdelay_board *userb, struct fdelay_time *t, int n)
 {
-	int i, loop;
+	int i;
 
 	for (i = 0; i < n; ) {
+		int loop;
+
 		loop = fdelay_read(userb, t + i, n - i, 0);
 		if (loop < 0)
 			return -1;

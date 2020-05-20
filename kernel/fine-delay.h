@@ -280,11 +280,11 @@ static inline void fd_iowrite(struct fd_dev *fd,
 
 static inline uint32_t fd_readl(struct fd_dev *fd, unsigned long reg)
 {
-	return fd_ioread(fd, fd->fd_regs_base + reg);
+	return fd_ioread(fd, (char *)fd->fd_regs_base + reg);
 }
 static inline void fd_writel(struct fd_dev *fd, uint32_t v, unsigned long reg)
 {
-	fd_iowrite(fd, v, fd->fd_regs_base + reg);
+	fd_iowrite(fd, v, (char *)fd->fd_regs_base + reg);
 }
 
 static inline void __check_chan(int x)

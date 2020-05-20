@@ -85,7 +85,7 @@ int main(int argc, char **argv)
 	}
 
 	printf("%s: termination is %s\n", argv[0],
-	       hwval & FD_TDCF_TERM_50 ? "on" : "off");
+	       (hwval & FD_TDCF_TERM_50) ? "on" : "off");
 
 	fdelay_close(b);
 	fdelay_exit();

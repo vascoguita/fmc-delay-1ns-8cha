@@ -128,28 +128,32 @@ err_stat_s:
  * The function uses a symbolic link in /dev, created by the local
  * installation procedure.
  */
- struct fdelay_board *fdelay_open_by_lun(int lun)
- {
-   ssize_t ret;
-   char dev_id_str[4];
-   char path_pattern[] = "/dev/fine-delay.%d";
-   char path[sizeof(path_pattern) + 1];
-   int dev_id;
+struct fdelay_board *fdelay_open_by_lun(int lun)
+{
+	ssize_t ret;
+	char dev_id_str[4];
+	char path_pattern[] = "/dev/fine-delay.%d";
+	char path[sizeof(path_pattern) + 1];
+	uint32_t dev_id;
 
-   if (fdelay_is_verbose())
-     fprintf(stderr, "called: %s(lun %i);\n", __func__, lun);
-   ret = snprintf(path, sizeof(path), path_pattern, lun);
-   if (ret < 0 || ret >= sizeof(path)) {
-     errno = EINVAL;
-     return NULL;
-   }
-   ret = readlink(path, dev_id_str, sizeof(dev_id_str));
-   if (sscanf(dev_id_str, "%4x", &dev_id) != 1) {
-     errno = ENODEV;
-     return NULL;
-   }
-   return fdelay_open(dev_id);
- }
+	if (fdelay_is_verbose())
+		fprintf(stderr, "called: %s(lun %i);\n", __func__, lun);
+	ret = snprintf(path, sizeof(path), path_pattern, lun);
+	if (ret < 0 || ret >= sizeof(path)) {
+		errno = EINVAL;
+		return NULL;
+	}
+	ret = readlink(path, dev_id_str, sizeof(dev_id_str));
+	if (ret < 0) {
+		errno = ENODEV;
+		return NULL;
+	}
+	if (sscanf(dev_id_str, "%4"SCNu32, &dev_id) != 1) {
+		errno = ENODEV;
+		return NULL;
+	}
+	return fdelay_open(dev_id);
+}
 
 /**
  * Close an FMC Fine Delay device opened with one of the following functions:

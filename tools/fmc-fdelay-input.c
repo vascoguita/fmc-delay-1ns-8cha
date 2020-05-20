@@ -30,7 +30,7 @@ void dump_input(struct fdelay_time *t, int np, int umode)
 	int i;
 
 	for (i = 0; i < np; i++, t++) {
-		printf("seq %5i: ", t->seq_id);
+		printf("seq %5u: ", t->seq_id);
 		tools_report_time("", t, umode);
 	}
 }

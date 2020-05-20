@@ -13,10 +13,11 @@ DESTDIR ?= /usr/local
 
 GIT_VERSION := $(shell git describe --dirty --long --tags)
 
-CFLAGS += -I../kernel -I../lib -Wno-trigraphs -Wall -Werror -ggdb $(EXTRACFLAGS)
+LIBFD := ../lib
+CFLAGS += -I../kernel -I$(LIBFD) -Wno-trigraphs -Wall -Werror -ggdb $(EXTRACFLAGS)
 CFLAGS += -DGIT_VERSION="\"$(GIT_VERSION)\""
 
-LDFLAGS = -L../lib
+LDFLAGS = -L$(LIBFD)
 LDLIBS = -lfdelay
 
 CC ?= $(CROSS_COMPILE)gcc
@@ -50,4 +51,4 @@ install:
 	install -D $(progs) $(DESTDIR)/bin
 
 cppcheck:
-	$(CPPCHECK) -q -I. -I../kernel -I$(LIBTDC) --suppress=missingIncludeSystem --enable=all *.c *.h
+	$(CPPCHECK) -q -I. -I../kernel -I$(LIBFD) --suppress=missingIncludeSystem --enable=all *.c *.h

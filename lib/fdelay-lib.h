@@ -136,6 +136,7 @@ enum fmctdc_error_numbers {
 #ifdef FDELAY_INTERNAL /* Libray users should ignore what follows */
 #include <unistd.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -162,7 +163,7 @@ static inline int __fdelay_sysfs_get(char *path, uint32_t *resp)
 	if (!f)
 		return -1;
 	errno = 0;
-	if (fscanf(f, "%i", resp) != 1) {
+	if (fscanf(f, "%"SCNu32, resp) != 1) {
 		fclose(f);
 		if (!errno)
 			errno = EINVAL;
@@ -177,7 +178,7 @@ static inline int __fdelay_sysfs_set(char *path, uint32_t *value)
 	char s[16];
 	int fd, ret, len;
 
-	len = sprintf(s, "%i\n", *value);
+	len = sprintf(s, "%"PRIu32"\n", *value);
 	fd = open(path, O_WRONLY);
 	if (fd < 0)
 		return -1;
