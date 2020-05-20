@@ -12,10 +12,9 @@ General Command Line Conventions
 Most tools accept the following command-line options, in a
 consistent way:
 
-``-d <devid>``, ``-i <index>``
+``-d <devid>``
 	Used to select one board among several. See the description
         of *fdelay_open* in :ref:`Initialization and Cleanup<lib_init>`.
-	If no argument is given, the ``first`` board is used (index is 0).
 
 fmc-fdelay-list
 ===============
@@ -24,8 +23,8 @@ The command takes no arguments. It reports the list of available
 boards in the current system:::
 
    spusa# ./tools/fmc-fdelay-list
-   ./tools/fmc-fdelay-list: found 1 board
-   dev_id 0200, /dev/zio/zio-fd-0200, /sys/bus/zio/devices/zio-fd-0200
+     Fine-Delay Device ID 0005
+     Fine-Delay Device ID 0004
 
 
 fmc-fdelay-term
@@ -34,18 +33,16 @@ fmc-fdelay-term
 The command can be used to activate or deactivate the 50 ohm
 termination resistor.
 
-In addition to the ``-i`` or ``-d``
-arguments, mandatory if more than one board is found on the
-host system, the command receives one optional argument, either
-``1`` or ``on`` (activate termination) or ``0`` or ``off``
-(deactivate termination).
+In addition to the ``-d`` argument the command receives one optional
+argument, either ``1`` or ``on`` (activate termination)
+or ``0`` or ``off`` (deactivate termination).
 
 ::
-   spusa# ./tools/fmc-fdelay-term on
+   spusa# ./tools/fmc-fdelay-term -d 0x5 on
    ./tools/fmc-fdelay-term: termination is on
 
 
-If no arguments are passed the termination status is reported back but
+If no optional argument is passed the termination status is reported back but
 not changed.
 
 
@@ -54,12 +51,10 @@ fmc-fdelay-board-time
 
 The command is used to act on the time notion of the *fine-delay* card.
 
-In addition to the ``-i`` or ``-d``
-arguments, mandatory if more than one board is found on the
-host system, the command receives one mandatory argument, that is
-either a command or a floating point number. The number is the
-time, in seconds, to be set in the card; the command is one of
-the following ones:
+In addition to the ``-d`` argument the command receives one mandatory
+argument, that is either a command or a floating point number.
+The number is the time, in seconds, to be set in the card only if running
+with the local oscillator; the command is one of the following ones:
 
 get
 	Read board time and print to *stdout*.
@@ -76,12 +71,13 @@ local
 
 Examples:::
 
-   spusa# ./lib/fdelay-board-time  25.5; ./lib/fdelay-board-time get
+   spusa# ./tools/fmc-fdelay-board-time -d 0x5 25.5
+   spusa# ./tools/fmc-fdelay-board-time -d 0x5 get
    25.504007360
-   spusa# ./lib/fdelay-board-time  get
+   spusa# ./tools/fmc-fdelay-board-time -d 0x5 get
    34.111048968
-   spusa# ./lib/fdelay-board-time  host
-   spusa# ./lib/fdelay-board-time  get
+   spusa# ./tools/fmc-fdelay-board-time -d 0x5 host
+   spusa# ./tools/fmc-fdelay-board-time -d 0x5 get
    1335974946.493415600
 
 
@@ -89,42 +85,36 @@ fmc-fdelay-input
 ================
 
 The tool reports input pulses to stdout.  It receives the
-usual ``-i`` or ``-d`` arguments to select one board, mandatory
-if more than one *fine-delay* card is found.
+usual ``-d`` argument to select one board.
 
 It receives the following options:
 
-
--c <count>
-
+``-c <count>``
     Number of pulses to print. Default (0) means run forever.
 
--n
-
+``-n``
     Nonblocking mode: just print what is pending in the buffer.
 
--f
-
+``-f``
     Floating point: print as a floatingpoint seconds.pico value.
     The default is a human-readable string, where the decimal part
     is split.
 
--r
-
-	Raw output: print the three hardware timestamps, in decimal.
+``-r``
+    Raw output: print the three hardware timestamps, in decimal.
 
 This an example output, reading a pps signal through a 16ns cable:
 
 ::
-   spusa.root# ./tools/fmc-fdelay-input -c 3
+   spusa.root# ./tools/fmc-fdelay-input -d 0x5 -c 3
    seq 10921:     time      11984:000,000,015,328 ps
    seq 10922:     time      11985:000,000,015,410 ps
    seq 10923:     time      11986:000,000,015,248 ps
-   spusa.root# ./tools/fmc-fdelay-input -c 3 -r
+   spusa.root# ./tools/fmc-fdelay-input -d 0x5 -c 3 -r
    seq 10924:      raw   utc      11987,  coarse         1,  frac      3773
    seq 10925:      raw   utc      11988,  coarse         1,  frac      3814
    seq 10926:      raw   utc      11989,  coarse         1,  frac      3794
-   spusa.root# ./tools/fmc-fdelay-input -c 3 -f
+   spusa.root# ./tools/fmc-fdelay-input -d 0x5 -c 3 -f
    seq 10927:     time      11990.000000015328
    seq 10928:     time      11991.000000015410
    seq 10929:     time      11992.000000015410
@@ -186,18 +176,14 @@ options:
 This is, for example, how verbose operation reports the request for a single
 pulse 300ns wide, 2 microseconds into the next second.:::
 
-  spusa.root# ./tools/fmc-fdelay-board-time get; \
-              ./tools/fmc-fdelay-pulse -i 0 -o 1 -m pulse -r 2u -w 300n -c 1 -t -v
+  spusa.root# ./tools/fmc-fdelay-board-time -d 0x5 get; \
+              ./tools/fmc-fdelay-pulse -d 0x5 -o 1 -m pulse -r 2u -w 300n -c 1 -t
   WR Status: disabled.
   Time: 13728.801090400
-  Channel 1, mode pulse, repeat 1
-    start  time      13729:000,002,000,000 ps
-    end    time      13729:000,002,300,000 ps
-    loop   time          0:100,000,000,000 ps
-  Channel 1, mode pulse, repeat 1
-    start   raw   utc      13729,  coarse       250,  frac         0
-    end     raw   utc      13729,  coarse       287,  frac      2048
-    loop    raw   utc          0,  coarse  12500000,  frac         0
+  Channel 1: pulse generator mode
+    start at:       13729:000,002,000,000 ps
+    pulse width:        0:000,000,300,000 ps
+    period:             0:100,000,000,000 ps
 
 
 fmc-fdelay-status
@@ -205,24 +191,17 @@ fmc-fdelay-status
 
 The program reports the current output status of the four channels,
 both in human-readable and raw format.  The receives no arguments
-besides the usual ``-i`` or ``-d``.
+besides the usual ``-d``.::
+
+  spusa.root# ./tools/fmc-fdelay-status -d 0x5
+  Channel 1: pulse generator mode (triggered)
+    start at:       13729:000,002,000,000 ps
+    pulse width:        0:000,000,300,000 ps
+    period:             0:100,000,000,000 ps
+  Channel 2: disabled
+  Channel 3: disabled
+  Channel 4: disabled
 
 Please note that the tool reads back hardware values, which are already
-fixed for calibration delays.  For example, this is the output
-I get after the previously-shown activation command, that was for
-13729 + 2 microseconds:::
-
-  spusa.root# ./tools/fmc-fdelay-status
-  Channel 1, mode already-triggered, repeat 1
-    start  time      13729:000,001,961,814 ps
-    end    time      13729:000,002,261,814 ps
-    loop   time          0:100,000,000,000 ps
-  Channel 1, mode already-triggered, repeat 1
-    start   raw   utc      13729,  coarse       245,  frac       929
-    end     raw   utc      13729,  coarse       282,  frac      2977
-    loop    raw   utc          0,  coarse  12500000,  frac         0
-  [...]
-
-
-The difference in value depends on the ``delay-offset`` value for
-the channel, according to calibration.
+fixed for calibration delays. A difference in value may depends on the
+``delay-offset`` value for the channel, according to calibration.
