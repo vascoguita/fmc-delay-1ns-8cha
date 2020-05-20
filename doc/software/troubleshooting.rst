@@ -11,24 +11,21 @@ make modules_install misbehaves
 The command ``sudo make modules_install`` may place the modules in the wrong
 directory or fail with an error like:::
 
-   make: \*\*\* /lib/modules/2.6.37+/build: No such file or directory.
-
+   make: \*\*\* /lib/modules/3.10/build: No such file or directory.
 
 This happens when you compiled by setting ``LINUX=`` and your
 *sudo* is not propagating the environment to its child processes.
 In this case, you should run this command instead::
 
-   sudo make modules_install  LINUX=$LINUX
-
+   sudo make modules_install LINUX=$LINUX
 
 Version Mismatch
 ================
 
 The *fdelay* library may report a version mismatch like this:::
 
-   spusa# ./lib/fmc-fdelay-board-time  get
-   fdelay_init: version mismatch, lib(1) != drv(2)
-   ./lib/fmc-fdelay-board-time: fdelay_init(): Input/output error
+   spusa# ./tools/fmc-fdelay-board-time  -d 0x5 get
+   Incompatible version driver-library
 
 This reports a difference in the way ZIO attributes are laid out, so user
 space may exchange wrong data in the ZIO control block, or may try to
