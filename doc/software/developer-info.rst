@@ -77,16 +77,16 @@ action that fires hardware access for all current values).
 The device appears in */dev* as a set of char devices:::
 
    spusa# ls -l /dev/zio/*
-   crw------- 1 root root 249,   0 Apr 26 00:26 /dev/zio/zio-fd-0200-0-0-ctrl
-   crw------- 1 root root 249,   1 Apr 26 00:26 /dev/zio/zio-fd-0200-0-0-data
-   crw------- 1 root root 249,  32 Apr 26 00:26 /dev/zio/zio-fd-0200-1-0-ctrl
-   crw------- 1 root root 249,  33 Apr 26 00:26 /dev/zio/zio-fd-0200-1-0-data
-   crw------- 1 root root 249,  64 Apr 26 00:26 /dev/zio/zio-fd-0200-2-0-ctrl
-   crw------- 1 root root 249,  65 Apr 26 00:26 /dev/zio/zio-fd-0200-2-0-data
-   crw------- 1 root root 249,  96 Apr 26 00:26 /dev/zio/zio-fd-0200-3-0-ctrl
-   crw------- 1 root root 249,  97 Apr 26 00:26 /dev/zio/zio-fd-0200-3-0-data
-   crw------- 1 root root 249, 128 Apr 26 00:26 /dev/zio/zio-fd-0200-4-0-ctrl
-   crw------- 1 root root 249, 129 Apr 26 00:26 /dev/zio/zio-fd-0200-4-0-data
+   crw------- 1 root root 249,   0 Apr 26 00:26 /dev/zio/fd-0200-0-0-ctrl
+   crw------- 1 root root 249,   1 Apr 26 00:26 /dev/zio/fd-0200-0-0-data
+   crw------- 1 root root 249,  32 Apr 26 00:26 /dev/zio/fd-0200-1-0-ctrl
+   crw------- 1 root root 249,  33 Apr 26 00:26 /dev/zio/fd-0200-1-0-data
+   crw------- 1 root root 249,  64 Apr 26 00:26 /dev/zio/fd-0200-2-0-ctrl
+   crw------- 1 root root 249,  65 Apr 26 00:26 /dev/zio/fd-0200-2-0-data
+   crw------- 1 root root 249,  96 Apr 26 00:26 /dev/zio/fd-0200-3-0-ctrl
+   crw------- 1 root root 249,  97 Apr 26 00:26 /dev/zio/fd-0200-3-0-data
+   crw------- 1 root root 249, 128 Apr 26 00:26 /dev/zio/fd-0200-4-0-ctrl
+   crw------- 1 root root 249, 129 Apr 26 00:26 /dev/zio/fd-0200-4-0-data
 
 
 The actual pathnames depend on the version of *udev*, and the support
@@ -110,14 +110,15 @@ to be solved differently.
 
 Device (and channel) attributes can be accessed in the proper *sysfs*
 directory. For a card in slot 0 of bus 2 (like shown above), the
-directory is ``/sys/bus/zio/devices/zio-fd-0200``:::
+directory is ``/sys/bus/zio/devices/fd-0200``:::
 
-   spusa# ls -Ff /sys/bus/zio/devices/zio-fd-0200/
-   ./      enable           utc-l        subsystem  fd-ch1/
-   ../     resolution-bits  coarse       power/     fd-ch2/
-   uevent  version          command      driver     fd-ch3/
-   name    utc-h            temperature  fd-input/  fd-ch4/
-
+   spusa# ls -Ff /sys/bus/zio/devices/fd-0200/
+   ./       cset0/  utc-h            fd-ch2@           temperature
+   ../      cset1/  utc-l            fd-ch3@           version
+   name     cset2/  resolution-bits  fd-ch4@           uevent
+   command  cset3/  coarse           enable            fd-input@
+   devname  cset4/  driver@          calibration_data
+   devtype  power/  fd-ch1@          subsystem@
 
 Device Attributes
 -----------------
@@ -131,7 +132,7 @@ driver: when reading *utc-l* and *coarse* you'll get such cached values.
 
 Example:::
 
-   spusa# cd /sys/bus/zio/devices/zio-fd-0200/
+   spusa# cd /sys/bus/zio/devices/fd-0200/
    spusa# cat coarse coarse utc-h coarse
    75136756
    75136756
@@ -149,9 +150,8 @@ last: writing *utc-h* atomically programs the hardware:::
 
 
 The temperature value is scaled by four bits, so you need divide it by
-16 to obtain the value in degrees. In this example:
+16 to obtain the value in degrees. In this example:::
 
-::
    spusa# cat temperature
    1129
 
@@ -162,9 +162,8 @@ If you write 0 to *command*, board time will be
 synchronized to the current Linux clock within one microsecond
 (reading Linux time and writing to the *fine-delay* registers is
 done with interrupts disabled, so the actual synchronization precision
-depends on the speed of your CPU and PCI bus):
+depends on the speed of your CPU and PCI bus):::
 
-::
    spusa# cat utc-h utc-l; echo 0 > command; cat utc-h utc-l; date +%s
    0
    50005
@@ -188,65 +187,27 @@ The following commands are currently supported for the ``command``
 write-only file in *sysfs*:
 
 0 = FD_CMD_HOST_TIME
-	Set board time equal to host time.
+  Set board time equal to host time.
 
 1 = FD_CMD_WR_ENABLE
-	Enable White-Rabbit mode.
+  Enable White-Rabbit mode.
 
 2 = FD_CMD_WR_DISABLE
-	Disable White-Rabbit mode.
+  Disable White-Rabbit mode.
 
 3 = FD_CMD_WR_QUERY
-      Tell the user the status of White-Rabbit mode. This is a hack, as
-      the return value is reported using error codes. Success means
-      White-Rabbit is synchronized.  ``ENODEV`` means WR mode is not supported
-      or inactive, ``EAGAIN```` means it is not synchronized yet.
-      The error is returned to the *write* system call.
+  Tell the user the status of White-Rabbit mode. This is a hack, as
+  the return value is reported using error codes. Success means
+  White-Rabbit is synchronized.  ``ENODEV`` means WR mode is not supported
+  or inactive, ``EAGAIN```` means it is not synchronized yet.
+  The error is returned to the *write* system call.
 
 4 = FD_CMD_DUMP_MCP
-	Force dumping to log messages (using a plain *printk* the
-        GPIO registers in the MCP23S17 device (fixme: is it really needed).
+  Force dumping to log messages (using a plain *printk* the
+  GPIO registers in the MCP23S17 device (fixme: is it really needed).
 
 5 = FD_CMD_PURGE_FIFO
-	Empty the input fifo and reset the sequence number.
-
-Reading Board Time
-------------------
-
-The program *fd-raw-gettime*, part of this package, allows reading
-the current board time using *sysfs* directly:
-
-::
-   spusa# ./tools/fd-raw-gettime ; sleep 1; ./tools/fd-raw-gettime
-   3303.076543536
-   3304.082016080
-
-
-In the example above the time has never been set, so the epoch if FPGA
-load time.
-
-.. note::
-   the tool is bugged as of year 2038 because it assumes utc-h is 0.
-
-Writing Board Time
-------------------
-
-The program *fd-raw-settime*, part of this package, allows setting
-the current board time using *sysfs* directly:
-
-::
-   spusa# ./tools/fd-raw-settime  123; ./tools/fd-raw-gettime
-   123.000541696
-   spusa# ./tools/fd-raw-settime  123 500000000; ./tools/fd-raw-gettime
-   123.500570096
-
-
-.. note::
-   the tool is bugged as of year 2038 because it assumes utc-h is 0.
-
-No tool is there to sync the board to Linux time, because writing
-0 to the *command* attribute is atomic by itself, but there is an
-example program using the official API (see :ref:`Time Management<lib_time>`).
+  Empty the input fifo and reset the sequence number.
 
 The Input cset
 ==============
@@ -290,7 +251,7 @@ is defined in *fine-delay.h* for libraries/applications to use them:::
            FD_ATTR_TDC_USER_OFF,
 
    };
-   /* Names have been chosen so that 0 is the default at load time */
+
    #define FD_TDCF_DISABLE_INPUT	1
    #define FD_TDCF_DISABLE_TSTAMP	2
    #define FD_TDCF_TERM_50		4
@@ -300,11 +261,12 @@ describing the cset:
 
 ::
    spusa# ls -Ff /sys/bus/zio/devices/zio-fd-0200/fd-input/
-   ./      enable           utc-l   chan         power/
-   ../     current_trigger  coarse  flags        trigger/
-   uevent  current_buffer   frac    offset       chan0/
-   name    utc-h            seq     user-offset
-
+   ./    devname  utc-l            offset
+   ../   devtype  current_trigger  uevent
+   seq   chan0/   user-offset      current_buffer
+   chan  flags    coarse           direction
+   frac  power/   enable
+   name  utc-h    trigger/
 
 The timestamp-related values in this file reflect the last stamp that
 has been enqueued to user space (this may be the next event to be
@@ -337,7 +299,7 @@ be used to see low-level details, but please note
 that the programs in ``tools/`` and ``lib/`` in this package are
 in general a better choice to timestamp input pulses.::
 
-   spusa# zio-dump /dev/zio/zio-fd-0200-0-0-*
+   spusa# zio-dump /dev/zio/fd-0200-0-0-*
    Ctrl: version 0.5, trigger user, dev fd, cset 0, chan 0
    Ctrl: seq 1, n 16, size 4, bits 32, flags 01000001 (little-endian)
    Ctrl: stamp 1335737285.312696982 (0)
@@ -383,40 +345,38 @@ This is an example while listening to a software-generated 1kHz signal:
 
 ::
    spusa# ./tools/fd-raw-input -f
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1825.903957552 (delta   0.001007848)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1825.904971384 (delta   0.001013832)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1825.905968648 (delta   0.000997264)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1825.906980376 (delta   0.001011728)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1825.907997128 (delta   0.001016752)
+   /dev/zio/fd-0200-0-0-ctrl:    1825.903957552 (delta   0.001007848)
+   /dev/zio/fd-0200-0-0-ctrl:    1825.904971384 (delta   0.001013832)
+   /dev/zio/fd-0200-0-0-ctrl:    1825.905968648 (delta   0.000997264)
+   /dev/zio/fd-0200-0-0-ctrl:    1825.906980376 (delta   0.001011728)
+   /dev/zio/fd-0200-0-0-ctrl:    1825.907997128 (delta   0.001016752)
 
 
 The tool reports lost events using the sequence number (attribute number 4).
-This is an example using a software-generated burst with a 10us period:
+This is an example using a software-generated burst with a 10us period:::
 
-::
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.385815880 (delta   0.000010024)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.385825832 (delta   0.000009952)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.385835720 (delta   0.000009888)
-   /dev/zio/zio-fd-0200-0-0-ctrl: LOST 2770 events
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.412775304 (delta   0.026939584)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.412784808 (delta   0.000009504)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.412794808 (delta   0.000010000)
-   /dev/zio/zio-fd-0200-0-0-ctrl:    1958.412804184 (delta   0.000009376)
+   /dev/zio/fd-0200-0-0-ctrl:    1958.385815880 (delta   0.000010024)
+   /dev/zio/fd-0200-0-0-ctrl:    1958.385825832 (delta   0.000009952)
+   /dev/zio/fd-0200-0-0-ctrl:    1958.385835720 (delta   0.000009888)
+   /dev/zio/fd-0200-0-0-ctrl: LOST 2770 events
+   /dev/zio/fd-0200-0-0-ctrl:    1958.412775304 (delta   0.026939584)
+   /dev/zio/fd-0200-0-0-ctrl:    1958.412784808 (delta   0.000009504)
+   /dev/zio/fd-0200-0-0-ctrl:    1958.412794808 (delta   0.000010000)
+   /dev/zio/fd-0200-0-0-ctrl:    1958.412804184 (delta   0.000009376)
 
 
 The ``pico`` mode of the program (command line argument ``-p``) is
 used to get input timestamps with picosecond precision. In this mode
 the program doesn't report the ``second`` part of the stamp. This is
 an example run of the program, fed by 1kHz generated from the board
-itself:
+itself:::
 
-::
    spusa.root# ./tools/fd-raw-input -p | head -5
-   /dev/zio/zio-fd-0800-0-0-ctrl: 642705121635
-   /dev/zio/zio-fd-0800-0-0-ctrl: 643705121647 - delta 001000000012
-   /dev/zio/zio-fd-0800-0-0-ctrl: 644705121656 - delta 001000000009
-   /dev/zio/zio-fd-0800-0-0-ctrl: 645705121647 - delta 000999999991
-   /dev/zio/zio-fd-0800-0-0-ctrl: 646705121664 - delta 001000000017
+   /dev/zio/fd-0800-0-0-ctrl: 642705121635
+   /dev/zio/fd-0800-0-0-ctrl: 643705121647 - delta 001000000012
+   /dev/zio/fd-0800-0-0-ctrl: 644705121656 - delta 001000000009
+   /dev/zio/fd-0800-0-0-ctrl: 645705121647 - delta 000999999991
+   /dev/zio/fd-0800-0-0-ctrl: 646705121664 - delta 001000000017
 
 
 If is possible, for diagnostics purposes, to run several modes
@@ -436,15 +396,14 @@ Finally, the program uses two environment variables, if set to any value:
 ``FD_SHOW_TIME`` make the tool report the time difference between
 sequential reads, which is mainly useful to debug the driver workings;
 ``FD_EXPECTED_RATE`` makes the tool report the difference from the
-expected data rate, relative to the first sample collected:
+expected data rate, relative to the first sample collected:::
 
-::
    spusa.root# FD_EXPECTED_RATE=1000000000 ./tools/fd-raw-input -p | head -5
-   /dev/zio/zio-fd-0800-0-0-ctrl: 139705121668
-   /dev/zio/zio-fd-0800-0-0-ctrl: 140705121699 - delta 001000000031 - error  31
-   /dev/zio/zio-fd-0800-0-0-ctrl: 141705121661 - delta 000999999962 - error  -7
-   /dev/zio/zio-fd-0800-0-0-ctrl: 142705121671 - delta 001000000010 - error   3
-   /dev/zio/zio-fd-0800-0-0-ctrl: 143705121689 - delta 001000000018 - error  21
+   /dev/zio/fd-0800-0-0-ctrl: 139705121668
+   /dev/zio/fd-0800-0-0-ctrl: 140705121699 - delta 001000000031 - error  31
+   /dev/zio/fd-0800-0-0-ctrl: 141705121661 - delta 000999999962 - error  -7
+   /dev/zio/fd-0800-0-0-ctrl: 142705121671 - delta 001000000010 - error   3
+   /dev/zio/fd-0800-0-0-ctrl: 143705121689 - delta 001000000018 - error  21
 
 
 Please note that the expected rate is a 32-bit integer, so it is limited
@@ -457,7 +416,7 @@ The program *tools/fd-raw-perf* gives trivial performance figures for
 a train of input pulses. It samples all input events and reports some
 statistics when a burst completes (i.e., no pulse is received for at
 least 300ms):::
-  
+
    spusa#  ./tools/fd-raw-perf
    59729 pulses (0 lost)
       hw: 1000000000ps (1.000000kHz) -- min 999999926 max 1000000089 delta 163
@@ -632,21 +591,17 @@ Thus, the critical points are the following ones:
 
 The number of samples per *zio* block is configured by the "post-samples"
 attribute (or pre-samples, which is usually left as 0 because stamps
-are taken after the trigger event):
+are taken after the trigger event):::
 
-::
   echo 1000 > /sys/bus/zio/devices/fd-0200/fd-input/trigger/post-samples
-
 
 A bigger size for the block means more wasted memory if pulses are
 slow (the block is used almost-empty); a smaller size means more
 overhead and thus a smaller maximum bursts frequency.
 
-The buffer length (number of blocks), can be increased at will:
+The buffer length (number of blocks), can be increased at will:::
 
-::
   echo 1000 > /sys/bus/zio/devices/fd-0200/fd-input/chan0/buffer/max-buffer-len
-
 
 There is nothing against using a very long list of blocks in the
 buffer, if user-space is slow in pulling data: blocks are only
@@ -655,11 +610,9 @@ monitor buffer usage: ``allocated-buffer-len`` (which is always at
 least 1, because one block is always ready to be filled by the next
 interrupt).
 
-Data can be read by user-space simply by reading
+Data can be read by user-space simply by reading::
 
-::
   /dev/zio/fd-0200-0-0-data
-
 
 The file is a continuous stream of samples. Meta-information is
 delivered to another device name: by reading data alone, the
@@ -674,22 +627,17 @@ maybe I can change this).  If the *zio* buffer is overflown,
 sysfs attribute is write-1-to-clear and there's  no other way to
 clear alarms.
 
-In order to see how *zio* blocks flow, you can 
+In order to see how *zio* blocks flow, you can::
 
-::
    ./zio/tools/zio-dump /dev/zio/fd-0200-0-0-*
 
-
 or just *grep* the number of samples in each block, without even
-reading the payload:
+reading the payload:::
 
-::
   ./zio/tools/zio-dump /dev/zio/fd-0200-0-0-* | grep ", n "
 
+You'll get something like this:::
 
-You'll get something like this:
-
-::
    Ctrl: seq 2257, n 26, size 24, bits 32, flags 01000001 (little-endian)
    Ctrl: seq 2258, n 436, size 24, bits 32, flags 01000001 (little-endian)
    Ctrl: seq 2259, n 2684, size 24, bits 32, flags 01000001 (little-endian)
@@ -697,8 +645,6 @@ You'll get something like this:
    [...]
    Ctrl: seq 2268, n 4000, size 24, bits 32, flags 01000001 (little-endian)
    Ctrl: seq 2269, n 854, size 24, bits 32, flags 01000001 (little-endian)
-
-
 
 The log above is 40000 samples streamed at 200kHz into 4000-big
 *zio* blocks.  In the log above, ``n`` is the number of samples in
@@ -779,7 +725,7 @@ from *sysfs*.
 This is the unsorted content of the *sysfs* directory for each
 of the output csets:::
 
-   spusa# ls -fF /sys/bus/zio/devices/zio-fd-0200/fd-ch1
+   spusa# ls -fF /sys/bus/zio/devices/fd-0200/fd-ch1
    ./               mode          end-l         user-offset
    ../              rep           end-coarse    power/
    uevent           start-h       end-fine      trigger/
@@ -813,7 +759,7 @@ attributes.
 The tool acts on channel 1 (the first) by default, but uses the
 environment variable ``CHAN`` if set.  All arguments on the command
 line are passed directly in the attributes.  Thus, it is quite a
-low-level tool. 
+low-level tool.
 
 To help the user, any number that begins with ``+`` is added to the
 current time (in seconds). It is thus recommended to set the card to follow
@@ -831,7 +777,6 @@ utc-h, utc-l, coarse, frac)*, *(stop -- utc-h, utc-l, coarse, frac)*,
 
    spusa# ./tools/fd-raw-settime 0 0; \
           ./tools/fd-raw-output 2 500   0 1 0 0   0 1 62500 0   0 125000 0
- 
 
 The following example sets board time to host time and programs a single
 40us pulse at the beginning of the next second (note use of ``+``)::
@@ -869,20 +814,17 @@ that changing calibration data is only expected to happen at production
 time.
 
 calibration_check
-
     This integer parameter, if not zero, makes the driver dump the binary
     structure of calibration data during initialization.
     It is mainly a debug tool.
 
 calibration_default
-
     This option should only be used by developers. If not zero, it tells
     the driver to ignore
     calibration data found on the EEPROM, thus enacting a build-time
     default (which is most likely wrong for any board).
 
 calibration_load
-
     This parameter is a file name, and it should only be used by developers.
     The name is used to ask the *firmware loader*
     to retrieve a file from ``/lib/firmware``.
@@ -892,7 +834,6 @@ calibration_load
     big-endian.
 
 calibration_save
-
     This option should only be used by developers, and is not supported
     in this release. If you are a developer and need to change the calibration,
     please check the current master branch on the repository, or a later
