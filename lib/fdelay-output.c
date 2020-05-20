@@ -25,6 +25,11 @@
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+/**
+ * Convert pico-seconds into a `struct fdelay_time` data structure
+ * @param[in] pico pico-second to convert
+ * @param[out] time destination data structure
+ */
 void fdelay_pico_to_time(uint64_t *pico, struct fdelay_time *time)
 {
 	uint64_t p = *pico;
@@ -36,6 +41,11 @@ void fdelay_pico_to_time(uint64_t *pico, struct fdelay_time *time)
 	time->frac = p * 4096 / 8000;
 }
 
+/**
+ * Convert a `struct fdelay_time` data structure into pico-seconds
+ * @param[in] time time to convert
+ * @param[out] pico destination variable
+ */
 void fdelay_time_to_pico(struct fdelay_time *time, uint64_t *pico)
 {
 	uint64_t p;
@@ -66,6 +76,13 @@ static  int __fdelay_get_ch_fd(struct __fdelay_board *b,
 	return 0;
 }
 
+/**
+ * Configure an FMC Fine Delay channel to produce a pulse
+ * @param[in] userb device token
+ * @param[in] channel channel number in range [0, 3] ([1,4] on the front-panel)
+ * @param[in] pulse pulse descriptor
+ * @return 0 on success, otherwise -1 and errno is appropriately set
+ */
 int fdelay_config_pulse(struct fdelay_board *userb,
 			       int channel, struct fdelay_pulse *pulse)
 {
@@ -167,7 +184,16 @@ static void fdelay_add_signed_ps(struct fdelay_time *p, signed ps)
 		fdelay_sub_ps(p, -ps);
 }
 
-/* The "pulse_ps" function relies on the previous one */
+/**
+ * Configure an FMC Fine Delay channel to produce a pulse
+ * @param[in] userb device token
+ * @param[in] channel channel number in range [0, 3] ([1,4] on the front-panel)
+ * @param[in] ps pulse descriptor
+ * @return 0 on success, otherwise -1 and errno is appropriately set
+ *
+ * This is a variant of fdelay_config_pulse() using a different pulse
+ * descriptor where pulse width and period are expressed in pico-seconds
+ */
 int fdelay_config_pulse_ps(struct fdelay_board *userb,
 			   int channel, struct fdelay_pulse_ps *ps)
 {
@@ -182,6 +208,13 @@ int fdelay_config_pulse_ps(struct fdelay_board *userb,
 	return fdelay_config_pulse(userb, channel, &p);
 }
 
+/**
+ * Retrieve the current FMC Fine-Delay channel configuration
+ * @param[in] userb device token
+ * @param[in] channel channel number in range [0, 3] ([1,4] on the front-panel)
+ * @param[out] pulse pulse descriptor
+ * @return 0 on success, otherwise -1 and errno is appropriately set
+ */
 int fdelay_get_config_pulse(struct fdelay_board *userb,
 				int channel, struct fdelay_pulse *pulse)
 {
@@ -289,6 +322,16 @@ static void fdelay_subtract_ps(struct fdelay_time *t2,
 	*pico = (int64_t)pico2 - pico1;
 }
 
+/**
+ * Retrieve the current FMC Fine-Delay channel configuration
+ * @param[in] userb device token
+ * @param[in] channel channel number in range [0, 3] ([1,4] on the front-panel)
+ * @param[out] ps pulse descriptor
+ * @return 0 on success, otherwise -1 and errno is appropriately set
+ *
+ * This is a variant of fdelay_get_config_pulse() using a different pulse
+ * descriptor where pulse width and period are expressed in pico-seconds
+ */
 int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 			       int channel, struct fdelay_pulse_ps *ps)
 {
@@ -307,6 +350,14 @@ int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
 
 	return 0;
 }
+
+/**
+ * Retrieve the current FMC Fine-Delay channel configuration
+ * @param[in] userb device token
+ * @param[in] channel channel number in range [0, 3] ([1,4] on the front-panel)
+ * @return 1 if trigger did happen, 0 if trigget did not happen,
+ *         otherwise -1 and errno is appropriately set
+ */
 int fdelay_has_triggered(struct fdelay_board *userb, int channel)
 {
 	__define_board(b, userb);
@@ -318,5 +369,3 @@ int fdelay_has_triggered(struct fdelay_board *userb, int channel)
 		return -1; /* errno already set */
 	return (mode & 0x80) != 0;
 }
-
-

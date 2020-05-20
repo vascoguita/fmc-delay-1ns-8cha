@@ -71,8 +71,22 @@ enum fd_zattr_in_idx {
 	FD_ATTR_TDC__LAST,
 };
 /* Names have been chosen so that 0 is the default at load time */
+
+/**
+ * TDC flag to disable input pulse detection
+ * When disabled time-stamping and delay are impossible
+ */
 #define FD_TDCF_DISABLE_INPUT	1
+
+/**
+ * TDC flag to disable input pulse time-stamping
+ * When disabled time-stamping are impossible, but delay will work
+ */
 #define FD_TDCF_DISABLE_TSTAMP	2
+
+/**
+ * TDC flag to enable a 50Ohm termination
+ */
 #define FD_TDCF_TERM_50		4
 
 /* Output ZIO attributes */

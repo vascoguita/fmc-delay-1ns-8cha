@@ -32,21 +32,29 @@ const char * const libfdelay_zio_version_s = "libfdelay is using zio version: " 
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-/* Init the library: return the number of boards found */
+/**
+ * Initialize the fdelay library. It must be called before doing
+ * anything else.
+ * @return 0 on success, otherwise -1 and errno is appropriately set
+ */
 int fdelay_init(void)
 {
 	return 0;
 }
 
-/* Free and check */
+/**
+ * Release the resources allocated by fdelay_init(). It must be called when
+ * you stop to use this library. Then, you cannot use functions from this
+ * library anymore.
+ */
 void fdelay_exit(void)
 {
 	return ;
 }
 
 /**
- * It opens one specific device. -1 arguments mean "not installed"
- * @param[in] dev_id FMC device id. -1 to ignore it and use only the offset
+ * It opens one specific device.
+ * @param[in] dev_id Fine Delay device id.
  * @return an instance token, otherwise NULL and errno is appripriately set.
  *         ENODEV if the device was not found. EINVAL there is a mismatch with
  *         the arguments
@@ -110,30 +118,45 @@ err_stat_s:
 	return NULL;
 }
 
-/* Open one specific device by logical unit number (CERN/CO-like) */
-struct fdelay_board *fdelay_open_by_lun(int lun)
-{
-	ssize_t ret;
-	char dev_id_str[4];
-	char path_pattern[] = "/dev/fine-delay.%d";
-	char path[sizeof(path_pattern) + 1];
-	int dev_id;
+/**
+ * It opens one specific device using the logical unit number (CERN/CO-like)
+ * @param[in] lun Fine Delay LUN.
+ * @return an instance token, otherwise NULL and errno is appripriately set.
+ *         ENODEV if the device was not found. EINVAL there is a mismatch with
+ *         the arguments
+ *
+ * The function uses a symbolic link in /dev, created by the local
+ * installation procedure.
+ */
+ struct fdelay_board *fdelay_open_by_lun(int lun)
+ {
+   ssize_t ret;
+   char dev_id_str[4];
+   char path_pattern[] = "/dev/fine-delay.%d";
+   char path[sizeof(path_pattern) + 1];
+   int dev_id;
 
-	if (fdelay_is_verbose())
-		fprintf(stderr, "called: %s(lun %i);\n", __func__, lun);
-	ret = snprintf(path, sizeof(path), path_pattern, lun);
-	if (ret < 0 || ret >= sizeof(path)) {
-		errno = EINVAL;
-		return NULL;
-	}
-	ret = readlink(path, dev_id_str, sizeof(dev_id_str));
-	if (sscanf(dev_id_str, "%4x", &dev_id) != 1) {
-		errno = ENODEV;
-		return NULL;
-	}
-	return fdelay_open(dev_id);
-}
+   if (fdelay_is_verbose())
+     fprintf(stderr, "called: %s(lun %i);\n", __func__, lun);
+   ret = snprintf(path, sizeof(path), path_pattern, lun);
+   if (ret < 0 || ret >= sizeof(path)) {
+     errno = EINVAL;
+     return NULL;
+   }
+   ret = readlink(path, dev_id_str, sizeof(dev_id_str));
+   if (sscanf(dev_id_str, "%4x", &dev_id) != 1) {
+     errno = ENODEV;
+     return NULL;
+   }
+   return fdelay_open(dev_id);
+ }
 
+/**
+ * Close an FMC Fine Delay device opened with one of the following functions:
+ * fdelay_open(), fdelay_open_by_lun()
+ * @param[in] userb device token
+ * @return 0 on success, otherwise -1 and errno is appropriately set
+ */
 int fdelay_close(struct fdelay_board *userb)
 {
 	struct __fdelay_board *b = (struct __fdelay_board *)userb;
@@ -151,6 +174,13 @@ int fdelay_close(struct fdelay_board *userb)
 
 }
 
+/**
+ * Enable or disable White-Rabbit time
+ * @param[in] userb device token
+ * @param[in] on 1 to enable, 0 to disable
+ * @return 0 on success, otherwise an errno code.
+ *         ENOTSUP when White-Rabbit is not supported
+ */
 int fdelay_wr_mode(struct fdelay_board *userb, int on)
 {
 	__define_board(b, userb);
@@ -160,6 +190,13 @@ int fdelay_wr_mode(struct fdelay_board *userb, int on)
 		return __fdelay_command(b, FD_CMD_WR_DISABLE);
 }
 
+/**
+ * Check White-Rabbit status
+ * @param[in] userb device token
+ * @return 0 if White-Rabbit is enabled, ENOTSUP when White-Rabbit is
+ *         not supported, ENODEV if White-Rabbit is disabled, ENOLINK if the
+ *         White-Rabbit link is down
+ */
 extern int fdelay_check_wr_mode(struct fdelay_board *userb)
 {
 	__define_board(b, userb);
@@ -168,6 +205,11 @@ extern int fdelay_check_wr_mode(struct fdelay_board *userb)
 	return errno;
 }
 
+/**
+ * Read the FMC Fine Delay temperature
+ * @param[in] userb device token
+ * @return temperature
+ */
 float fdelay_read_temperature(struct fdelay_board *userb)
 {
 	uint32_t t;

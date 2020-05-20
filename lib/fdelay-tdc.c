@@ -29,6 +29,12 @@ static int config_mask =
 	FD_TDCF_DISABLE_TSTAMP |
 	FD_TDCF_TERM_50;
 
+/**
+ * Configure TDC options
+ * @param[in] userb device token
+ * @param[in] flags is a bit-mask of FD_TDCF_* flags
+ * @return 0 on success, otherwise -1 and errno is appropriately set.
+ */
 int fdelay_set_config_tdc(struct fdelay_board *userb, int flags)
 {
 	__define_board(b, userb);
@@ -42,6 +48,12 @@ int fdelay_set_config_tdc(struct fdelay_board *userb, int flags)
 	return fdelay_sysfs_set(b, "fd-input/flags", &val);
 }
 
+/**
+ * Configure TDC options
+ * @param[in] userb device token
+ * @return on success, a bit-mask of FD_TDCF_* flags; otherwise -1 and errno
+ *         is appropriately set.
+ */
 int fdelay_get_config_tdc(struct fdelay_board *userb)
 {
 	__define_board(b, userb);
@@ -63,6 +75,15 @@ static int __fdelay_open_tdc(struct __fdelay_board *b)
 	return b->fdc[0];
 }
 
+/**
+ * Get TDC file descriptor
+ * @param[in] userb device token
+ * @return on success, a valid file descriptor; otherwise -1 and errno
+ *         is appropriately set.
+ *
+ * This returns the file descriptor associated to the TDC device,
+ * so you can *select* or *poll* before calling *fdelay_read*.
+ */
 int fdelay_fileno_tdc(struct fdelay_board *userb)
 {
 	__define_board(b, userb);
@@ -70,7 +91,16 @@ int fdelay_fileno_tdc(struct fdelay_board *userb)
 }
 
 
-/* "read" behaves like the system call and obeys O_NONBLOCK */
+/**
+ * Read TDC timestamps
+ * @param[in] userb device token
+ * @param[out] t buffer for timestamps
+ * @param[in] n maximum number that t can store
+ * @param[in] flags for options: O_NONBLOCK for non blocking read
+ * @return the number of valid timestamps in the buffer, otherwise -1
+ *          and errno is appropriately set. EAGAIN if the driver buffer is
+ *         empty
+ */
 int fdelay_read(struct fdelay_board *userb, struct fdelay_time *t, int n,
 		       int flags)
 {
@@ -122,7 +152,18 @@ int fdelay_read(struct fdelay_board *userb, struct fdelay_time *t, int n,
 	return i;
 }
 
-/* "fread" behaves like stdio: it reads all the samples */
+/**
+ * Read TDC timestamps
+ * @param[in] userb device token
+ * @param[out] t buffer for timestamps
+ * @param[in] n maximum number that t can store
+ * @return the number of valid timestamps in the buffer, otherwise -1
+ *         and errno is appropriately set.
+ *
+ * The function behaves like *fread*: it tries to read all samples,
+ * even if it implies sleeping several times.  Use it only if you are
+ * aware that all the expected pulses will reach you.
+ */
 int fdelay_fread(struct fdelay_board *userb, struct fdelay_time *t, int n)
 {
 	int i, loop;

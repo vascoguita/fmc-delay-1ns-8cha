@@ -28,92 +28,110 @@ enum fmctdc_error_numbers {
 	__FDELAY_ERR_MAX,
 };
 
-/* Convenience macro for converting the physical output connector
-   numbers (as seen on the mezzanine's front panel) to convention used
-   by the drive (0..3). We keep 0..3 indexing to maintain library
-   compatibility. */
+/**
+ * Convert the internal channel number to the one showed on the front-panel
+ */
 #define FDELAY_OUTPUT_HW_TO_USER(out) ((out) + 1)
+
+/**
+ * Convert the channel number showed on the front-panel to the
+ * internal enumeration
+ */
 #define FDELAY_OUTPUT_USER_TO_HW(out) ((out) - 1)
 
-/* Opaque data type used as token */
-struct fdelay_board;
+  /**
+   * Opaque data type used as device token
+   */
+  struct fdelay_board;
 
-struct fdelay_time {
-	uint64_t utc;
-	uint32_t coarse;
-	uint32_t frac;
-	uint32_t seq_id;
-	uint32_t channel;
-};
+  /**
+   * Time descriptor
+   */
+  struct fdelay_time {
+    uint64_t utc; /**< seconds */
+    uint32_t coarse; /**< 8ns step (125MHz clock)*/
+    uint32_t frac; /**< coarse fractional part in 1.953125ps steps */
+    uint32_t seq_id; /**< time-stamp sequence number, used only by the TDC */
+    uint32_t channel; /**< channel number, used only by the TDC
+			 as debug information */
+  };
 
-/* The structure used for pulse generation */
-struct fdelay_pulse {
-	/* FD_OUT_MODE_DISABLED, FD_OUT_MODE_DELAY, FD_OUT_MODE_PULSE */
-	int mode;
-	/* -1 == infinite */
-	int rep;
+  /**
+   * The structure used for pulse generation
+   */
+  struct fdelay_pulse {
+    int mode; /**< pulse mode must be one of the followings:
+		 FD_OUT_MODE_DISABLED, FD_OUT_MODE_DELAY,
+		 FD_OUT_MODE_PULSE */
+    int rep; /**< number of pulse repetitions,
+		maximum 65535 or 0 for infinite */
+    struct fdelay_time start; /**< rasising edge time */
+    struct fdelay_time end; /**< falling edge time */
+    struct fdelay_time loop; /**< period time */
+  };
 
-	struct fdelay_time start;
-	struct fdelay_time end;
-	struct fdelay_time loop;
-};
+  /**
+   * The alternative structure used for pulse generation
+   * (internally converted to the previous one)
+   */
+  struct fdelay_pulse_ps {
+    int mode; /**< pulse mode must be one of the followings:
+		 FD_OUT_MODE_DISABLED, FD_OUT_MODE_DELAY,
+		 FD_OUT_MODE_PULSE */
+    int rep; /**< number of pulse repetitions,
+		maximum 65535 or 0 for infinite */
+    struct fdelay_time start; /**< rasising edge time */
+    uint64_t length; /**< pulse width in pico-seconds */
+    uint64_t period; /**< pulse period in pico-seconds */
+  };
 
-/* An alternative structure, internally converted to the previous one */
-struct fdelay_pulse_ps {
-	int mode;
-	int rep;
-	struct fdelay_time start;
-	uint64_t length;
-	uint64_t period;
-};
+  extern int fdelay_init(void);
+  extern void fdelay_exit(void);
+  extern const char *fdelay_strerror(int err);
 
-/*
- * Please see the manual for the meaning of arguments and return values
- */
+  extern struct fdelay_board *fdelay_open(int dev_id);
+  extern struct fdelay_board *fdelay_open_by_lun(int lun);
+  extern int fdelay_close(struct fdelay_board *);
 
-extern int fdelay_init(void);
-extern void fdelay_exit(void);
-extern const char *fdelay_strerror(int err);
+  extern int fdelay_set_time(struct fdelay_board *b, struct fdelay_time *t);
+  extern int fdelay_get_time(struct fdelay_board *b, struct fdelay_time *t);
+  extern int fdelay_set_host_time(struct fdelay_board *b);
 
-extern struct fdelay_board *fdelay_open(int dev_id);
-extern struct fdelay_board *fdelay_open_by_lun(int lun);
-extern int fdelay_close(struct fdelay_board *);
+  extern int fdelay_set_config_tdc(struct fdelay_board *b, int flags);
+  extern int fdelay_get_config_tdc(struct fdelay_board *b);
 
-extern int fdelay_set_time(struct fdelay_board *b, struct fdelay_time *t);
-extern int fdelay_get_time(struct fdelay_board *b, struct fdelay_time *t);
-extern int fdelay_set_host_time(struct fdelay_board *b);
+  extern int fdelay_fread(struct fdelay_board *b, struct fdelay_time *t, int n);
+  extern int fdelay_fileno_tdc(struct fdelay_board *b);
+  extern int fdelay_read(struct fdelay_board *b, struct fdelay_time *t, int n,
+			 int flags);
 
-extern int fdelay_set_config_tdc(struct fdelay_board *b, int flags);
-extern int fdelay_get_config_tdc(struct fdelay_board *b);
+  extern void fdelay_pico_to_time(uint64_t *pico, struct fdelay_time *time);
+  extern void fdelay_time_to_pico(struct fdelay_time *time, uint64_t *pico);
 
-extern int fdelay_fread(struct fdelay_board *b, struct fdelay_time *t, int n);
-extern int fdelay_fileno_tdc(struct fdelay_board *b);
-extern int fdelay_read(struct fdelay_board *b, struct fdelay_time *t, int n,
-		       int flags);
+  extern int fdelay_config_pulse(struct fdelay_board *b,
+				 int channel, struct fdelay_pulse *pulse);
+  extern int fdelay_config_pulse_ps(struct fdelay_board *b,
+				    int channel, struct fdelay_pulse_ps *ps);
+  extern int fdelay_has_triggered(struct fdelay_board *b, int channel);
 
-extern void fdelay_pico_to_time(uint64_t *pico, struct fdelay_time *time);
-extern void fdelay_time_to_pico(struct fdelay_time *time, uint64_t *pico);
+  extern int fdelay_wr_mode(struct fdelay_board *b, int on);
+  extern int fdelay_check_wr_mode(struct fdelay_board *b);
 
-extern int fdelay_config_pulse(struct fdelay_board *b,
-			       int channel, struct fdelay_pulse *pulse);
-extern int fdelay_config_pulse_ps(struct fdelay_board *b,
-				  int channel, struct fdelay_pulse_ps *ps);
-extern int fdelay_has_triggered(struct fdelay_board *b, int channel);
+  extern float fdelay_read_temperature(struct fdelay_board *b);
 
-extern int fdelay_wr_mode(struct fdelay_board *b, int on);
-extern int fdelay_check_wr_mode(struct fdelay_board *b);
+  extern int fdelay_get_config_pulse(struct fdelay_board *userb,
+				     int channel, struct fdelay_pulse *pulse);
+  extern int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
+					int channel, struct fdelay_pulse_ps *ps);
 
-extern float fdelay_read_temperature(struct fdelay_board *b);
-
-extern int fdelay_get_config_pulse(struct fdelay_board *userb,
-				int channel, struct fdelay_pulse *pulse);
-extern int fdelay_get_config_pulse_ps(struct fdelay_board *userb,
-			       int channel, struct fdelay_pulse_ps *ps);
-
-/* libfmctdc version string */
-extern const char * const libfdelay_version_s;
-/* zio version string used during compilation of libfmctdc */
-extern const char * const libfdelay_zio_version_s;
+  /**
+   * libfmctdc version string
+   */
+  extern const char * const libfdelay_version_s;
+  /**
+   * zio version string used during compilation of libfmctdc
+   */
+  extern const char * const libfdelay_zio_version_s;
 
 #ifdef FDELAY_INTERNAL /* Libray users should ignore what follows */
 #include <unistd.h>

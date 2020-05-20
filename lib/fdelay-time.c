@@ -34,6 +34,14 @@ static char *names[] = {
 	"coarse"
 };
 
+/**
+ * Set board time
+ * @param[in] userb device token
+ * @param[in] t user time
+ * @return 0 on success, otherwise -1 and errno is appropriately set.
+ *
+ * It only uses the fields *utc* and *coarse*.
+ */
 int fdelay_set_time(struct fdelay_board *userb, struct fdelay_time *t)
 {
 	__define_board(b, userb);
@@ -50,6 +58,14 @@ int fdelay_set_time(struct fdelay_board *userb, struct fdelay_time *t)
 	return 0;
 }
 
+/**
+ * Get board time
+ * @param[in] userb device token
+ * @param[out] t board time
+ * @return 0 on success, otherwise -1 and errno is appropriately set.
+ *
+ * It only uses the fields *utc* and *coarse*.
+ */
 int fdelay_get_time(struct fdelay_board *userb, struct fdelay_time *t)
 {
 	__define_board(b, userb);
@@ -66,9 +82,18 @@ int fdelay_get_time(struct fdelay_board *userb, struct fdelay_time *t)
 	return 0;
 }
 
+/**
+ * Set board time to host time
+ * @param[in] userb device token
+ * @return 0 on success, otherwise -1 and errno is appropriately set.
+ *
+ * The precision should be in the order of 1 microsecond, but will drift over
+ * time. This function is only provided to coarsely correlate the board time
+ * with the system time. Relying on system time for synchronizing multiple
+ * *fine-delays* is strongly discouraged.
+ */
 int fdelay_set_host_time(struct fdelay_board *userb)
 {
 	__define_board(b, userb);
 	return __fdelay_command(b, FD_CMD_HOST_TIME);
 }
-

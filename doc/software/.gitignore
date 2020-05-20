@@ -1,1 +1,3 @@
 _build
+.doxystamp
+doxygen-fd-output
