@@ -18,6 +18,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
+#include <inttypes.h>
 #include <sys/time.h>
 #include <sys/select.h>
 #include <sys/types.h>
@@ -98,18 +99,18 @@ void event(uint32_t *a, char *name, int *seq, int modemask, long double *t1,
 		if (delta < 0)
 			delta += 1000LL * 1000 * 1000 * 1000;
 		if (*p1) {
-			printf(" %012lli - delta %012lli", p2, delta);
-			if (expect) {
-				guess += expect;
-				if (guess > 1000LL * 1000 * 1000 * 1000)
-					guess -= 1000LL * 1000 * 1000 * 1000;
-				printf(" - error %6i", (int)(p2 - guess));
-			}
-			putchar('\n');
+		  printf(" %012"PRIu64" - delta %012"PRIu64"", p2, delta);
+		  if (expect) {
+		    guess += expect;
+		    if (guess > 1000LL * 1000 * 1000 * 1000)
+		      guess -= 1000LL * 1000 * 1000 * 1000;
+		    printf(" - error %6i", (int)(p2 - guess));
+		  }
+		  putchar('\n');
 		}
 		else {
-			printf(" %012lli\n", p2);
-			if (expect)
+		  printf(" %012"PRIu64"\n", p2);
+		  if (expect)
 				guess = p2;
 		}
 		*p1 = p2;
@@ -229,8 +230,8 @@ int main(int argc, char **argv)
 			/* Ok, it's there: read and decode */
 			j = read(fd[i], &ctrl, sizeof(ctrl));
 			if (j != sizeof(ctrl)) {
-				fprintf(stderr, "%s: read(): got %i not %i\n",
-					argv[0], j, sizeof(ctrl));
+			  fprintf(stderr, "%s: read(): got %i not %zu\n",
+				  argv[0], j, sizeof(ctrl));
 				exit(1);
 			}
 			attrs = ctrl.attr_channel.ext_val;

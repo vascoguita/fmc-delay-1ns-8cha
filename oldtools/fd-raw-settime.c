@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 			err++;
 	}
 	if (err) {
-		fprintf(stderr, "%s: got %i errors writing %i attributes\n",
+		fprintf(stderr, "%s: got %i errors writing %zu attributes\n",
 			argv[0], err, ARRAY_SIZE(words));
 	}
 	return 0;

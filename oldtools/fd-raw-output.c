@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 	glob("/dev/zio/zio-fd-*-1-0-ctrl", GLOB_APPEND, NULL, &glob_buf);
 
 	if (glob_buf.gl_pathc != 1) {
-		fprintf(stderr, "%s: found %i devices, need 1 only\n",
+		fprintf(stderr, "%s: found %zu devices, need 1 only\n",
 			argv[0], glob_buf.gl_pathc);
 		exit(1);
 	}

@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 			err++;
 	}
 	if (err) {
-		fprintf(stderr, "%s: got %i errors reading %i attributes\n",
+		fprintf(stderr, "%s: got %i errors reading %zu attributes\n",
 			argv[0], err, ARRAY_SIZE(words));
 	}
 	printf("%i.%09li\n", words[1].val, (long)words[2].val * 8);

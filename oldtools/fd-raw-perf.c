@@ -18,6 +18,7 @@
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <sys/time.h>
 #include <sys/select.h>
 #include <sys/types.h>
@@ -69,8 +70,8 @@ static void perf_one(struct fd_perf *p, uint32_t *a /* attrs */)
 	/* count hardware-reported pico */
 	diff = pico - p->pico_prev;
 	if (0) {
-		printf("%lli = %f - %f\n", diff,
-		       pico/1000000.0, p->pico_prev/1000000.0);
+	  printf("%"PRIi64" = %f - %f\n", diff,
+		 pico/1000000.0, p->pico_prev/1000000.0);
 	}
 	if (diff < 0)
 		diff += 1000LL * 1000 * 1000 * 1000;
@@ -107,7 +108,7 @@ static void perf_report_clean(struct fd_perf *p)
 
 
 	printf("%i pulses (%i lost)\n", p->nev, p->lost);
-	printf("   hw: %llips (%fkHz) -- min %lli max %lli delta %lli\n",
+	printf("   hw: %"PRIi64"ps (%fkHz) -- min %"PRIi64" max %"PRIi64" delta %"PRIi64"\n",
 	       p->pico_avg, 1000.0 * 1000 * 1000 / p->pico_avg,
 	       p->pico_min, p->pico_max, p->pico_max - p->pico_min);
 	printf("   sw: %ius (%fkHz) -- min %i max %i delta %i\n",
@@ -208,7 +209,7 @@ int main(int argc, char **argv)
 			/* Ok, it's there: read and decode */
 			j = read(fd[i], &ctrl, sizeof(ctrl));
 			if (j != sizeof(ctrl)) {
-				fprintf(stderr, "%s: read(): got %i not %i\n",
+				fprintf(stderr, "%s: read(): got %i not %zu\n",
 					argv[0], j, sizeof(ctrl));
 				exit(1);
 			}
