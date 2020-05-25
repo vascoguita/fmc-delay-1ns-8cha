@@ -175,7 +175,16 @@ entity spec_fine_delay_top is
     fmc0_prsnt_m2c_n_i : in std_logic;
 
     fmc0_scl_b : inout std_logic;
-    fmc0_sda_b : inout std_logic);
+    fmc0_sda_b : inout std_logic
+
+-- synthesis translate_off
+    ;
+
+    sim_wb_i : in t_wishbone_slave_in;
+    sim_wb_o : out t_wishbone_slave_out
+
+-- synthesis translate_on
+    );
 
 end entity spec_fine_delay_top;
 
@@ -272,9 +281,8 @@ architecture arch of spec_fine_delay_top is
   signal fmc0_wb_ddr_out : t_wishbone_master_data64_out;
 
   -- Interrupts and status
-  signal ddr_wr_fifo_empty  : std_logic;
   signal fmc0_irq           : std_logic;
-  signal irq_vector         : std_logic_vector(4 downto 0);
+  signal irq_vector         : std_logic_vector(0 downto 0);
   signal gn4124_access      : std_logic;
 
 
@@ -296,7 +304,8 @@ architecture arch of spec_fine_delay_top is
   signal fmc0_tdc_start_iodelay_inc                    : std_logic;
   signal fmc0_tdc_start_iodelay_rst                    : std_logic;
   signal fmc0_tdc_start_iodelay_cal                    : std_logic;
-  signal fmc0_tdc_start_iodelay_ce                    : std_logic;
+  signal fmc0_tdc_start_iodelay_ce                     : std_logic;
+  signal fmc0_tdc_start_iodelay_busy                   : std_logic;
 
   
 begin  -- architecture arch
@@ -322,14 +331,16 @@ begin  -- architecture arch
       g_WITH_WR       => TRUE,
       g_WITH_DDR      => FALSE,
       g_APP_OFFSET    => c_METADATA_ADDR,
-      g_NUM_USER_IRQ  => 5,
+      g_NUM_USER_IRQ  => 1,
       g_DPRAM_INITF   => g_WRPC_INITF,
       g_AUX_CLKS      => 1,
       g_FABRIC_IFACE  => plain,
-      g_SIMULATION    => f_int2bool(g_SIMULATION))
+      g_SIMULATION    => f_int2bool(g_SIMULATION),
+      g_sim_bypass_gennum => true)
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
       clk_125m_pllref_n_i => clk_125m_pllref_n_i,
+      clk_aux_i(0) => fmc0_dcm_clk_ref_0,
       gn_rst_n_i          => gn_rst_n_i,
       gn_p2l_clk_n_i      => gn_p2l_clk_n_i,
       gn_p2l_clk_p_i      => gn_p2l_clk_p_i,
@@ -395,11 +406,22 @@ begin  -- architecture arch
       tm_tai_o            => tm_tai,
       tm_cycles_o         => tm_cycles,
       tm_clk_aux_lock_en_i => tm_clk_aux_lock_en,
+      tm_clk_aux_locked_o => tm_clk_aux_locked,
+      
+      tm_dac_value_o       => tm_dac_value,
+      tm_dac_wr_o          => tm_dac_wr,
+
       pps_p_o             => open,
       pps_led_o           => pps_led,
       link_ok_o           => wrabbit_en,
       app_wb_o            => cnx_master_out(c_WB_MASTER_GENNUM),
-      app_wb_i            => cnx_master_in(c_WB_MASTER_GENNUM));
+      app_wb_i            => cnx_master_in(c_WB_MASTER_GENNUM)
+-- synthesis translate_off
+      ,
+      sim_wb_i => sim_wb_i,
+      sim_wb_o => sim_wb_o
+-- synthesis translate_on
+      );
 
   ------------------------------------------------------------------------------
   -- Primary wishbone crossbar
@@ -462,7 +484,8 @@ begin  -- architecture arch
       INC => fmc0_tdc_start_iodelay_inc,
       CE =>  fmc0_tdc_start_iodelay_ce,
       RST =>  fmc0_tdc_start_iodelay_rst,
-      CLK => clk_sys_62m5,
+      CLK => fmc0_dcm_clk_ref_0,
+      BUSY => fmc0_tdc_start_iodelay_busy,
       ODATAIN => '0',
       CAL => fmc0_tdc_start_iodelay_cal,
       T => '1',
@@ -504,6 +527,7 @@ begin  -- architecture arch
       idelay_rst_o => fmc0_tdc_start_iodelay_rst,
       idelay_ce_o => fmc0_tdc_start_iodelay_ce,
       idelay_inc_o => fmc0_tdc_start_iodelay_inc,
+      idelay_busy_i => fmc0_tdc_start_iodelay_busy,
       
       trig_a_i          => fmc0_fd_trig_a_i,
       tdc_cal_pulse_o   => fmc0_fd_tdc_cal_pulse_o,
