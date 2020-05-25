@@ -1,0 +1,225 @@
+\input texinfo    @c -*-texinfo-*-
+%
+% fine-delay.in - main file for the documentation
+%
+%%%%
+
+%------------------------------------------------------------------------------
+%
+%                         NOTE FOR THE UNAWARE USER
+%                         =========================
+%
+%    This file is a texinfo source. It isn't the binary file of some strange
+%    editor of mine. If you want ASCII, you should "make fine-delay.txt".
+%
+%------------------------------------------------------------------------------
+
+%
+% This is not a conventional info file...
+% I use three extra features:
+%   - The '%' as a comment marker, if at beginning of line ("\%" -> "%")
+%   - leading blanks are allowed (this is something I can't live without)
+%   - braces are automatically escaped when they appear in example blocks
+%
+
+@comment %**start of header
+@documentlanguage en
+@documentencoding UTF-8
+@setfilename fine-delay.info
+@settitle fine-delay
+@iftex
+@afourpaper
+@end iftex
+@paragraphindent 3
+@comment %**end of header
+
+@setchapternewpage off
+
+@set update-month September 2013
+
+@finalout
+
+@titlepage
+@title FMC Delay 1ns 4cha Long Term Test Report
+@subtitle September 2013
+@author CERN BE-CO-HT / Tomasz Włostowski
+
+@end titlepage
+@headings single
+
+
+@iftex
+@contents
+@end iftex
+
+@c ##########################################################################
+
+@unnumbered Revision history
+@multitable  @columnfractions .10 .15 .25 .50
+@headitem Revision @tab Date @tab Author @tab Changes
+@item 1.0 @tab 20.09.2013 @tab Tomasz Włostowski @tab Initial version
+@end multitable
+
+
+@page
+
+@node Top
+@chapter Introduction
+
+This report provides a summary of tests performed on a specimen of the Fine Delay (FmcDelay1ns4cha, further abbreviated as FD) card [2].
+The purpose of these tests was to:
+@itemize
+@item Check the stability of the card's operation over a long period of time.
+@item Gather statistics of trigger-to-output delay.
+@end itemize
+
+The report does not cover all possible delay values, as it would be impractical due to very wide delay range (up to 120 seconds) supported by the FD. The VHDL was designed and verified on simulation in such a way that passing the long term test at a single delay setting automatically proves stability for other delay values (test assumes that trigger pulses are  uncorrelated with the card's reference clock).
+
+@chapter Measurements 
+
+@section Setup
+
+The measurement system used is depicted in @ref{fig:meas_system}. It consists of:
+@itemize
+@item Pulse source: a HP 33250A waveform generator (S/N: MY40001267).
+@item Time interval meter: Pendulum CNT-91 (S/N: 205575), measuring the trigger-to-output delay of the FD mezzanine. Only 1 output of the FD was used, as other outputs have an identical structure (and we don't have enough CNT-91's...).
+@item FD mezzanine (version V5-2, S/N: CR000010) under test with a SVEC carrier, hosted in a VME64x crate with a MEN A20 controller.
+@item PC running Linux for data logging and controlling the CNT-91 TDC.
+@item Software for the MEN A20 and the PC for data logging (C program and some Python scripts). Temperature and timestamp data were sent from the VME crate to the PC via a TCP connection.
+@end itemize
+
+
+@float Figure,fig:meas_system
+@center @image{drawings/connection_diagram, 15cm,,,.pdf}
+@caption{Long term measurement setup.}
+@end float
+
+The card's trigger input was fed with 2 microseconds-wide pulses of 3 V amplitude and 100 Hz rate, with 50 Ohm input termination. The card was configured to introduce a 700 ns delay. A low delay value was chosen to eliminate drift of the local oscillator from the results (which in long term could hide random/spurious artifacts such as incorrect FD's TDC timestamps).
+
+For each trigger pulse, the following parameters were recorded:
+@itemize
+@item Trigger-to-output delay, measured with the CNT-91.
+@item Board temperature, measured using the integrated temperature sensor.
+@item TDC timestamp, read by the driver.
+@end itemize
+
+@section Results
+
+The tests consist of two continuous runs, one of 14 days and another of 34.5 days, that is ~48.5 days in total. 
+There was a short gap between the two series caused by reconfiguration of the CERN network that is necerssary 
+for the VME crates to operate (they boot via NFS).
+
+@ref{tbl:summary}, summarizes all the samples gathered. The uncorrected values are based on raw delay 
+measurements taken from the CNT-91. Corrected ones compensate for the worst case error and the jitter of the 
+CNT-91. Corrections assume Gaussian distribution of both FD and CNT-91 jitter.
+
+@float Table,tbl:summary
+@caption{Long term delay statistics.}
+@center
+@multitable  @columnfractions .50 .80
+@headitem Parameter @tab Value
+@item Total samples @tab 419,157,455
+@item Cabling delay @tab 12.7 ns
+@item Average delay @tab 699.94 ns
+@item Uncorrected maximum delay @tab 700.54 ns
+@item Uncorrected minimum delay @tab 699.5 ns
+@item Uncorrected worst case error @tab 0.59 ns
+@item Uncorrected rms jitter @tab 72 ps
+@item CNT-91 maximium delay @tab -0.12 ns
+@item CNT-91 minimium delay @tab 0.12 ns
+@item CNT-91 rms jitter @tab 31 ps
+@item Corrected maximum delay @tab 700.42 ns
+@item Corrected minimum delay @tab 699.62 ns
+@item Corrected worst case error @tab 0.42 ns
+@item Corrected rms jitter @tab 65 ps
+@item Minimum temperature @tab 65 degrees C
+@item Maximum temperature @tab 68 degrees C
+@end multitable
+@end float
+
+Short-term stability was characterized by picking a 1-minute long averaging window. The results are presented in @ref{tbl:summary_notemp}.
+
+@float Table,tbl:summary_notemp
+@caption{Short term delay statistics.}
+@center
+@multitable  @columnfractions .50 .80
+
+@headitem Parameter @tab Value
+@item Number of samples @tab 6000
+@item Average delay @tab 699.93 ns
+@item Maximum delay @tab 700.28 ns
+@item Minimum delay @tab 699.62 ns
+@item Worst case error (wrs to the average delay) @tab 300 ps
+@item Typical ACAM rms jiitter @tab 41 ps
+@item Delay line rms jitter @tab 10 ps
+@item Theoretical rms jitter 42 ps
+@item Measured & corrected rms jitter @tab 57 ps
+@end multitable
+@end float
+
+The plot on Figure @ref{fig:plot_average} visualizes the short term average, minimum and maximum delay values. 
+
+@float Figure,fig:plot_average
+@center @image{drawings/plot_average, 14cm,,,.pdf}
+@caption{Average, minimum and maximum trigger-to-output delay (sliding average with a 1-minute window).}
+@end float
+
+During the entire test, 3 events outside the specified range were discovered:
+@itemize
+@item sample 114714751: 697.67 ns (-2.33 ns error)
+@item sample 391199777: 700.86 ns (0.86 ns error)
+@item sample 406143035: 702.16 ns (2.16 ns error)
+@end itemize
+
+We attribute these errors to the ACAM TDC [6], as they exist both in the timestamps read out by the driver (the input signal is periodic) and in the measured delays. Similar events have been observed
+for the FmcTdc card [7] and in older versions of the FD firmware, where the TDC works in a different mode (respectively, I- and R-modes).
+
+To our knowledge, this test is the first public, long term stability test of the ACAM TDC-GPX chip. Given the size of the statistics data, 3 out of 420 million events are extremely rare (below 7 sigma threshold) and do not exceed
+2.5 ns. The typical applications advertised for this chip, such as PET tomography, spectroscopy of laser rangefinders are not concerned by such a low error rate. 
+
+@page
+The plot in @ref{fig:jitter_histogram} shows the histogram of the jitter in the measured delay values. It resembles a gaussian shape. Note that certain bins are empty due to discrete nature of both the FD and the CNT-91.
+
+@float Figure,fig:jitter_histogram
+@center @image{drawings/jitter_histogram, 14cm,,,.pdf}
+@caption{Histogram of trigger-to-output jitter.}
+@end float
+
+@chapter Summary
+
+@b{Final results have confirmed long term stability and compliance of the card with the specification}:
+@itemize
+@item Absolute delay accuracy is better than 1 ns,
+@item Input-to-output rms jitter is better than 100 ps. 
+@end itemize
+
+Further testing with a climatic chamber could be performed to determine the effects of temperature on the jitter and accuracy, and allow the software to compensate for them, if needed.
+
+@chapter References 
+
+@itemize
+@item [1] Official schematics and PCB design (CERN EDMS)
+
+@url{https://edms.cern.ch/nav/EDA-02267-V5-1}
+@item [2] Fine Delay hardware homepage & Wiki
+
+@url{http://www.ohwr.org/projects/fmc-delay-1ns-8cha}
+@item [3] Official user's manual
+
+@url{http://www.ohwr.org/documents/179}
+@item [4] SVEC FMC Carrier project
+
+@url{http://ohwr.org/projects/svec}
+@item [5] Pendulum CNT-91 TDC/Frequency meter
+
+@url{http://www.spectracomcorp.com/ProductsServices/TestandMeasurement/FrequencyAnalyzersCounters/CNT9191RTimerCounterAnalyzerCalibrator/tabid/1283/Default.aspx, @code{http://spectracomcorp.com/[...]}}
+@item [6] Acam TDC-GPX TDC chip
+
+@url{http://www.acam.de/products/time-to-digital-converter/tdc-gpx}
+@item [7] FmcTdc1ns5cha project
+
+@url{http://www.ohwr.org/projects/fmc-tdc}
+@end itemize
+
+
+@bye
