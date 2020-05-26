@@ -2,7 +2,7 @@
 \#*
 .\#*
 *.*~
-hdl/ip_cores/*
+ip_cores/*
 modelsim.ini
 *.wlf
 *.vstf
@@ -10,3 +10,12 @@ work
 *.bak
 syn/*
 transcript
+*.orig
+*#
+*~
+*.out
+*.bk
+transcript
+*.wlf
+*.ram
+*.bmp
