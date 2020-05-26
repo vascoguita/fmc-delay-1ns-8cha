@@ -1,0 +1,13 @@
+*.o
+*.ko
+*~
+*.mod.c
+/.tmp_versions
+.*cmd
+modules.order
+Module.symvers
+Makefile.specific
+*.tmp
+GTAGS
+GPATH
+GRTAGS

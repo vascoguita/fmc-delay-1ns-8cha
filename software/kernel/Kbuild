@@ -1,0 +1,39 @@
+
+KBUILD_EXTRA_SYMBOLS += $(ZIO_EXTRA_SYMBOLS-y)
+KBUILD_EXTRA_SYMBOLS += $(FMC_EXTRA_SYMBOLS-y)
+
+
+ccflags-y += -DVERSION=\"$(VERSION)\"
+ccflags-y += -I$(src)
+ccflags-y += -I$(ZIO_ABS)/include
+ccflags-y += -I$(FMC_ABS)/include
+
+# Extract ZIO minimum compatible version
+ccflags-y += -D__ZIO_MIN_MAJOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 1 | cut -d '.' -f 1 | tr -d 'v'; )
+ccflags-y += -D__ZIO_MIN_MINOR_VERSION=$(shell echo $(ZIO_VERSION) | cut -d '-' -f 1 | cut -d '.' -f 2; )
+
+# add versions of supermodule. It is useful when fine-delay-sw is included as sub-module
+# of a bigger project that we want to track
+ifdef CONFIG_SUPER_REPO
+ifdef CONFIG_SUPER_REPO_VERSION
+SUBMODULE_VERSIONS += MODULE_INFO(version_$(CONFIG_SUPER_REPO),\"$(CONFIG_SUPER_REPO_VERSION)\");
+endif
+endif
+# add versions of used submodules
+SUBMODULE_VERSIONS += MODULE_INFO(version_zio,\"$(ZIO_VERSION)\");
+
+ccflags-y += -DADDITIONAL_VERSIONS="$(SUBMODULE_VERSIONS)"
+
+subdirs-ccflags-y = $(ccflags-y)
+
+obj-m := fmc-fine-delay.o
+obj-m += fmc-fine-delay-spec.o
+obj-m += fmc-fine-delay-svec.o
+
+fmc-fine-delay-objs	=  fd-zio.o fd-irq.o fd-core.o
+fmc-fine-delay-objs	+= onewire.o spi.o gpio.o
+fmc-fine-delay-objs	+= acam.o calibrate.o pll.o time.o
+fmc-fine-delay-objs	+= calibration.o
+
+fmc-fine-delay-spec-objs := fmc-fine-delay-spec-core.o
+fmc-fine-delay-svec-objs := fmc-fine-delay-svec-core.o

@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: CC0-1.0
+#
+# SPDX-FileCopyrightText: 2020 CERN
+
+PROJECT_NAME           = "Fmc Fine Delay"
+PROJECT_NUMBER         = $(GIT_VERSION)
+PROJECT_BRIEF          = "Fmc Fine Delay"
+PROJECT_LOGO           =
+OUTPUT_DIRECTORY       = doxygen-fd-output
+CREATE_SUBDIRS         = YES
+TAB_SIZE               = 8
+OPTIMIZE_OUTPUT_FOR_C  = YES
+
+EXTRACT_STATIC         = YES
+CASE_SENSE_NAMES       = YES
+
+WARN_NO_PARAMDOC       = YES
+WARN_IF_UNDOCUMENTED   = NO
+
+INPUT                  = $(DOXINPUT)
+RECURSIVE              = YES
+EXCLUDE                = $(DOXEXCL)
+
+GENERATE_HTML          = NO
+GENERATE_LATEX         = NO
+GENERATE_XML           = YES

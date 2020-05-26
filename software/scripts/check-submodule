@@ -1,0 +1,47 @@
+#!/bin/bash
+
+if [ $# -gt 2 -o $# -lt 1 ]; then
+    echo "Use: \"$0 <repo-name> <user-provided-path>\" >& 2"
+    echo "Example:  \"$0 spec-sw $SPEC_SW\" >& 2"
+    exit 1
+fi
+repo_name=$1
+repo_path=$2
+
+# User-provided takes precedence
+if [ "$repo_path" != "" ]; then
+	echo "Submodule \"$repo_name\": using provided path \"$repo_path\"" >&2
+	echo $(readlink -f $repo_path)
+	exit 0
+fi
+
+# If this project and the other project are both submodules, pick ../<repo>
+# Otherwise, pick subdirectory of current project
+
+if [ ! -f ../.gitmodules ]; then
+    # dot-dot has no submodules, pick subdir
+    echo "Submodule \"$repo_name\": using local copy" >&2
+    echo $(readlink -f $repo_name)
+    exit 0
+fi
+
+this_dir=$(basename $(/bin/pwd))
+
+if ! grep "submodule \"$this_dir\"" ../.gitmodules > /dev/null; then
+    # we are not a submodule of dot-dot
+    echo "Submodule \"$repo_name\": using local copy" >&2
+    echo $(readlink -f $repo_name)
+    exit 0
+fi
+
+if ! grep "submodule \"$repo_name\"" ../.gitmodules > /dev/null; then
+    # our repo is not a submodule of dot-dot
+    echo $FMC_SUBDIR
+    echo "Submodule \"$repo_name\": using local copy" >&2
+    echo $(readlink -f $repo_name)
+    exit 0
+fi
+
+echo "Submodule \"$repo_name\": using copy in parent directory" >&2
+echo $(readlink -f ../$repo_name)
+exit 0
