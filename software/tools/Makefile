@@ -35,7 +35,7 @@ CPPCHECK ?= cppcheck
 all modules: $(progs) fmc-fdelay-calibration
 
 clean:
-	rm -f $(progs) *.o *~
+	rm -f $(progs) fmc-fdelay-calibration *.o *~
 
 COMMON_SRCS = tools-util.c
 
@@ -48,6 +48,7 @@ modules_install:
 
 install:
 	install -d $(DESTDIR)/bin
+	install -D fmc-fdelay-calibration $(DESTDIR)/bin
 	install -D $(progs) $(DESTDIR)/bin
 
 cppcheck:
