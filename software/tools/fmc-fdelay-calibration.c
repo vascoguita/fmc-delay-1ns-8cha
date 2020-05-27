@@ -18,6 +18,8 @@
 
 #include <fine-delay.h>
 
+char git_version[] = "git version: " GIT_VERSION;
+
 static const char program_name[] = "fau-calibration";
 static char options[] = "hf:o:D:b";
 static const char help_msg[] =
@@ -34,6 +36,7 @@ static const char help_msg[] =
 	"General options:\n"
 	"-h                 Print this message\n"
 	"-b                 Show Calibration in binary form \n"
+	"-V                 Show tool version \n"
 	"\n"
 	"Read options:\n"
 	"-f                 Source file where to read calibration data from\n"
@@ -41,6 +44,11 @@ static const char help_msg[] =
 	"Write options:\n"
 	"-D                 FMC FDelay Target Device ID\n"
 	"\n";
+
+static inline void fmc_fdelay_calibration_version(void)
+{
+	printf("git_version: %s\n", git_version);
+}
 
 /**
  * Read calibration data from file
@@ -185,6 +193,9 @@ int main(int argc, char *argv[])
 		case 'b':
 			show_bin = 1;
 			break;
+		case 'V':
+			fmc_fdelay_calibration_version();
+			exit(EXIT_SUCCESS);
 		}
 	}
 
