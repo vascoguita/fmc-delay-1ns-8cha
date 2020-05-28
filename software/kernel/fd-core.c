@@ -306,6 +306,8 @@ int fd_probe(struct platform_device *pdev)
 		}
 	}
 
+	fd_writel(fd, 0, FD_REG_IODELAY_ADJ);
+
 	/* Finally, enable the input emgine */
 	ret = fd_irq_init(fd);
 	if (ret < 0)
