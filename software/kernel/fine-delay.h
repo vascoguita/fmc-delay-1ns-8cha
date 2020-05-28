@@ -247,6 +247,9 @@ struct fd_dev {
 	int32_t tdc_user_offset;
 	int32_t ch_user_offset[4];
 	int32_t tdc_flags;
+
+	struct dentry *dbg_dir;
+	struct dentry *dbg_reg_spi_pll;
 };
 
 /* We act on flags using atomic ops, so flag is the number, not the mask */
@@ -424,5 +427,8 @@ extern void fd_spec_exit(void);
 extern int fd_calib_init(struct fd_dev *fd);
 extern void fd_calib_exit(struct fd_dev *fd);
 extern struct bin_attribute dev_attr_calibration;
+
+extern int fd_debug_init(struct fd_dev *fd);
+extern void fd_debug_exit(struct fd_dev *fd);
 #endif /* __KERNEL__ */
 #endif /* __FINE_DELAY_H__ */

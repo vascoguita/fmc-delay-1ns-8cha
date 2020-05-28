@@ -317,6 +317,8 @@ int fd_probe(struct platform_device *pdev)
 	for (ch = 1; ch <= FD_CH_NUMBER; ch++)
 		fd_gpio_set(fd, FD_GPIO_OUTPUT_EN(ch));
 
+	fd_debug_init(fd);
+
 	return 0;
 
 err:
@@ -347,6 +349,7 @@ int fd_remove(struct platform_device *pdev)
 	if (!test_bit(FD_FLAG_INITED, &fd->flags)) /* FIXME: ditch this */
 		return 0; /* No init, no exit */
 
+	fd_debug_exit(fd);
 	fd_irq_exit(fd);
 	while (--i >= 0) {
 		m = mods + i;
