@@ -1,7 +1,7 @@
 `ifndef __TIMESTAMP_SVH
  `define __TIMESTAMP_SVH
 
-`include "wb/simdrv_defs.svh"
+`include "simdrv_defs.svh"
 
 class Timestamp;
    uint64_t utc;

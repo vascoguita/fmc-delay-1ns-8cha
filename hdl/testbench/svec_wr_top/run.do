@@ -1,4 +1,4 @@
-vlog -sv main.sv +incdir+. +incdir+../../include/wb +incdir+../../include/vme64x_bfm +incdir+../../include
+#vlog -sv main.sv +incdir+. +incdir+../../include/wb +incdir+../../include/vme64x_bfm +incdir+../../include
 vsim -t 1ps work.main -novopt -L unisim
 
 set StdArithNoWarnings 1

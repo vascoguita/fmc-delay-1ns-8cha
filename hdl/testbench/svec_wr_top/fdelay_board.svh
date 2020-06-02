@@ -6,8 +6,8 @@
 `include "jittery_delay.svh"
 `include "mc100ep195.vh"
 
-`include "wb/simdrv_defs.svh"
-`include "wb/if_wb_master.svh"
+`include "simdrv_defs.svh"
+`include "if_wb_master.svh"
 
 `timescale 10fs/10fs
 

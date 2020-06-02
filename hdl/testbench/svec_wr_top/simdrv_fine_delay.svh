@@ -1,7 +1,7 @@
 `include "regs/fd_main_regs.vh"
 `include "regs/fd_channel_regs.vh"
 
-`include "wb/simdrv_defs.svh"
+`include "simdrv_defs.svh"
 `include "timestamp.svh"
 
 const int SPI_PLL  = 0;

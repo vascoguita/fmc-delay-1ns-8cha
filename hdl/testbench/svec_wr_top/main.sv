@@ -142,6 +142,13 @@ module main;
       .fmc(I_fmc0.board)
       );
 
+   fdelay_board U_Board1
+     (
+      .trig_i(trig0),
+      .out_o(),
+      .fmc(I_fmc1.board)
+      );
+
    reg out0_delayed=0;
 
    always@(out0[0]) out0_delayed <= #10ps out0[0];
@@ -177,12 +184,26 @@ module main;
       init_vme64x_core(acc);
       acc_casted.set_default_xfer_size(A32|SINGLE|D32);
 
-      
+      $error("Init driver");
       
       drv0 = new(acc, 'h80010000);
       drv0.init();
       drv1 = new(acc, 'h80020000);
       drv1.init();
+
+      $error("set idelay0");
+      acc.write('h80010080, 10);
+      #20us;
+
+      $error("set idelay1");
+      
+      acc.write('h80020080, 10);
+      #20us;
+
+      $stop;
+      
+      
+      
 
      drv0.set_idelay_taps(5);
       
