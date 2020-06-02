@@ -368,8 +368,8 @@ architecture rtl of fine_delay_core is
 
   signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
 
-  signal iodelay_ntaps : std_logic_vector(5 downto 0);
-  signal iodelay_cnt : unsigned(5 downto 0);
+  signal iodelay_ntaps : std_logic_vector(7 downto 0);
+  signal iodelay_cnt : unsigned(7 downto 0);
   signal iodelay_div : unsigned(6 downto 0);
   signal iodelay_tick : std_logic;
   signal iodelay_cal_done : std_logic;

@@ -1065,7 +1065,7 @@ peripheral {
 				name = "Number of delay line taps.";
 				prefix = "N_TAPS";
 				type = SLV;
-				size = 6;
+				size = 8;
 				access_bus = READ_WRITE;
 				access_dev = READ_WRITE;
 				load = LOAD_EXT;
