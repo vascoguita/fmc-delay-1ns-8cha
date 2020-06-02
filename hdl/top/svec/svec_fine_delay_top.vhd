@@ -599,7 +599,7 @@ begin  -- architecture arch
   ddr0_pll_reset <= not fmc0_fd_pll_status_i;
   fd0_pll_status <= fmc0_fd_pll_status_i and ddr0_pll_locked;
 
-  U_FineDelay_Core0 : fine_delay_core
+  U_FineDelay_Core0 : entity work.fine_delay_core
     generic map (
       g_with_wr_core        => true,
       g_simulation          => f_int2bool(g_simulation),
@@ -666,6 +666,7 @@ begin  -- architecture arch
       idelay_rst_o => fd0_tdc_start_iodelay_rst,
       idelay_ce_o => fd0_tdc_start_iodelay_ce,
       idelay_inc_o => fd0_tdc_start_iodelay_inc,
+      idelay_busy_i => '0',
             
       wb_adr_i   => cnx_slave_in(c_WB_SLAVE_FD0).adr,
       wb_dat_i   => cnx_slave_in(c_WB_SLAVE_FD0).dat,
@@ -739,7 +740,7 @@ begin  -- architecture arch
   ddr1_pll_reset <= not fmc1_fd_pll_status_i;
   fd1_pll_status <= fmc1_fd_pll_status_i and ddr1_pll_locked;
 
-  U_FineDelay_Core1 : fine_delay_core
+  U_FineDelay_Core1 : entity work.fine_delay_core
     generic map (
       g_with_wr_core        => true,
       g_simulation          => f_int2bool(g_simulation),
@@ -807,6 +808,7 @@ begin  -- architecture arch
       idelay_rst_o => fd1_tdc_start_iodelay_rst,
       idelay_ce_o => fd1_tdc_start_iodelay_ce,
       idelay_inc_o => fd1_tdc_start_iodelay_inc,
+      idelay_busy_i => '0',
       
       wb_adr_i   => cnx_slave_in(c_WB_SLAVE_FD1).adr,
       wb_dat_i   => cnx_slave_in(c_WB_SLAVE_FD1).dat,
