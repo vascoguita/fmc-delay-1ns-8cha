@@ -6,6 +6,13 @@
 Changelog
 =========
 
+3.0.1 - 2020-06-04
+==================
+
+Changed
+-------
+- sw: version reporting in sysfs include the full output from 'git describe'
+
 3.0.0 - 2020-06-02
 ==================
 
