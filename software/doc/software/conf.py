@@ -60,3 +60,9 @@ breathe_projects = {
 }
 
 breathe_default_project = "fine-delay"
+
+latex_documents = [
+    (master_doc, 'fmc-fine-delay.tex', project,
+     author.replace(', ', '\\and ').replace(' and ', '\\and and '),
+     'manual'),
+]
