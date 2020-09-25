@@ -28,3 +28,6 @@ modules_install: TARGET = modules_install
 
 $(DIRS):
 	$(MAKE) -C $@ $(TARGET)
+
+cppcheck:
+	for d in $(DIRS); do $(MAKE) -C $$d cppcheck || exit 1; done

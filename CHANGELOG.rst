@@ -6,6 +6,17 @@
 Changelog
 =========
 
+3.0.2 - 2020-09-25
+==================
+
+Added
+-----
+- bld: cppcheck target for software
+
+Fixed
+-----
+- sw: SVEC, load device driver instance only if the mezzanine is present.
+
 3.0.1 - 2020-06-04
 ==================
 

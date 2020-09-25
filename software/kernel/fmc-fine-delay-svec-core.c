@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/mfd/core.h>
+#include <linux/fmc.h>
 
 enum fd_svec_dev_offsets {
 	FD_SVEC_FDT1_MEM_START = 0x0000E000,
@@ -21,7 +22,7 @@ enum svec_fpga_mfd_devs_enum {
 	FD_SVEC_MFD_FDT2,
 };
 
-static struct resource fd_svec_fdt1_res[] = {
+static struct resource fd_svec_fdt_res1[] = {
 	{
 		.name = "fmc-fdelay-tdc-mem.1",
 		.flags = IORESOURCE_MEM,
@@ -34,7 +35,7 @@ static struct resource fd_svec_fdt1_res[] = {
 		.end = 0,
 	},
 };
-static struct resource fd_svec_fdt2_res[] = {
+static struct resource fd_svec_fdt_res2[] = {
 	{
 		.name = "fmc-fdelay-tdc-mem.2",
 		.flags = IORESOURCE_MEM,
@@ -48,28 +49,39 @@ static struct resource fd_svec_fdt2_res[] = {
 	},
 };
 
-static const struct mfd_cell fd_svec_mfd_devs[] = {
-	[FD_SVEC_MFD_FDT1] = {
-		.name = "fmc-fdelay-tdc",
-		.platform_data = NULL,
-		.pdata_size = 0,
-		.num_resources = ARRAY_SIZE(fd_svec_fdt1_res),
-		.resources = fd_svec_fdt1_res,
-	},
-	[FD_SVEC_MFD_FDT2] = {
-		.name = "fmc-fdelay-tdc",
-		.platform_data = NULL,
-		.pdata_size = 0,
-		.num_resources = ARRAY_SIZE(fd_svec_fdt2_res),
-		.resources = fd_svec_fdt2_res,
-	},
+#define MFD_DEL(_n)                                               \
+	{                                                         \
+		.name = "fmc-fdelay-tdc",                         \
+		.platform_data = NULL,                            \
+		.pdata_size = 0,                                  \
+		.num_resources = ARRAY_SIZE(fd_svec_fdt_res##_n), \
+		.resources = fd_svec_fdt_res##_n,                 \
+	}
+
+static const struct mfd_cell fd_svec_mfd_devs1[] = {
+	MFD_DEL(1),
+};
+static const struct mfd_cell fd_svec_mfd_devs2[] = {
+	MFD_DEL(2),
+};
+static const struct mfd_cell fd_svec_mfd_devs3[] = {
+	MFD_DEL(1),
+	MFD_DEL(2),
 };
 
+static const struct mfd_cell *fd_svec_mfd_devs[] = {
+	fd_svec_mfd_devs1,
+	fd_svec_mfd_devs2,
+	fd_svec_mfd_devs3,
+};
 
 static int fd_svec_probe(struct platform_device *pdev)
 {
 	struct resource *rmem;
+	int idev = 0;
+	int ndev;
 	int irq;
+	int i;
 
 	rmem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!rmem) {
@@ -83,15 +95,39 @@ static int fd_svec_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	for (i = 1; i <= 2; ++i) {
+		struct fmc_slot *slot = fmc_slot_get(pdev->dev.parent, i);
+		int present;
+
+                if (IS_ERR(slot)) {
+			dev_err(&pdev->dev,
+				"Can't find FMC slot %d err: %ld\n",
+				i, PTR_ERR(slot));
+			return PTR_ERR(slot);
+		}
+
+		present = fmc_slot_present(slot);
+		fmc_slot_put(slot);
+		dev_dbg(&pdev->dev, "FMC slot: %d, present: %d\n",
+			i, present);
+		if (present)
+			idev |= BIT(i - 1);
+	}
+
+	if (idev == 0)
+		return -ENODEV;
+	idev--;
+
 	/*
 	 * We know that this design uses the HTVIC IRQ controller.
 	 * This IRQ controller has a linear mapping, so it is enough
 	 * to give the first one as input
 	 */
+	ndev = 1 + !!(idev & 0x2);
+	dev_dbg(&pdev->dev, "Found %d, point to mfd_cell %d\n", ndev, idev);
 
 	return mfd_add_devices(&pdev->dev, PLATFORM_DEVID_AUTO,
-			       fd_svec_mfd_devs,
-			       ARRAY_SIZE(fd_svec_mfd_devs),
+			       fd_svec_mfd_devs[idev], ndev,
 			       rmem, irq, NULL);
 }
 

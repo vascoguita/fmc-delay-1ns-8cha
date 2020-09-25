@@ -19,7 +19,7 @@
 
 project = 'Fmc Fine-Delay Software'
 copyright = '2020, Alessandro Rubini'
-author = 'Alessandro Rubini <rubini@gnudd.com>, Tomasz Wlostowski <Tomasz.Wlostowski@cern.ch>'
+author = 'Alessandro Rubini <rubini@gnudd.com>, Tomasz Wlostowski <Tomasz.Wlostowski@cern.ch>, Federico Vaga <federico.vaga@cern.ch>'
 
 
 # -- General configuration ---------------------------------------------------
@@ -60,3 +60,9 @@ breathe_projects = {
 }
 
 breathe_default_project = "fine-delay"
+
+latex_documents = [
+    (master_doc, 'fmc-fine-delay.tex', project,
+     author.replace(', ', '\\and ').replace(' and ', '\\and and '),
+     'manual'),
+]

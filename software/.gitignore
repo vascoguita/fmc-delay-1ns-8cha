@@ -11,3 +11,4 @@ Makefile.specific
 GTAGS
 GPATH
 GRTAGS
+compile_commands.json
