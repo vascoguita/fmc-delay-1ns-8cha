@@ -890,6 +890,7 @@ int fd_zio_init(struct fd_dev *fd)
 	/* Mandatory fields */
 	fd->hwzdev->owner = THIS_MODULE;
 	fd->hwzdev->priv_d = fd;
+	fd->hwzdev->head.dev.parent = &fd->pdev->dev;
 
 	err = zio_register_device(fd->hwzdev, "fd", fd->pdev->id);
 	if (err) {
