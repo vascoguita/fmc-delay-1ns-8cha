@@ -6,6 +6,15 @@
 Changelog
 =========
 
+3.0.3 - 2020-10-07
+==================
+
+Changed
+-------
+- drv: ZIO device parent is, correctly, the Fine-Delay platform
+  device. Before it did not have any parent so this change should not
+  break anything.
+
 3.0.2 - 2020-09-25
 ==================
 
