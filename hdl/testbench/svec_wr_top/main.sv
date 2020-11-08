@@ -105,7 +105,6 @@ module main;
    `DECLARE_VME_BUFFERS(VME.slave);
 
    svec_top #(
-              .g_with_wr_phy(0),
               .g_simulation(1)
               ) DUT (
 		 .clk_125m_pllref_p_i(clk_125m),
@@ -116,7 +115,7 @@ module main;
                 
 		 .rst_n_i(rst_n),
                  
-		 `WIRE_VME_PINS(8),
+		 `WIRE_VME_PINS_CONVENTION(8),
                  `WIRE_FINE_DELAY_PINS(0, I_fmc0),
                  `WIRE_FINE_DELAY_PINS(1, I_fmc1)
 	         );
@@ -169,6 +168,7 @@ module main;
       Timestamp dly, t_start;
       
       CSimDrv_FineDelay drv0;
+      CSimDrv_FineDelay drv1;
       uint64_t d;
       
       #20us;
@@ -181,15 +181,19 @@ module main;
       
       drv0 = new(acc, 'h80010000);
       drv0.init();
+      drv1 = new(acc, 'h80020000);
+      drv1.init();
 
-      t_start=new;    
+     drv0.set_idelay_taps(5);
+      
+/*      t_start=new;    
       drv0.get_time(t_start);
       t_start.coarse += 20000;
       
       drv0.config_output(0, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001000, -1);
       drv0.config_output(1, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001100, -1);
       drv0.config_output(2, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001200, -1);
-      drv0.config_output(3, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001300, -1);
+      drv0.config_output(3, CSimDrv_FineDelay::PULSE_GEN, 1, t_start, 200000, 1001300, -1); */
       
       $display("Init done");
 

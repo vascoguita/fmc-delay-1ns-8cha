@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2014-03-24
+-- Last update: 2019-10-15
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -237,32 +237,6 @@ package fine_delay_pkg is
       regs_o     : out t_fd_channel_out_registers);
   end component;
 
-  component fd_main_wb_slave
-    port (
-      rst_n_i               : in  std_logic;
-      clk_sys_i             : in  std_logic;
-      wb_adr_i              : in  std_logic_vector(5 downto 0);
-      wb_dat_i              : in  std_logic_vector(31 downto 0);
-      wb_dat_o              : out std_logic_vector(31 downto 0);
-      wb_cyc_i              : in  std_logic;
-      wb_sel_i              : in  std_logic_vector(3 downto 0);
-      wb_stb_i              : in  std_logic;
-      wb_we_i               : in  std_logic;
-      wb_ack_o              : out std_logic;
-      wb_stall_o            : out std_logic;
-      wb_int_o              : out std_logic;
-      clk_ref_i             : in  std_logic;
-      tcr_rd_ack_o          : out std_logic;
-      dmtr_in_rd_ack_o      : out std_logic;
-      dmtr_out_rd_ack_o     : out std_logic;
-      tsbcr_read_ack_o      : out std_logic;
-      fid_read_ack_o        : out std_logic;
-      irq_ts_buf_notempty_i : in  std_logic;
-      irq_dmtd_spll_i       : in  std_logic;
-      irq_sync_status_i     : in  std_logic;
-      regs_i                : in  t_fd_main_in_registers;
-      regs_o                : out t_fd_main_out_registers);
-  end component;
 
   component fd_delay_line_arbiter
     port (
@@ -382,7 +356,8 @@ package fine_delay_pkg is
       g_simulation               : boolean := false;
       g_with_direct_timestamp_io : boolean := false;
       g_interface_mode           : t_wishbone_interface_mode;
-      g_address_granularity      : t_wishbone_address_granularity);
+      g_address_granularity      : t_wishbone_address_granularity;
+      g_fmc_slot_id              : integer := 0);
     port (
       clk_ref_0_i          : in  std_logic;
       clk_ref_180_i        : in  std_logic;
@@ -436,6 +411,10 @@ package fine_delay_pkg is
       i2c_sda_oen_o        : out std_logic;
       i2c_sda_i            : in  std_logic;
       fmc_present_n_i      : in  std_logic;
+      idelay_inc_o : out std_logic;
+      idelay_cal_o : out std_logic;
+      idelay_ce_o : out std_logic;
+      idelay_rst_o : out std_logic;
       wb_adr_i             : in  std_logic_vector(c_wishbone_address_width-1 downto 0);
       wb_dat_i             : in  std_logic_vector(c_wishbone_data_width-1 downto 0);
       wb_dat_o             : out std_logic_vector(c_wishbone_data_width-1 downto 0);

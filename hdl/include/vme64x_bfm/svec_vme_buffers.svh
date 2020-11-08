@@ -162,6 +162,16 @@ function automatic bit[5:0] _gen_ga(int slot);
      return {^slot_id, ~slot_id};
 endfunction // _gen_ga
 
+function automatic bit[4:0] _gen_ga_convention(int slot);
+     bit[4:0] slot_id = slot;
+     return {~slot_id};
+endfunction // _gen_ga
+
+function automatic bit _gen_gap_convention(int slot);
+     bit[4:0] slot_id = slot;
+     return ^slot_id;
+endfunction // _gen_ga
+
    
 		
 `define WIRE_VME_PINS(slot_id) \
@@ -180,6 +190,32 @@ endfunction // _gen_ga
     .VME_DATA_b(VME_DATA),\
     .VME_BBSY_n_i(VME_BBSY_n),\
     .VME_IRQ_n_o(VME_IRQ_n),\
+    .VME_IACK_n_i(VME_IACK_n),\
+    .VME_IACKIN_n_i(VME_IACKIN_n),\
+    .VME_IACKOUT_n_o(VME_IACKOUT_n),\
+    .VME_DTACK_OE_o(VME_DTACK_OE),\
+    .VME_DATA_DIR_o(VME_DATA_DIR),\
+    .VME_DATA_OE_N_o(VME_DATA_OE_N),\
+    .VME_ADDR_DIR_o(VME_ADDR_DIR),\
+    .VME_ADDR_OE_N_o(VME_ADDR_OE_N)
+
+
+`define WIRE_VME_PINS_CONVENTION(slot_id) \
+    .VME_AS_n_i(VME_AS_n),\
+    .VME_SYSRESET_n_i(VME_RST_n),\
+    .VME_WRITE_n_i(VME_WRITE_n),\
+    .VME_AM_i(VME_AM),\
+    .VME_DS_n_i(VME_DS_n),\
+    .VME_GA_i(_gen_ga_convention(slot_id)),\
+    .VME_GAP_i(_gen_gap_convention(slot_id)),\
+    .VME_BERR_o(VME_BERR),\
+    .VME_DTACK_n_o(VME_DTACK_n),\
+    .VME_RETRY_n_o(VME_RETRY_n),\
+    .VME_RETRY_OE_o(VME_RETRY_OE),\
+    .VME_LWORD_n_b(VME_LWORD_n),\
+    .VME_ADDR_b(VME_ADDR),\
+    .VME_DATA_b(VME_DATA),\
+    .VME_IRQ_o(VME_IRQ_n),\
     .VME_IACK_n_i(VME_IACK_n),\
     .VME_IACKIN_n_i(VME_IACKIN_n),\
     .VME_IACKOUT_n_o(VME_IACKOUT_n),\

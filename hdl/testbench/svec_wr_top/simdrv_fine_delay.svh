@@ -39,6 +39,17 @@ class CSimDrv_FineDelay;
       
    endfunction // new
 
+
+   task set_idelay_taps( int taps );
+      uint64_t tdcsr;
+
+      $display("Set Idelay taps : %d\n", taps);
+      
+      writel(`ADDR_FD_IODELAY_ADJ, taps);
+   endtask // set_idelay_taps
+   
+    
+
    
    /* fixme - maybe use real mcp23s17 model instead of this stub? */
    task sgpio_write(int value);

@@ -1,9 +1,20 @@
+ctrls = ["bank3_32b_32b"]
 action = "simulation"
 target = "xilinx"
 fetchto = "../../ip_cores"
-vlog_opt="+incdir+../../include/wb +incdir+../../include/vme64x_bfm +incdir+../../include"
+include_dirs = ["../../include/vme64x_bfm",
+                "../../include/wb", "../../include",
+                "../../ip_cores/general-cores/modules/wishbone/wb_spi/",
+                "../../ip_cores/general-cores/modules/wishbone/wb_lm32/src/"]
+syn_device = "xc6slx45t"
+sim_tool = "modelsim"
+sim_top = "main"
+top_module = "main"
+files = ["main.sv","buildinfo_pkg.vhd"]
 
-files = [ "main.sv" ]
+modules = {"local":  ["../../top/svec" ]}
 
-modules = { "local" :  [ "../../top/svec" ] }
-
+#try:
+exec(open(fetchto + "/general-cores/tools/gen_buildinfo.py").read())
+#except:
+#  pass

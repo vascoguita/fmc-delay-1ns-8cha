@@ -404,7 +404,17 @@ peripheral {
          prefix = "ALUTRIG";
          type = MONOSTABLE;
       };
-   };
+
+
+      field {
+         clock = "clk_ref_i";
+
+         name = "IDELAY CE (pulse)";
+         description = "Write 1 to pulse the IDELAY CE line for 1 clock tick.";
+         prefix = "IDELAY_CE";
+         type = MONOSTABLE;
+			};
+	 };
 
    reg {
       prefix = "CALR";
@@ -1031,7 +1041,37 @@ peripheral {
       };
    };
 
+	reg {
+		 name = "FMC Slot ID Register";
+		 description = "Index of the hardware FMC slot the card is in.";
+		 prefix = "FMC_SLOT_ID";
+		 
+		 field {
+				name = "Slot ID";
+				prefix = "SLOT_ID";
+				type = SLV;
+				size = 4;
+				access_bus = READ_ONLY;
+				access_dev = WRITE_ONLY;
+		 };
+	};
 
+	reg {
+		 name = "I/O Delay Adjust Register";
+		 description = "Setup time adjust for certain signals (e.g. TDC_START).";
+		 prefix = "IODELAY_ADJ";
+		 
+		 field {
+				name = "Number of delay line taps.";
+				prefix = "N_TAPS";
+				type = SLV;
+				size = 6;
+				access_bus = READ_WRITE;
+				access_dev = READ_WRITE;
+				load = LOAD_EXT;
+		 };
+	};
+		 
    irq {
       name = "Timestamp Buffer interrupt.";
       description = "Triggers when there are timestamps in the readout buffer";

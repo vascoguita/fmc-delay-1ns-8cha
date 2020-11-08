@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2018-08-03
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -65,7 +65,11 @@ entity fine_delay_core is
     g_interface_mode      : t_wishbone_interface_mode      := PIPELINED;
     g_address_granularity : t_wishbone_address_granularity := WORD;
 
-    g_with_debug_output : boolean := false
+    g_with_debug_output : boolean := false;
+
+    -- index of the slot the core is assigned to, written to
+    -- FMC_SLOT_ID register
+    g_fmc_slot_id : integer := 0
     );
   port (
 
@@ -195,7 +199,7 @@ entity fine_delay_core is
     owr_i    : in  std_logic;
 
     ---------------------------------------------------------------------------
-    -- Misc signals: I2C EEPROM, FMC presence
+    -- Misc signals: I2C EEPROM, FMC presence, I/O calibration
     ---------------------------------------------------------------------------
 
     i2c_scl_o     : out std_logic;
@@ -206,6 +210,11 @@ entity fine_delay_core is
     i2c_sda_i     : in  std_logic;
 
     fmc_present_n_i : in std_logic;
+
+    idelay_inc_o : out std_logic;
+    idelay_cal_o : out std_logic;
+    idelay_ce_o : out std_logic;
+    idelay_rst_o : out std_logic;
 
 
     ---------------------------------------------------------------------------
@@ -358,6 +367,12 @@ architecture rtl of fine_delay_core is
 
   signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
   
+  signal iodelay_ntaps : std_logic_vector(5 downto 0);
+  signal iodelay_cnt : unsigned(5 downto 0);
+  signal iodelay_div : unsigned(4 downto 0);
+  signal iodelay_tick : std_logic;
+  signal iodelay_cal_done : std_logic;
+  
 begin  -- rtl
 
   U_WB_Adapter : wb_slave_adapter
@@ -504,6 +519,8 @@ begin  -- rtl
       );
 
 
+  
+  
   U_Acam_TSU : fd_acam_timestamper
     generic map (
       g_min_pulse_width => 3,
@@ -554,12 +571,12 @@ begin  -- rtl
     
     U_Sync_TDC_Valid_Out : gc_pulse_synchronizer2
       port map (
-        clk_in_i    => clk_ref_0_i,
+        clk_in_i  => clk_ref_0_i,
         rst_in_n_i  => rst_n_ref,
-        clk_out_i   => clk_sys_i,
+        clk_out_i => clk_sys_i,
         rst_out_n_i => rst_n_sys,
-        d_p_i       => tag_valid,
-        q_p_o       => tdc_valid_o);
+        d_p_i     => tag_valid,
+        q_p_o     => tdc_valid_o);
 
     process(clk_ref_0_i)
     begin
@@ -633,12 +650,12 @@ begin  -- rtl
       
       U_Sync_Valid_Pulse : gc_pulse_synchronizer2
         port map (
-          clk_in_i    => clk_sys_i,
+          clk_in_i  => clk_sys_i,
           rst_in_n_i  => rst_n_sys,
-          clk_out_i   => clk_ref_0_i,
+          clk_out_i => clk_ref_0_i,
           rst_out_n_i => rst_n_ref,
-          d_p_i       => outx_valid_i(i),
-          q_p_o       => channels(i).tag.valid);
+          d_p_i     => outx_valid_i(i),
+          q_p_o     => channels(i).tag.valid);
 
       process(clk_sys_i)
       begin
@@ -780,6 +797,7 @@ begin  -- rtl
   regs_towb_local.gcr_ddr_locked_i  <= pll_status_i;
   regs_towb_local.gcr_fmc_present_i <= not fmc_present_n_i;
 
+  regs_towb_local.fmc_slot_id_slot_id_i <= std_logic_vector(to_unsigned(g_fmc_slot_id, 4 ));
 
   -- Debug PWM driver for adjusting Peltier temperature. Drivers SPI MOSI line
   -- with PWM waveform when none of the SPI peripherals is in use (we have no
@@ -839,5 +857,62 @@ begin  -- rtl
   gen_without_dbg_out : if(not g_with_debug_output) generate
     dbg_o <= (others => '0');
   end generate gen_without_dbg_out;
+
+  p_handle_iodelay: process(clk_sys_i)
+  begin
+    if rising_edge(clk_sys_i) then
+      if rst_n_sys = '0' then
+        idelay_cal_o <= '0';
+        idelay_inc_o <= '1';
+        idelay_rst_o <= '0';
+        idelay_ce_o <= '0';
+        iodelay_cal_done <= '0';
+        iodelay_cnt <= (others => '0');
+        iodelay_div <= (others => '0');
+        iodelay_tick <= '0';
+      else
+
+        if iodelay_cal_done = '0' then
+          idelay_cal_o <= '1';
+          iodelay_cnt <= iodelay_cnt + 1;
+          if iodelay_cnt = 15 then
+            iodelay_cnt <= (others => '0');
+            iodelay_cal_done <= '1';
+          end if;
+        else
+          idelay_cal_o <= '0';
+        end if;
+
+        iodelay_div <= iodelay_div + 1;
+        if iodelay_div = 0 then
+          iodelay_tick <= '1';
+        else
+          iodelay_tick <= '0';
+        end if;
+
+        if regs_fromwb.iodelay_adj_n_taps_load_o = '1' then
+          iodelay_cnt <= unsigned(regs_fromwb.iodelay_adj_n_taps_o);
+          idelay_rst_o <= '1';
+          iodelay_ntaps <= regs_fromwb.iodelay_adj_n_taps_o;
+        else
+          idelay_rst_o <= '0';
+        end if;
+
+        if iodelay_cal_done = '1' and iodelay_tick = '1' and iodelay_cnt /= 0 then
+          idelay_ce_o <= '1';
+          iodelay_cnt <= iodelay_cnt - 1;
+        else
+          idelay_ce_o <= '0';
+        end if;
+        
+        
+        
+      end if;
+      
+    end if;
+      
+    end process;
+  regs_towb_local.iodelay_adj_n_taps_i <= iodelay_ntaps;
+  
   
 end rtl;

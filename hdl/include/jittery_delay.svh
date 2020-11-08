@@ -1,3 +1,4 @@
+`timescale 10fs/10fs
 
 module jittery_delay
   (

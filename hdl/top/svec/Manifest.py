@@ -1,15 +1,16 @@
-files = [ "synthesis_descriptor.vhd", "svec_top.vhd", "svec_top.ucf", "bicolor_led_ctrl.vhd", "bicolor_led_ctrl_pkg.vhd" ]
+files = ["svec_fine_delay_top.vhd", "svec_fine_delay_top.ucf"]
 
 fetchto = "../../ip_cores"
 
 modules = {
     "local" : [
-        "../../rtl",
-        "../../platform",
-    ],
-    "git" : [
-        "git://ohwr.org/hdl-core-lib/wr-cores.git",
-        "git://ohwr.org/hdl-core-lib/vme64x-core.git",
-        "git://ohwr.org/hdl-core-lib/general-cores.git",
-    ],
-}
+	"../../rtl", 
+	"../../platform",
+	"../../ip_cores/general-cores",
+	"../../ip_cores/wr-cores",
+	"../../ip_cores/wr-cores/board/svec",
+	"../../ip_cores/vme64x-core",
+	"../../ip_cores/svec",
+	"../../ip_cores/ddr3-sp6-core",
+     ]
+    }
