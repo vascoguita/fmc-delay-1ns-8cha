@@ -39,6 +39,7 @@ use work.wishbone_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.fine_delay_pkg.all;
+use work.sourceid_svec_fine_delay_top_pkg;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -413,9 +414,9 @@ begin  -- architecture arch
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
       g_DEVICE_ID    => x"574f_0002", -- SVEC + 2xFineDelay
-      g_VERSION      => x"0100_0000",
+      g_VERSION      => x"0003_0004",
       g_CAPABILITIES => x"0000_0000",
-      g_COMMIT_ID    => (others => '0'))
+      g_COMMIT_ID    => sourceid_svec_fine_delay_top_pkg.sourceid)
     port map (
       clk_i   => clk_sys_62m5,
       rst_n_i => rst_sys_62m5_n,
