@@ -17,7 +17,7 @@
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
--- Public License as published by the Free Software Fsoundation; 
+-- Public License as published by the Free Software Foundation; 
 -- either version 2.1 of the License, or (at your option) any   
 -- later version.                                               
 --
@@ -215,6 +215,7 @@ entity fine_delay_core is
     idelay_cal_o : out std_logic;
     idelay_ce_o : out std_logic;
     idelay_rst_o : out std_logic;
+    idelay_busy_i : in std_logic := '0';
 
 
     ---------------------------------------------------------------------------
@@ -307,7 +308,7 @@ architecture rtl of fine_delay_core is
   signal rst_n_sys, rst_n_ref : std_logic;
 
   signal tsbcr_read_ack, fid_read_ack : std_logic;
-  signal irq_rbuf, irq_spll, irq_sync : std_logic;
+  signal irq_rbuf, irq_sync : std_logic;
 
   type t_delay_channel is record
     idle           : std_logic;
@@ -367,12 +368,15 @@ architecture rtl of fine_delay_core is
 
   signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
   
-  signal iodelay_ntaps : std_logic_vector(5 downto 0);
-  signal iodelay_cnt : unsigned(5 downto 0);
-  signal iodelay_div : unsigned(4 downto 0);
+  signal iodelay_ntaps : std_logic_vector(7 downto 0);
+  signal iodelay_cnt : unsigned(7 downto 0);
+  signal iodelay_div : unsigned(6 downto 0);
   signal iodelay_tick : std_logic;
   signal iodelay_cal_done : std_logic;
-  
+  signal iodelay_cal_in_progress : std_logic;  
+  signal iodelay_n_taps_load_refclk_p : std_logic;
+  signal iodelay_busy_synced: std_logic;
+  signal iodelay_latch_reset : std_logic;
 begin  -- rtl
 
   U_WB_Adapter : wb_slave_adapter
@@ -858,10 +862,42 @@ begin  -- rtl
     dbg_o <= (others => '0');
   end generate gen_without_dbg_out;
 
-  p_handle_iodelay: process(clk_sys_i)
+  U_Sync_Busy :  gc_sync_ffs
+    port map
+    (
+      clk_i    => clk_ref_0_i,
+      rst_n_i  => rst_n_ref,
+      data_i   => idelay_busy_i,
+      synced_o => iodelay_busy_synced
+      );
+
+  U_Sync_taps_load: gc_pulse_synchronizer2
+    port map (
+      clk_in_i    => clk_sys_i,
+      rst_in_n_i  => rst_n_sys,
+      clk_out_i   => clk_ref_0_i,
+      rst_out_n_i => rst_n_ref,
+      d_ready_o   => open,
+      d_ack_p_o   => open,
+      d_p_i       => regs_fromwb.iodelay_adj_n_taps_load_o,
+      q_p_o       => iodelay_n_taps_load_refclk_p);
+
+
+  p_latch_ntaps : process(clk_sys_i)
   begin
     if rising_edge(clk_sys_i) then
-      if rst_n_sys = '0' then
+        if regs_fromwb.iodelay_adj_n_taps_load_o = '1' then
+          iodelay_ntaps <= regs_fromwb.iodelay_adj_n_taps_o;
+        end if;
+      end if;
+    end process;
+    
+        
+  
+  p_handle_iodelay: process(clk_ref_0_i)
+  begin
+    if rising_edge(clk_ref_0_i) then
+      if rst_n_ref = '0' then
         idelay_cal_o <= '0';
         idelay_inc_o <= '1';
         idelay_rst_o <= '0';
@@ -874,35 +910,32 @@ begin  -- rtl
 
         if iodelay_cal_done = '0' then
           idelay_cal_o <= '1';
-          iodelay_cnt <= iodelay_cnt + 1;
-          if iodelay_cnt = 15 then
-            iodelay_cnt <= (others => '0');
             iodelay_cal_done <= '1';
-          end if;
         else
           idelay_cal_o <= '0';
         end if;
 
         iodelay_div <= iodelay_div + 1;
+
         if iodelay_div = 0 then
           iodelay_tick <= '1';
         else
           iodelay_tick <= '0';
         end if;
 
-        if regs_fromwb.iodelay_adj_n_taps_load_o = '1' then
-          iodelay_cnt <= unsigned(regs_fromwb.iodelay_adj_n_taps_o);
-          idelay_rst_o <= '1';
-          iodelay_ntaps <= regs_fromwb.iodelay_adj_n_taps_o;
-        else
-          idelay_rst_o <= '0';
+        if iodelay_n_taps_load_refclk_p = '1' then
+          iodelay_cnt <= unsigned(iodelay_ntaps);
+          iodelay_latch_reset <= '1';
         end if;
 
         if iodelay_cal_done = '1' and iodelay_tick = '1' and iodelay_cnt /= 0 then
-          idelay_ce_o <= '1';
+          idelay_rst_o <= iodelay_latch_reset;
+          idelay_ce_o <= not iodelay_latch_reset;
+          iodelay_latch_reset <= '0';
           iodelay_cnt <= iodelay_cnt - 1;
         else
           idelay_ce_o <= '0';
+          idelay_rst_o <= '0';
         end if;
         
         
@@ -910,8 +943,8 @@ begin  -- rtl
       end if;
       
     end if;
+  end process;
       
-    end process;
   regs_towb_local.iodelay_adj_n_taps_i <= iodelay_ntaps;
   
   
