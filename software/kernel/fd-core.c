@@ -287,6 +287,15 @@ int fd_probe(struct platform_device *pdev)
 	if(!fd_fmc_slot_is_valid(fd))
 		goto out_fmc_err;
 
+	ret = sysfs_create_link(&fd->pdev->dev.kobj, &fd->slot->dev.kobj,
+				dev_name(&fd->slot->dev));
+	if (ret) {
+		dev_err(dev, "Failed to create FMC symlink to %s\n",
+			dev_name(&fd->slot->dev));
+		goto err_fmc_link;
+	}
+
+
 	ret = fd_calib_init(fd);
 	if (ret < 0)
 		goto err_calib;;
@@ -329,6 +338,8 @@ err:
 			m->exit(fd);
 	fd_calib_exit(fd);
 err_calib:
+	sysfs_remove_link(&fd->pdev->dev.kobj, dev_name(&fd->slot->dev));
+err_fmc_link:
 out_fmc_err:
 out_fmc_eeprom:
 out_fmc_pre:
@@ -361,6 +372,7 @@ int fd_remove(struct platform_device *pdev)
 	fd_calib_exit(fd);
 	iounmap(fd->fd_regs_base);
 
+	sysfs_remove_link(&fd->pdev->dev.kobj, dev_name(&fd->slot->dev));
 	fmc_slot_put(fd->slot);
 
 	return 0;
