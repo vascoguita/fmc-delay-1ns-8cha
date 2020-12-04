@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-05-22
+-- Last update: 2018-08-02
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -176,16 +176,17 @@ begin  -- behavioral
 
   fifo_write <= not fifo_full and tag_valid_i;
 
-  U_Clock_Adjustment_Fifo : generic_async_fifo
+  U_Clock_Adjustment_Fifo : generic_async_fifo_dual_rst
     generic map (
       g_data_width => fifo_in'length,
       g_size       => c_FIFO_SIZE)
     port map (
-      rst_n_i    => rst_n_sys_i,
+      rst_wr_n_i => rst_n_ref_i,
       clk_wr_i   => clk_ref_i,
       d_i        => fifo_in,
       we_i       => fifo_write,
       wr_full_o  => fifo_full,
+      rst_rd_n_i => rst_n_sys_i,
       clk_rd_i   => clk_sys_i,
       q_o        => fifo_out,
       rd_i       => fifo_read,
