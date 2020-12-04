@@ -22,7 +22,7 @@
 #include <linux/list.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
-#include <linux/ipmi-fru.h>
+#include <uapi/linux/ipmi/fru.h>
 #include <linux/fmc.h>
 
 #include "fine-delay.h"
