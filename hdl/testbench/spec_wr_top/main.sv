@@ -3,7 +3,8 @@
 `include "simdrv_defs.svh"   
 `include "regs/fd_main_regs.vh"
 `include "regs/simple_debug_recorder_regs.vh"
-`include "vhd_wishbone_master.svh"
+
+`include "gn4124_bfm.svh"
 
 const uint64_t BASE_WRPC = 'h00c0000;
 const uint64_t BASE_FINEDELAY = 'h0010000;
@@ -138,101 +139,6 @@ class FineDelayDev extends IBusDevice;
 
 endclass // FineDelayDev
 
-/* -----\/----- EXCLUDED -----\/-----
-`define ADDR_SDER_CSR                  4'h0
-`define SDER_CSR_START_OFFSET 0
-`define SDER_CSR_START 32'h00000001
-`define SDER_CSR_STOP_OFFSET 1
-`define SDER_CSR_STOP 32'h00000002
-`define SDER_CSR_FORCE_OFFSET 2
-`define SDER_CSR_FORCE 32'h00000004
-`define SDER_CSR_TRIG_SEL_OFFSET 3
-`define SDER_CSR_TRIG_SEL 32'h000000f8
-`define SDER_CSR_TRIG_EDGE_OFFSET 8
-`define SDER_CSR_TRIG_EDGE 32'h00000100
-`define SDER_CSR_TRIGGERED_OFFSET 9
-`define SDER_CSR_TRIGGERED 32'h00000200
-`define SDER_CSR_TRIG_PRE_SAMPLES_OFFSET 10
-`define SDER_CSR_TRIG_PRE_SAMPLES 32'h03fffc00
-`define ADDR_SDER_MEM_ADDR             4'h4
-`define SDER_MEM_ADDR_ADDR_OFFSET 0
-`define SDER_MEM_ADDR_ADDR 32'h0000ffff
-`define ADDR_SDER_TRIG_POS             4'h8
-`define SDER_TRIG_POS_POS_OFFSET 0
-`define SDER_TRIG_POS_POS 32'h0000ffff
-`define ADDR_SDER_MEM_DATA             4'hc
-`define SDER_MEM_DATA_DATA_OFFSET 0
-`define SDER_MEM_DATA_DATA 32'hffffffff
- -----/\----- EXCLUDED -----/\----- */
-
-class DebugRecorderDev extends IBusDevice;
-  function new(CBusAccessor bus, uint64_t base);
-      super.new(bus, base);
-   endfunction // new
-
-   task automatic configure(int trig_in, int trig_edge, int pre_samples);
-      uint32_t csr;
-
-      csr = (trig_in << `SDER_CSR_TRIG_SEL_OFFSET);
-      if(trig_edge)
-	csr|=`SDER_CSR_TRIG_EDGE;
-      csr |= (pre_samples << `SDER_CSR_TRIG_PRE_SAMPLES_OFFSET);
-
-      write32(`ADDR_SDER_CSR, csr);
-   endtask // configure
-
-   task automatic run();
-      uint32_t csr;
-      read32(`ADDR_SDER_CSR, csr);
-      csr |= `SDER_CSR_START;
-      write32(`ADDR_SDER_CSR, csr);
-   endtask // run
-
-   task automatic readout();
-      uint32_t csr, pos, mdata, mtag;
-      int i;
-
-      $error("RDS");
-      
-      forever begin
-	 read32(`ADDR_SDER_CSR, csr);
-	 $display("trig CSR %x", csr);
-	 
-	 if( csr & `SDER_CSR_TRIGGERED)
-	   break;
-
-	 #5us;
-	 
-      end
-      
-      csr |= `SDER_CSR_STOP;
-      write32(`ADDR_SDER_CSR, csr);
-
-      $display("Readout!");
-
-      read32(`ADDR_SDER_TRIG_POS, pos);
-      $display("Trig pos: %x", pos);
-
-      for(i=0;i<10;i++)
-	begin
-	   write32(`ADDR_SDER_MEM_ADDR, 2*i);
-	   read32(`ADDR_SDER_MEM_DATA, mdata);
-	   write32(`ADDR_SDER_MEM_ADDR, 2*i+1);
-	   read32(`ADDR_SDER_MEM_DATA, mtag);
-	   $display("pos %d %x %x", i, mdata, mtag);
-	   
-	end
-      
-
-      
-      
-   endtask // readout
-   
-	
-	
-
-endclass // FineDelayDev
-
 
 module main;
    reg clk_125m_pllref = 0;
@@ -249,11 +155,9 @@ module main;
    wire clk_sys;
    wire rst_sys_n;
 
-   wire t_wishbone_master_out sim_wb_in;
-   wire t_wishbone_master_in sim_wb_out;
    
+   IGN4124PCIMaster i_gn4124 ();
 
-   
    
    spec_fine_delay_top
      #(.g_simulation(1)
@@ -274,28 +178,33 @@ module main;
 
           .fmc0_fd_tdc_start_p_i(tdc_start),
           .fmc0_fd_tdc_start_n_i(~tdc_start),
-
+	  
 	  .fmc0_fd_pll_status_i(1'b1),
 
-	  .sim_wb_i(sim_wb_in),
-	  .sim_wb_o(sim_wb_out)
-
-	  
-	     
-        //  `GENNUM_WIRE_SPEC_PINS_V2(I_Gennum)
+	  .gn_rst_n_i                (i_gn4124.rst_n),
+      .gn_p2l_clk_n_i            (i_gn4124.p2l_clk_n),
+      .gn_p2l_clk_p_i            (i_gn4124.p2l_clk_p),
+      .gn_p2l_rdy_o              (i_gn4124.p2l_rdy),
+      .gn_p2l_dframe_i           (i_gn4124.p2l_dframe),
+      .gn_p2l_valid_i            (i_gn4124.p2l_valid),
+      .gn_p2l_data_i             (i_gn4124.p2l_data),
+      .gn_p_wr_req_i             (i_gn4124.p_wr_req),
+      .gn_p_wr_rdy_o             (i_gn4124.p_wr_rdy),
+      .gn_rx_error_o             (i_gn4124.rx_error),
+      .gn_l2p_clk_n_o            (i_gn4124.l2p_clk_n),
+      .gn_l2p_clk_p_o            (i_gn4124.l2p_clk_p),
+      .gn_l2p_dframe_o           (i_gn4124.l2p_dframe),
+      .gn_l2p_valid_o            (i_gn4124.l2p_valid),
+      .gn_l2p_edb_o              (i_gn4124.l2p_edb),
+      .gn_l2p_data_o             (i_gn4124.l2p_data),
+      .gn_l2p_rdy_i              (i_gn4124.l2p_rdy),
+      .gn_l_wr_rdy_i             (i_gn4124.l_wr_rdy),
+      .gn_p_rd_d_rdy_i           (i_gn4124.p_rd_d_rdy),
+      .gn_tx_error_i             (i_gn4124.tx_error),
+      .gn_vc_rdy_i               (i_gn4124.vc_rdy),
+      .gn_gpio_b                 ()
 	  );
 
-
-   
-   IVHDWishboneMaster Host
-     (
-      .clk_i   (DUT.clk_sys_62m5),
-      .rst_n_i (DUT.rst_sys_62m5_n));
-   
-
-   assign sim_wb_in = Host.out;
-   assign Host.in = sim_wb_out;
-   
    assign clk_sys = DUT.clk_sys_62m5;
    assign rst_sys_n = DUT.rst_sys_62m5_n;
 
@@ -306,13 +215,11 @@ module main;
       
       CBusAccessor acc ;
       FineDelayDev fd;
-      DebugRecorderDev rec;
       
-      acc = Host.get_accessor();
+      acc = i_gn4124.get_accessor();
 
       fd = new(acc, BASE_FINEDELAY);
-      rec = new(acc, BASE_FINEDELAY + 'h180 * 4);
-
+ 
       while (!rst_sys_n)
 	@(posedge clk_sys);
       
@@ -333,20 +240,12 @@ module main;
       fd.set_idelay_taps(20);
       #10us;
 
+      acc.read('h1000, rval );
+
+      $display("R1000 = %x", rval );
+      
+      
       $stop;
-      
-      
-//      rec.configure(4, 0, 100);
-//      rec.run();
-
-//      fd.pll_readl('h1f, tmp);
-//      $error("done");
-      
-//      rec.readout();
-      
-     
-      
-
       
    end
    
