@@ -34,6 +34,8 @@ use work.wishbone_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.fine_delay_pkg.all;
+use work.sourceid_spec_fine_delay_top_pkg;
+
 
 library unisim;
 use unisim.vcomponents.all;
@@ -175,16 +177,7 @@ entity spec_fine_delay_top is
     fmc0_prsnt_m2c_n_i : in std_logic;
 
     fmc0_scl_b : inout std_logic;
-    fmc0_sda_b : inout std_logic
-
--- synthesis translate_off
-    ;
-
-    sim_wb_i : in t_wishbone_slave_in;
-    sim_wb_o : out t_wishbone_slave_out
-
--- synthesis translate_on
-    );
+    fmc0_sda_b : inout std_logic);
 
 end entity spec_fine_delay_top;
 
@@ -282,7 +275,7 @@ architecture arch of spec_fine_delay_top is
 
   -- Interrupts and status
   signal fmc0_irq           : std_logic;
-  signal irq_vector         : std_logic_vector(0 downto 0);
+  signal irq_vector         : std_logic_vector(4 downto 0);
   signal gn4124_access      : std_logic;
 
 
@@ -305,7 +298,6 @@ architecture arch of spec_fine_delay_top is
   signal fmc0_tdc_start_iodelay_rst                    : std_logic;
   signal fmc0_tdc_start_iodelay_cal                    : std_logic;
   signal fmc0_tdc_start_iodelay_ce                     : std_logic;
-  signal fmc0_tdc_start_iodelay_busy                   : std_logic;
 
   
 begin  -- architecture arch
@@ -314,9 +306,9 @@ begin  -- architecture arch
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
       g_DEVICE_ID    => x"574f_0001", -- SPEC + 1xFine Delay
-      g_VERSION      => x"0100_0000",
+      g_VERSION      => x"0300_0004",
       g_CAPABILITIES => x"0000_0000",
-      g_COMMIT_ID    => (others => '0'))
+      g_COMMIT_ID    => sourceid_spec_fine_delay_top_pkg.sourceid)
     port map (
       clk_i   => clk_sys_62m5,
       rst_n_i => rst_sys_62m5_n,
@@ -331,12 +323,11 @@ begin  -- architecture arch
       g_WITH_WR       => TRUE,
       g_WITH_DDR      => FALSE,
       g_APP_OFFSET    => c_METADATA_ADDR,
-      g_NUM_USER_IRQ  => 1,
+      g_NUM_USER_IRQ  => 5,
       g_DPRAM_INITF   => g_WRPC_INITF,
       g_AUX_CLKS      => 1,
       g_FABRIC_IFACE  => plain,
-      g_SIMULATION    => f_int2bool(g_SIMULATION),
-      g_sim_bypass_gennum => true)
+      g_SIMULATION    => f_int2bool(g_SIMULATION))
     port map (
       clk_125m_pllref_p_i => clk_125m_pllref_p_i,
       clk_125m_pllref_n_i => clk_125m_pllref_n_i,
@@ -415,13 +406,7 @@ begin  -- architecture arch
       pps_led_o           => pps_led,
       link_ok_o           => wrabbit_en,
       app_wb_o            => cnx_master_out(c_WB_MASTER_GENNUM),
-      app_wb_i            => cnx_master_in(c_WB_MASTER_GENNUM)
--- synthesis translate_off
-      ,
-      sim_wb_i => sim_wb_i,
-      sim_wb_o => sim_wb_o
--- synthesis translate_on
-      );
+      app_wb_i            => cnx_master_in(c_WB_MASTER_GENNUM));
 
   ------------------------------------------------------------------------------
   -- Primary wishbone crossbar
@@ -485,7 +470,7 @@ begin  -- architecture arch
       CE =>  fmc0_tdc_start_iodelay_ce,
       RST =>  fmc0_tdc_start_iodelay_rst,
       CLK => fmc0_dcm_clk_ref_0,
-      BUSY => fmc0_tdc_start_iodelay_busy,
+      BUSY => open,
       ODATAIN => '0',
       CAL => fmc0_tdc_start_iodelay_cal,
       T => '1',
@@ -527,7 +512,6 @@ begin  -- architecture arch
       idelay_rst_o => fmc0_tdc_start_iodelay_rst,
       idelay_ce_o => fmc0_tdc_start_iodelay_ce,
       idelay_inc_o => fmc0_tdc_start_iodelay_inc,
-      idelay_busy_i => fmc0_tdc_start_iodelay_busy,
       
       trig_a_i          => fmc0_fd_trig_a_i,
       tdc_cal_pulse_o   => fmc0_fd_tdc_cal_pulse_o,

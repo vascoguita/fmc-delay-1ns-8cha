@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2020-05-26
+-- Last update: 2014-03-24
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -17,7 +17,7 @@
 --
 -- This source file is free software; you can redistribute it   
 -- and/or modify it under the terms of the GNU Lesser General   
--- Public License as published by the Free Software Fsoundation; 
+-- Public License as published by the Free Software Foundation; 
 -- either version 2.1 of the License, or (at your option) any   
 -- later version.                                               
 --
@@ -215,7 +215,7 @@ entity fine_delay_core is
     idelay_cal_o : out std_logic;
     idelay_ce_o : out std_logic;
     idelay_rst_o : out std_logic;
-    idelay_busy_i : in std_logic;
+    idelay_busy_i : in std_logic := '0';
 
 
     ---------------------------------------------------------------------------
@@ -367,7 +367,7 @@ architecture rtl of fine_delay_core is
   signal spi_cs_dac_n, spi_cs_pll_n, spi_cs_gpio_n, spi_mosi : std_logic;
 
   signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
-
+  
   signal iodelay_ntaps : std_logic_vector(7 downto 0);
   signal iodelay_cnt : unsigned(7 downto 0);
   signal iodelay_div : unsigned(6 downto 0);
@@ -573,11 +573,12 @@ begin  -- rtl
 
   gen_with_direct_io_tdc : if(g_with_direct_timestamp_io) generate
     
-    U_Sync_TDC_Valid_Out : gc_pulse_synchronizer
+    U_Sync_TDC_Valid_Out : gc_pulse_synchronizer2
       port map (
         clk_in_i  => clk_ref_0_i,
+        rst_in_n_i  => rst_n_ref,
         clk_out_i => clk_sys_i,
-        rst_n_i   => rst_n_sys,
+        rst_out_n_i => rst_n_sys,
         d_p_i     => tag_valid,
         q_p_o     => tdc_valid_o);
 
@@ -651,12 +652,12 @@ begin  -- rtl
 
     gen_with_direct_io : if g_with_direct_timestamp_io generate
       
-
-      U_Sync_Valid_Pulse : gc_pulse_synchronizer
+      U_Sync_Valid_Pulse : gc_pulse_synchronizer2
         port map (
           clk_in_i  => clk_sys_i,
+          rst_in_n_i  => rst_n_sys,
           clk_out_i => clk_ref_0_i,
-          rst_n_i   => rst_n_ref,
+          rst_out_n_i => rst_n_ref,
           d_p_i     => outx_valid_i(i),
           q_p_o     => channels(i).tag.valid);
 
@@ -801,7 +802,7 @@ begin  -- rtl
   regs_towb_local.gcr_fmc_present_i <= not fmc_present_n_i;
 
   regs_towb_local.fmc_slot_id_slot_id_i <= std_logic_vector(to_unsigned(g_fmc_slot_id, 4 ));
-  
+
   -- Debug PWM driver for adjusting Peltier temperature. Drivers SPI MOSI line
   -- with PWM waveform when none of the SPI peripherals is in use (we have no
   -- spare pins in the FMC connector left)
@@ -883,8 +884,8 @@ begin  -- rtl
 
 
   p_latch_ntaps : process(clk_sys_i)
-    begin
-      if rising_edge(clk_sys_i) then
+  begin
+    if rising_edge(clk_sys_i) then
         if regs_fromwb.iodelay_adj_n_taps_load_o = '1' then
           iodelay_ntaps <= regs_fromwb.iodelay_adj_n_taps_o;
         end if;
@@ -909,7 +910,7 @@ begin  -- rtl
 
         if iodelay_cal_done = '0' then
           idelay_cal_o <= '1';
-          iodelay_cal_done <= '1';
+            iodelay_cal_done <= '1';
         else
           idelay_cal_o <= '0';
         end if;
@@ -937,10 +938,13 @@ begin  -- rtl
           idelay_rst_o <= '0';
         end if;
         
+        
+        
       end if;
+      
     end if;
   end process;
-
+      
   regs_towb_local.iodelay_adj_n_taps_i <= iodelay_ntaps;
   
   

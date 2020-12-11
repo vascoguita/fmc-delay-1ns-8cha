@@ -6,7 +6,7 @@
 -- Author     : Tomasz Wlostowski
 -- Company    : CERN
 -- Created    : 2011-08-24
--- Last update: 2012-11-26
+-- Last update: 2018-08-03
 -- Platform   : FPGA-generic
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -229,14 +229,14 @@ begin  -- behavioral
     end if;
   end process;
 
-  U_Sync_WR_Csync : gc_pulse_synchronizer
+  U_Sync_WR_Csync : gc_pulse_synchronizer2
     port map (
-      clk_in_i  => clk_sys_i,
-      clk_out_i => clk_ref_i,
-      rst_n_i   => rst_n_ref_i,
-      d_p_i     => csync_wr_sysclk,
-      q_p_o     => csync_wr_refclk);
-
+      clk_in_i    => clk_sys_i,
+      rst_in_n_i  => rst_n_sys_i,
+      clk_out_i   => clk_ref_i,
+      rst_out_n_i => rst_n_ref_i,
+      d_p_i       => csync_wr_sysclk,
+      q_p_o       => csync_wr_refclk);
 
   tmo_restart <= wr_state_changed;
 

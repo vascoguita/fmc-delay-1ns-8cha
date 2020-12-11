@@ -39,6 +39,7 @@ use work.wishbone_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.fine_delay_pkg.all;
+use work.sourceid_svec_fine_delay_top_pkg;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -413,9 +414,9 @@ begin  -- architecture arch
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
       g_DEVICE_ID    => x"574f_0002", -- SVEC + 2xFineDelay
-      g_VERSION      => x"0100_0000",
+      g_VERSION      => x"0300_0004",
       g_CAPABILITIES => x"0000_0000",
-      g_COMMIT_ID    => (others => '0'))
+      g_COMMIT_ID    => sourceid_svec_fine_delay_top_pkg.sourceid)
     port map (
       clk_i   => clk_sys_62m5,
       rst_n_i => rst_sys_62m5_n,
@@ -667,7 +668,7 @@ begin  -- architecture arch
       idelay_ce_o => fd0_tdc_start_iodelay_ce,
       idelay_inc_o => fd0_tdc_start_iodelay_inc,
       idelay_busy_i => '0',
-            
+       
       wb_adr_i   => cnx_slave_in(c_WB_SLAVE_FD0).adr,
       wb_dat_i   => cnx_slave_in(c_WB_SLAVE_FD0).dat,
       wb_dat_o   => cnx_slave_out(c_WB_SLAVE_FD0).dat,
@@ -899,8 +900,8 @@ begin  -- architecture arch
   svec_led(9) <= '0';
 
   -- Front panel IO configuration
-  fp_gpio1_b      <= pps;
-  fp_gpio2_b      <= '0';
+  fp_gpio1_b      <= tm_clk_aux_locked(0);
+  fp_gpio2_b      <= tm_clk_aux_locked(1);
   
   fp_term_en_o    <= (others => '0');
   fp_gpio1_a2b_o  <= '1';
