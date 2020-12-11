@@ -151,7 +151,7 @@ class TestFmcfdLoop(object):
         ts = fmcfd_tdc.read(count, os.O_NONBLOCK)
         assert len(ts) == count
         assert start.seconds == ts[0].seconds
-        assert ts[0].coarse - start.coarse <= 1 # there is a ~1ns cable
+        assert ts[0].coarse - start.coarse <= 3 # there is < 3ns cable
 
 
     @pytest.mark.parametrize("width,period_ps", [(200000, 1000000),
