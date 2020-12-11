@@ -21,6 +21,8 @@ def fmcfd():
 def fmcfd_chan(request, fmcfd):
     yield fmcfd.chan[request.param]
 
+pulse_train = [(200000, 10000000000)]
+
 @pytest.fixture(scope="function")
 def fmcfd_tdc(request, fmcfd):
     fmcfd.tdc.enable_input = False
@@ -64,7 +66,7 @@ class TestFmcfdLoop(object):
 
     @pytest.mark.parametrize("count", [1, 2, 3, 5, 7, 10,
                                        100, 1000, 10000, 65535])
-    @pytest.mark.parametrize("width,period", [(200000, 10000000000)])
+    @pytest.mark.parametrize("width,period", pulse_train)
     def test_output_counter(self, fmcfd, fmcfd_chan, fmcfd_tdc,
                             width, period, count):
         """
@@ -88,7 +90,7 @@ class TestFmcfdLoop(object):
         del ts
 
     @pytest.mark.parametrize("count", [10000])
-    @pytest.mark.parametrize("width,period", [(200000, 10000000000)])
+    @pytest.mark.parametrize("width,period", pulse_train)
     def test_input_sequence_number(self, capsys, fmcfd_chan, fmcfd_tdc,
                                    width, period, count):
         """
@@ -134,7 +136,7 @@ class TestFmcfdLoop(object):
                                            ])
     @pytest.mark.parametrize("wr", [False, True])
     @pytest.mark.parametrize("count", [1])
-    @pytest.mark.parametrize("width,period", [(200000, 10000000000)])
+    @pytest.mark.parametrize("width,period", pulse_train)
     def test_output_input_start(self, fmcfd_chan, fmcfd_tdc,
                                 wr, start_rel, width, period, count):
         """
