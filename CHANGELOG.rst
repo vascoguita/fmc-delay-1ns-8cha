@@ -6,6 +6,21 @@
 Changelog
 =========
 
+3.0.4 - 2020-12-11
+==================
+Changed
+-------
+- hdl: include fixes from SPEC and SVEC
+
+Added
+-----
+- sw: add symlink to FMC slot in sysfs
+
+Fixed
+-----
+- sw: IPMI header
+- tst: timeout computation was wrong in some cases and very very long
+
 3.0.3 - 2020-10-07
 ==================
 
