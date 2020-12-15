@@ -6,6 +6,12 @@
 Changelog
 =========
 
+3.0.5 - 2020-12-14
+==================
+Fixed
+-----
+- sw: open_by_lun() path to /dev/ device changed
+
 3.0.4 - 2020-12-11
 ==================
 Changed

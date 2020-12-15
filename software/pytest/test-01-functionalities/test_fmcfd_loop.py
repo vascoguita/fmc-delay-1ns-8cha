@@ -21,6 +21,8 @@ def fmcfd():
 def fmcfd_chan(request, fmcfd):
     yield fmcfd.chan[request.param]
 
+pulse_train = [(200000, 10000000000)]
+
 @pytest.fixture(scope="function")
 def fmcfd_tdc(request, fmcfd):
     fmcfd.tdc.enable_input = False
@@ -36,7 +38,7 @@ def fmcfd_tdc(request, fmcfd):
 
 def timeout_compute(start, period_ps, count):
     proportional = ((count * period_ps)/1000000000000.0)
-    return time.time() + proportional + start.seconds + 10
+    return time.time() + proportional + start + 5
 
 class TestFmcfdLoop(object):
     """
@@ -64,7 +66,7 @@ class TestFmcfdLoop(object):
 
     @pytest.mark.parametrize("count", [1, 2, 3, 5, 7, 10,
                                        100, 1000, 10000, 65535])
-    @pytest.mark.parametrize("width,period", [(200000, 10000000000)])
+    @pytest.mark.parametrize("width,period", pulse_train)
     def test_output_counter(self, fmcfd, fmcfd_chan, fmcfd_tdc,
                             width, period, count):
         """
@@ -73,10 +75,10 @@ class TestFmcfdLoop(object):
         channel.
         """
         ts = []
-
-        start = fmcfd.time + FmcFineDelayTime(2, 0, 0)
+        start_s = 2
+        start = fmcfd.time + FmcFineDelayTime(start_s, 0, 0)
         fmcfd_chan.pulse_generate(start, width, period, count)
-        timeout = timeout_compute(start, period, count)
+        timeout = timeout_compute(start_s, period, count)
         while len(ts) < count and time.time() < timeout:
             if len(fmcfd_tdc.poll()) == 0:
                 continue
@@ -88,7 +90,7 @@ class TestFmcfdLoop(object):
         del ts
 
     @pytest.mark.parametrize("count", [10000])
-    @pytest.mark.parametrize("width,period", [(200000, 10000000000)])
+    @pytest.mark.parametrize("width,period", pulse_train)
     def test_input_sequence_number(self, capsys, fmcfd_chan, fmcfd_tdc,
                                    width, period, count):
         """
@@ -97,12 +99,12 @@ class TestFmcfdLoop(object):
         """
         pending = count
         ts = []
-
-        start = FmcFineDelayTime(2, 0, 0)
+        start_s = 2
+        start = FmcFineDelayTime(start_s, 0, 0)
         fmcfd_chan.pulse_generate(fmcfd_chan.dev.time + start,
                                   width, period, count)
 
-        timeout = timeout_compute(start, period, count)
+        timeout = timeout_compute(start_s, period, count)
         while pending > 0 and time.time() < timeout:
             if len(fmcfd_tdc.poll()) == 0:
                 continue
@@ -134,7 +136,7 @@ class TestFmcfdLoop(object):
                                            ])
     @pytest.mark.parametrize("wr", [False, True])
     @pytest.mark.parametrize("count", [1])
-    @pytest.mark.parametrize("width,period", [(200000, 10000000000)])
+    @pytest.mark.parametrize("width,period", pulse_train)
     def test_output_input_start(self, fmcfd_chan, fmcfd_tdc,
                                 wr, start_rel, width, period, count):
         """
@@ -151,7 +153,7 @@ class TestFmcfdLoop(object):
         ts = fmcfd_tdc.read(count, os.O_NONBLOCK)
         assert len(ts) == count
         assert start.seconds == ts[0].seconds
-        assert ts[0].coarse - start.coarse <= 1 # there is a ~1ns cable
+        assert ts[0].coarse - start.coarse <= 3 # there is < 3ns cable
 
 
     @pytest.mark.parametrize("width,period_ps", [(200000, 1000000),
