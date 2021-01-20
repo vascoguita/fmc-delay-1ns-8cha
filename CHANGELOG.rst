@@ -6,6 +6,12 @@
 Changelog
 =========
 
+3.0.6 - 2021-01-20
+==================
+Fixed
+-----
+- sw: open_by_lun() conversion from LUN to ID
+
 3.0.5 - 2020-12-14
 ==================
 Fixed

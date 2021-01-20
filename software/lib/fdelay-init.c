@@ -148,7 +148,7 @@ struct fdelay_board *fdelay_open_by_lun(int lun)
 		errno = ENODEV;
 		return NULL;
 	}
-	if (sscanf(dev_id_str, "%4"SCNu32, &dev_id) != 1) {
+	if (sscanf(dev_id_str, "%4"SCNx32, &dev_id) != 1) {
 		errno = ENODEV;
 		return NULL;
 	}
