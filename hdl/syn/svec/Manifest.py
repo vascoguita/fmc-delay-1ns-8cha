@@ -21,7 +21,9 @@ if locals().get('fetchto', None) is None:
 files = [
     "buildinfo_pkg.vhd",
     "sourceid_svec_fine_delay_top_pkg.vhd",
-    "svec_fine_delay_top.ucf"
+    "svec_fine_delay_top.ucf",
+    "svec-fd0.ucf",
+    "svec-fd1.ucf"
 ]
 
 modules = {
