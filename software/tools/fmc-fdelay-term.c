@@ -14,6 +14,7 @@ void help(char *name)
 {
 	fprintf(stderr, "%s: Use \"%s [-V] [-d <dev>] [on|off]\n",
 		name, name);
+	fprintf(stderr, "   -d <dev>: device ID (hexadecimal)\n");
 	exit(1);
 }
 

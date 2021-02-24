@@ -22,7 +22,8 @@ void help(char *name)
 			"     wr                     - sets the time source to White Rabbit.\n"
 			"     host                   - sets the time source to local oscillator and coarsely\n"
 			"                              synchronizes the card to the system clock.\n"
-			"     seconds:[nanoseconds]: - sets local time to the given value.\n");
+			"     seconds:[nanoseconds]: - sets local time to the given value.\n"
+		        "  and <dev> is the device ID (hexadecimal)\n");
 		exit(1);
 }
 

@@ -15,7 +15,8 @@ void help(char *name)
 
 	fprintf(stderr, "fmc-fdelay-status: reports channel programming\n");
 	fprintf(stderr, "Use: \"%s [-V] [-d <dev>] [-r]\"\n", name);
-	fprintf(stderr, "   -r: display raw hardware configuration");
+	fprintf(stderr, "   -d <dev>: device ID (hexadecimal)\n");
+	fprintf(stderr, "   -r      : display raw hardware configuration\n");
 	exit(1);
 }
 

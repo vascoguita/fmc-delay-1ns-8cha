@@ -18,6 +18,7 @@ void help(char *name)
 	fprintf(stderr, "%s: Use \"%s [-V] [-d <dev>] [<opts>]\n",
 		name, name);
 	fprintf(stderr, " options:\n"
+		"   -d <dev>        device ID (hexadecimal)\n"
 		"   -c <count>      default is 0 and means forever\n"
 		"   -n              nonblocking: only empty buffer\n"
 		"   -r              raw mode: show hex timestamps\n"

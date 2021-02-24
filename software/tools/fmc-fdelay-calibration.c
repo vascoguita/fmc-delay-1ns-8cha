@@ -42,7 +42,7 @@ static const char help_msg[] =
 	"-f                 Source file where to read calibration data from\n"
 	"-o                 Offset in bytes within the file (default 0)\n"
 	"Write options:\n"
-	"-D                 FMC FDelay Target Device ID\n"
+	"-D                 FMC FDelay Target Device ID (hexadecimal)\n"
 	"\n";
 
 static inline void fmc_fdelay_calibration_version(void)
