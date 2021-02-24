@@ -3,6 +3,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "fdelay-lib.h"
 
@@ -15,15 +16,37 @@ void help(char *name)
 
 	fprintf(stderr, "fmc-fdelay-status: reports channel programming\n");
 	fprintf(stderr, "Use: \"%s [-V] [-d <dev>] [-r]\"\n", name);
-	fprintf(stderr, "   -r: display raw hardware configuration");
+	fprintf(stderr, "   -d <dev>: device ID (hexadecimal)\n");
+	fprintf(stderr, "   -r      : display raw hardware configuration\n");
 	exit(1);
+}
+
+void print_intput_raw(int flags)
+{
+	fprintf(stdout, "Input, flags 0x%x\n", flags);
+}
+
+void print_intput_human(int flags)
+{
+	bool disabled = flags & FD_TDCF_DISABLE_INPUT;
+
+	fprintf(stdout, "Input    : %s\n",
+		disabled ? "disabled" : "enabled");
+	if (!disabled) {
+		disabled = flags & FD_TDCF_DISABLE_TSTAMP;
+		fprintf(stdout, "  timestamping:              %s\n",
+			disabled ? "disabled" : "enabled");
+		disabled = !(flags & FD_TDCF_TERM_50);
+		fprintf(stdout, "  50 Ohm termination:        %s\n",
+			disabled ? "disabled" : "enabled");
+	}
 }
 
 int main(int argc, char **argv)
 {
 	struct fdelay_board *b;
 	struct fdelay_pulse p;
-	int ch, err, dev = -1, raw = 0, opt;
+	int ch, err, dev = -1, raw = 0, opt, flags;
 
 	/* Standard part of the file (repeated code) */
 	if (tools_need_help(argc, argv))
@@ -69,6 +92,16 @@ int main(int argc, char **argv)
 		fprintf(stderr, "%s: fdelay_open(): %s\n", argv[0],
 			strerror(errno));
 		exit(1);
+	}
+
+	flags = fdelay_get_config_tdc(b);
+	if (flags < 0) {
+		fputs("Input    : failed to get status\n", stdout);
+	} else {
+		if (raw)
+			print_intput_raw(flags);
+		else
+			print_intput_human(flags);
 	}
 
 	for (ch = 1; ch <= 4; ch++) {

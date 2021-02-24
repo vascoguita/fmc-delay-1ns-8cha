@@ -20,6 +20,7 @@ void help(char *name)
 	fprintf(stderr, "%s: Use \"%s [-V] [-d <dev>] [<opts>]\n",
 		name, name);
 	fprintf(stderr, " options:\n"
+		"   -d <dev>        device ID (hexadecimal)\n"
 		"   -o <output>     ouput channel: 1..4 (default 1)\n"
 		"   -c <count>      default is 0 and means forever\n"
 		"   -m <mode>       \"pulse\" (default), \"delay\", \"disable\"\n"
