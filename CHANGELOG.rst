@@ -6,6 +6,19 @@
 Changelog
 =========
 
+3.0.7 - 2021-02-24
+==================
+
+Added
+-----
+- sw: show the input status from the fmc-fdelay-status tool
+- sw: use the fmc-fdelay-input tool to change the input status
+
+Fixed
+-----
+- sw: make clear in the tools' help message that the device ID is an
+  hexadecimal number
+
 3.0.6 - 2021-01-20
 ==================
 Fixed
