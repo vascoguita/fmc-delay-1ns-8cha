@@ -303,7 +303,7 @@ architecture arch of svec_top is
   constant c_WB_SLAVE_FD1      : integer := 2;
 
   -- Convention metadata base address
-  constant c_METADATA_ADDR : t_wishbone_address := x"0000_2000";
+  constant c_METADATA_ADDR : t_wishbone_address := x"0000_4000";
 
   -- Primary wishbone crossbar layout
   constant c_WB_LAYOUT_ADDR :
