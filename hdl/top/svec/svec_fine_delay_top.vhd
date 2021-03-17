@@ -303,7 +303,7 @@ architecture arch of svec_top is
   constant c_WB_SLAVE_FD1      : integer := 2;
 
   -- Convention metadata base address
-  constant c_METADATA_ADDR : t_wishbone_address := x"0000_2000";
+  constant c_METADATA_ADDR : t_wishbone_address := x"0000_4000";
 
   -- Primary wishbone crossbar layout
   constant c_WB_LAYOUT_ADDR :
@@ -414,7 +414,7 @@ begin  -- architecture arch
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
       g_DEVICE_ID    => x"574f_0002", -- SVEC + 2xFineDelay
-      g_VERSION      => x"0300_0004",
+      g_VERSION      => x"0300_0008",
       g_CAPABILITIES => x"0000_0000",
       g_COMMIT_ID    => sourceid_svec_fine_delay_top_pkg.sourceid)
     port map (

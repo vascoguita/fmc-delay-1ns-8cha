@@ -6,6 +6,14 @@
 Changelog
 =========
 
+3.0.8 - 2021-03-17
+==================
+
+Changed
+-------
+- hdl: svec-base updated to 2.0, for the FD there are no incompatible changes
+- sw,hdl: compact memory map [we know, do not ask]
+
 3.0.7 - 2021-02-24
 ==================
 
