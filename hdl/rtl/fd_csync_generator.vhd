@@ -128,7 +128,6 @@ architecture behavioral of fd_csync_generator is
   signal utc, utc_sys       : unsigned(c_TIMESTAMP_UTC_BITS-1 downto 0);
 
   signal csync_int : std_logic;
-  signal csync_wr  : std_logic;
 
   signal tmo_restart, tmo_hit : std_logic;
 
@@ -325,8 +324,8 @@ begin  -- behavioral
     end process;
 
     regs_o.tcr_dmtd_stat_i <= dmtd_stat;
-    regs_o.tcr_wr_locked_i <= '1' when wr_state = WR_SYNCED                            else '0';
-    regs_o.tcr_wr_ready_i  <= '1' when (wr_state = WR_SYNCING or wr_state = WR_SYNCED) else '0';
+    regs_o.tcr_wr_locked_i <= '1' when wr_state = WR_SYNCED else '0';
+    regs_o.tcr_wr_ready_i  <= wr_time_valid_i;
     regs_o.tcr_wr_link_i   <= wr_link_up_i;
   end generate gen_with_wr_core;
 

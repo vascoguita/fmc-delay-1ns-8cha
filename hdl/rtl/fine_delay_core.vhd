@@ -370,14 +370,13 @@ architecture rtl of fine_delay_core is
 
   signal spi_cs_dac_n, spi_cs_pll_n, spi_cs_gpio_n, spi_mosi : std_logic;
 
-  signal dmtd_tag_stb, dbg_tag_in, dbg_tag_out : std_logic;
+  signal dbg_tag_in, dbg_tag_out : std_logic;
   
   signal iodelay_ntaps : std_logic_vector(7 downto 0);
   signal iodelay_cnt : unsigned(7 downto 0);
   signal iodelay_div : unsigned(6 downto 0);
   signal iodelay_tick : std_logic;
   signal iodelay_cal_done : std_logic;
-  signal iodelay_cal_in_progress : std_logic;  
   signal iodelay_n_taps_load_refclk_p : std_logic;
   signal iodelay_busy_synced: std_logic;
   signal iodelay_latch_reset : std_logic;
