@@ -385,7 +385,7 @@ extern void acam_writel(struct fd_dev *fd, int val, int reg);
 
 /* Functions exported by calibrate.c, called within acam.c */
 extern int fd_calibrate_outputs(struct fd_dev *fd);
-extern void fd_update_calibration(unsigned long arg);
+extern void fd_update_calibration(struct timer_list *arg);
 extern int fd_calib_period_s;
 
 /* Functions exported by gpio.c */

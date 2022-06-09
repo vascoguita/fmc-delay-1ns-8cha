@@ -231,10 +231,9 @@ module_param_named(timer_ms, fd_timer_period_ms, int, 0444);
 
 static int fd_timer_period_jiffies; /* converted from ms at init time */
 
-/* This acts as either a timer or an interrupt tasklet */
-static void fd_tlet(unsigned long arg)
+/* This is an interrupt tasklet but can act as a timer */
+static void fd_tlet(struct fd_dev *fd)
 {
-	struct fd_dev *fd = (void *)arg;
 	struct zio_device *zdev = fd->zdev;
 	struct zio_channel *chan = zdev->cset[0].chan;
 
@@ -255,6 +254,20 @@ static void fd_tlet(unsigned long arg)
 		zio_trigger_data_done(chan->cset);
 	}
 }
+
+static void fd_tlet_interrupt(unsigned long arg)
+{
+	struct fd_dev *fd = (void *)arg;
+	fd_tlet(fd);
+}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,14,0)
+static void fd_tlet_timer(struct timer_list *arg)
+{
+	struct fd_dev *fd = from_timer(fd, arg, fifo_timer);
+	fd_tlet(fd);
+}
+#endif
 
 /*
  * fd_irq_handler
@@ -305,7 +318,11 @@ int fd_irq_init(struct fd_dev *fd)
 	 * or a custom tasklet (newer). Init both anyways, no harm is done.
 	 */
 	if (fd_timer_period_ms) {
-		setup_timer(&fd->fifo_timer, fd_tlet, (unsigned long)fd);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
+		setup_timer(&fd->fifo_timer, fd_tlet_interrupt, (unsigned long)fd);
+#else
+		timer_setup(&fd->fifo_timer, fd_tlet_timer, 0);
+#endif
 		fd_timer_period_jiffies = msecs_to_jiffies(fd_timer_period_ms);
 		dev_dbg(&fd->pdev->dev,"Using a timer for input (%i ms)\n",
 			 jiffies_to_msecs(fd_timer_period_jiffies));
@@ -316,7 +333,7 @@ int fd_irq_init(struct fd_dev *fd)
 		/* Disable interrupts */
 		fd_writel(fd, ~0, FD_REG_EIC_IDR);
 
-		tasklet_init(&fd->tlet, fd_tlet, (unsigned long)fd);
+		tasklet_init(&fd->tlet, fd_tlet_interrupt, (unsigned long)fd);
 		r = platform_get_resource(fd->pdev, IORESOURCE_IRQ, FD_IRQ);
 		rv = request_any_context_irq(r->start, fd_irq_handler, 0,
 					     r->name, fd);

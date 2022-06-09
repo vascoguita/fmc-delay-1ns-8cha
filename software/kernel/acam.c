@@ -388,7 +388,11 @@ int fd_acam_init(struct fd_dev *fd)
 	fd->temp_ready = 0;
 
 	/* Prepare the timely recalibration */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 	setup_timer(&fd->temp_timer, fd_update_calibration, (unsigned long)fd);
+#else
+	timer_setup(&fd->temp_timer, fd_update_calibration, 0);
+#endif
 	if (fd_calib_period_s)
 		mod_timer(&fd->temp_timer, jiffies + HZ * fd_calib_period_s);
 

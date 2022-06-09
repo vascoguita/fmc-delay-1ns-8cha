@@ -218,9 +218,15 @@ int fd_calibrate_outputs(struct fd_dev *fd)
  * Called from a timer any few seconds. It updates the Delay line tap
  * according to the measured temperature
  */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 void fd_update_calibration(unsigned long arg)
 {
 	struct fd_dev *fd = (void *)arg;
+#else
+void fd_update_calibration(struct timer_list *arg)
+{
+	struct fd_dev *fd = from_timer(fd, arg, temp_timer);
+#endif
 	int ch, fitted, new;
 
 	fd_read_temp(fd, 0 /* not verbose */);
