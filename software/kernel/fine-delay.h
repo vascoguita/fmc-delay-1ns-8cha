@@ -177,7 +177,11 @@ static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
 #endif
 
 struct memory_ops {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
 	u32 (*read)(void *addr);
+#else
+	u32 (*read)(const void *addr);
+#endif
 	void (*write)(u32 value, void *addr);
 };
 
