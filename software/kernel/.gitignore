@@ -1,2 +1,6 @@
 .tmp_versions
 .*.o.d
+*.cmd
+*.ko
+*.mod
+*.o
