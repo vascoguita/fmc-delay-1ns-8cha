@@ -5,7 +5,7 @@
 -include Makefile.specific
 # include parent_common.mk for buildsystem's defines
 #use absolute path for REPO_PARENT
-REPO_PARENT ?= $(shell /bin/pwd)/../..
+REPO_PARENT ?= $(shell pwd)/../../..
 -include $(REPO_PARENT)/parent_common.mk
 
 CPPCHECK ?= cppcheck
