@@ -12,7 +12,7 @@ CPPCHECK ?= cppcheck
 DKMS ?= 0
 CURDIR := $(shell /bin/pwd)
 KVERSION ?= $(shell uname -r)
-LINUX ?= /lib/modules/$(KVERSION)/build
+KERNELSRC ?= /lib/modules/$(KVERSION)/build
 
 ifdef REPO_PARENT
 ZIO ?= $(REPO_PARENT)/fmc/zio
@@ -46,7 +46,7 @@ GIT_VERSION = $(shell git describe --always --dirty --long --tags)
 all: modules
 
 clean modules:
-	$(MAKE) -C $(LINUX) M=$(CURDIR) ZIO_ABS=$(ZIO_ABS) FMC_ABS=$(FMC_ABS) \
+	$(MAKE) -C $(KERNELSRC) M=$(CURDIR) ZIO_ABS=$(ZIO_ABS) FMC_ABS=$(FMC_ABS) \
 		ZIO_EXTRA_SYMBOLS-y=$(ZIO_EXTRA_SYMBOLS-y) \
 		FMC_EXTRA_SYMBOLS-y=$(FMC_EXTRA_SYMBOLS-y) \
 		ZIO_VERSION=$(ZIO_VERSION) \
@@ -54,7 +54,7 @@ clean modules:
 		$@
 
 install modules_install: modules
-	$(MAKE) -C $(LINUX) M=$(CURDIR) modules_install
+	$(MAKE) -C $(KERNELSRC) M=$(CURDIR) modules_install
 
 cppcheck:
 	$(CPPCHECK) -q -I. -I$(ZIO_ABS)/include -I$(FMC_BUS_ABS)/  --enable=all *.c *.h
