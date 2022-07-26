@@ -43,21 +43,18 @@ endif
 
 GIT_VERSION = $(shell git describe --always --dirty --long --tags)
 
-all modules:
+all: modules
+
+clean modules:
 	$(MAKE) -C $(LINUX) M=$(CURDIR) ZIO_ABS=$(ZIO_ABS) FMC_ABS=$(FMC_ABS) \
 		ZIO_EXTRA_SYMBOLS-y=$(ZIO_EXTRA_SYMBOLS-y) \
 		FMC_EXTRA_SYMBOLS-y=$(FMC_EXTRA_SYMBOLS-y) \
 		ZIO_VERSION=$(ZIO_VERSION) \
 		GIT_VERSION=$(GIT_VERSION) \
-		modules
+		$@
 
 install modules_install: modules
 	$(MAKE) -C $(LINUX) M=$(CURDIR) modules_install
-
-# be able to run the "clean" rule even if $(LINUX) is not valid
-clean:
-	rm -rf *.o *~  .*.cmd *.ko *.mod.c .tmp_versions Module.symvers \
-		Module.markers modules.order
 
 cppcheck:
 	$(CPPCHECK) -q -I. -I$(ZIO_ABS)/include -I$(FMC_BUS_ABS)/  --enable=all *.c *.h
