@@ -58,3 +58,5 @@ install modules_install: modules
 
 cppcheck:
 	$(CPPCHECK) -q -I. -I$(ZIO_ABS)/include -I$(FMC_BUS_ABS)/  --enable=all *.c *.h
+
+.PHONY: all cppcheck clean clean install modules modules_install
