@@ -27,7 +27,7 @@
 #include "hw/fd_main_regs.h"
 #include "hw/fd_channel_regs.h"
 
-#define _RW_ (S_IRUGO | S_IWUGO) /* I want 80-col lines so this lazy thing */
+#define _RW_ (S_IRUGO | S_IWUSR) /* I want 80-col lines so this lazy thing */
 
 static int fd_use_raw_tdc;
 
@@ -46,7 +46,7 @@ static struct zio_attribute fd_zattr_dev[] = {
 	ZIO_ATTR_EXT("utc-h", _RW_,		FD_ATTR_DEV_UTC_H, 0),
 	ZIO_ATTR_EXT("utc-l", _RW_,		FD_ATTR_DEV_UTC_L, 0),
 	ZIO_ATTR_EXT("coarse", _RW_,		FD_ATTR_DEV_COARSE, 0),
-	ZIO_ATTR_EXT("command", S_IWUGO,	FD_ATTR_DEV_COMMAND, 0),
+	ZIO_ATTR_EXT("command", S_IWUSR,	FD_ATTR_DEV_COMMAND, 0),
 	ZIO_ATTR_EXT("temperature", _RW_,	FD_ATTR_DEV_TEMP, 0),
 };
 
