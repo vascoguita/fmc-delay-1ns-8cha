@@ -19,8 +19,7 @@
 #include <fine-delay.h>
 
 char git_version[] = "git version: " GIT_VERSION;
-
-static const char program_name[] = "fau-calibration";
+static const char program_name[] __attribute__ ((unused)) = "fau-calibration";
 static char options[] = "hf:o:D:b";
 static const char help_msg[] =
 	"Usage: fmc_fdelay_-calibration [options]\n"
