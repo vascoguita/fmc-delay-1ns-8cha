@@ -124,12 +124,11 @@ struct zio_control ctrl;
 int main(int argc, char **argv)
 {
 	glob_t glob_buf;
-	int fd[MAXFD], seq[MAXFD];
+	int fd[MAXFD];
 	int i, j, maxfd = 0;
 	fd_set allset, curset;
 	struct timeval tout;
 	struct fd_perf perf = {0,};
-	int floatmode = 0;
 	uint32_t *attrs;
 	int step = 0;
 
@@ -137,7 +136,6 @@ int main(int argc, char **argv)
 		step = atoi(getenv("PERF_STEP"));
 
 	if (argc > 1 && !strcmp(argv[1], "-f")) {
-		floatmode = 1;
 		argv[1] = argv[0];
 		argv++, argc--;
 	}
@@ -180,7 +178,6 @@ int main(int argc, char **argv)
 		if (fd[i] > maxfd)
 			maxfd = fd[i];
 		FD_SET(fd[i], &allset);
-		seq[i] = -1;
 	}
 
 	/* Ok, now wait for each of them to spit a timestamp */
