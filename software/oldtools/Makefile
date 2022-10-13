@@ -7,7 +7,10 @@
 
 M = $(shell /bin/pwd)/../kernel
 
-HOST_EXTRACFLAGS += -I$(M) -I../lib -I../zio/include -Wno-trigraphs -Wall -ggdb
+REPO_PARENT ?= $(shell pwd)/../../..
+ZIO_ABS_PATH ?= $(REPO_PARENT)/zio
+
+HOST_EXTRACFLAGS += -I$(M) -I../lib -I$(ZIO_ABS_PATH)/include -Wno-trigraphs -Wall -ggdb
 
 HOSTCC ?= gcc
 
