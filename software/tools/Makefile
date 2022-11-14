@@ -54,3 +54,5 @@ install:
 
 cppcheck:
 	$(CPPCHECK) -q -I. -I../kernel -I$(LIBFD) --suppress=missingIncludeSystem --enable=all *.c *.h
+
+.PHONY: cppcheck

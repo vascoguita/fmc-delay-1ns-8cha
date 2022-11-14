@@ -15,7 +15,7 @@ KVERSION ?= $(shell uname -r)
 KERNELSRC ?= /lib/modules/$(KVERSION)/build
 
 ifdef REPO_PARENT
-ZIO ?= $(REPO_PARENT)/fmc/zio
+ZIO ?= $(REPO_PARENT)/zio
 FMC ?= $(REPO_PARENT)/fmc-sw
 endif
 
