@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2020 CERN (home.cern)
+#
+# SPDX-License-Identifier: CC-BY-SA-4.0+
+
+TOP_DIR := $(shell pwd)/..
+SW_DIR := $(TOP_DIR)/software
+
+DOXY_OUT := doxygen-fd-output
+
+all: doxygen drawings
+
+GIT_VERSION = $(shell git describe --dirty --long --tags)
+DOXINPUT := $(SW_DIR)/lib
+DOXINPUT += $(SW_DIR)/kernel/fine-delay.h
+DOXEXCL  := $(SW_DIR)/lib/PyFmcFineDelay
+
+doxygen: $(DOXY_OUT)
+$(DOXY_OUT): doxygen-fd-config
+	GIT_VERSION=$(GIT_VERSION) DOXINPUT="$(DOXINPUT)" DOXEXCL="$(DOXEXCL)" doxygen $<
+
+drawings:
+	$(MAKE) -C $@
+
+clean:
+	$(MAKE) -C drawings $@
+	@rm -rf $(DOXY_OUT)
+
+# Whatever sphinx target
+%: all
+	@echo > /dev/null
+
+.PHONY: all clean doxygen drawings
