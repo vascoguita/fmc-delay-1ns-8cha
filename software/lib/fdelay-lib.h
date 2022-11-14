@@ -198,7 +198,7 @@ static inline int fdelay_sysfs_get(struct __fdelay_board *b, char *name,
 {
 	char pathname[128];
 
-	sprintf(pathname, "%s/%s", b->sysbase, name);
+	snprintf(pathname, sizeof(pathname), "%s/%s", b->sysbase, name);
 	return __fdelay_sysfs_get(pathname, resp);
 }
 
@@ -207,7 +207,7 @@ static inline int fdelay_sysfs_set(struct __fdelay_board *b, char *name,
 {
 	char pathname[128];
 
-	sprintf(pathname, "%s/%s", b->sysbase, name);
+	snprintf(pathname, sizeof(pathname), "%s/%s", b->sysbase, name);
 	return __fdelay_sysfs_set(pathname, value);
 }
 

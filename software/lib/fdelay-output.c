@@ -68,7 +68,7 @@ static  int __fdelay_get_ch_fd(struct __fdelay_board *b,
 	if (b->fdc[ch14] <= 0) {
 		char fname[128];
 
-		sprintf(fname, "%s-%i-0-ctrl", b->devbase, ch14);
+		snprintf(fname, sizeof(fname), "%s-%i-0-ctrl", b->devbase, ch14);
 		b->fdc[ch14] = open(fname, O_WRONLY | O_NONBLOCK);
 		if (b->fdc[ch14] < 0)
 			return -1;
@@ -226,51 +226,51 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 
 	memset(pulse, 0, sizeof(struct fdelay_pulse));
 
-	sprintf(s,"fd-ch%i/%s", channel + 1, "mode");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "mode");
 	if (fdelay_sysfs_get(b, s, &tmp) < 0)
 		return -1; /* errno already set */
 	pulse->mode = tmp;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "rep");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "rep");
 	if (fdelay_sysfs_get(b, s, &tmp) < 0)
 		return -1;
 	pulse->rep = tmp;
 
-	sprintf(s,"fd-ch%i/%s", channel + 1, "start-h");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "start-h");
 	if (fdelay_sysfs_get(b, s, &utc_h) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "start-l");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "start-l");
 	if (fdelay_sysfs_get(b, s, &utc_l) < 0)
 		return -1;
 	pulse->start.utc = (((uint64_t)utc_h) << 32) | utc_l;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "start-coarse");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "start-coarse");
 	if (fdelay_sysfs_get(b, s, &pulse->start.coarse) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "start-fine");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "start-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->start.frac) < 0)
 		return -1;
 
-	sprintf(s,"fd-ch%i/%s", channel + 1, "end-h");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "end-h");
 	if (fdelay_sysfs_get(b, s, &utc_h) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "end-l");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "end-l");
 	if (fdelay_sysfs_get(b, s, &utc_l) < 0)
 		return -1;
 	pulse->end.utc = (((uint64_t)utc_h) << 32) | utc_l;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "end-coarse");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "end-coarse");
 	if (fdelay_sysfs_get(b, s, &pulse->end.coarse) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "end-fine");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "end-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->end.frac) < 0)
 		return -1;
 
-	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-l");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "delta-l");
 	if (fdelay_sysfs_get(b, s, &utc_l) < 0)
 		return -1;
 	pulse->loop.utc = utc_l;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-coarse");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "delta-coarse");
 	if (fdelay_sysfs_get(b, s, &pulse->loop.coarse) < 0)
 		return -1;
-	sprintf(s,"fd-ch%i/%s", channel + 1, "delta-fine");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "delta-fine");
 	if (fdelay_sysfs_get(b, s, &pulse->loop.frac) < 0)
 		return -1;
 
@@ -278,15 +278,15 @@ int fdelay_get_config_pulse(struct fdelay_board *userb,
 	 * Now, to return consistent values to the user, we must
 	 * un-apply all offsets that the driver added
 	 */
-	sprintf(s,"fd-ch%i/%s", channel + 1, "delay-offset");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "delay-offset");
 	if (fdelay_sysfs_get(b, s, &output_offset) < 0)
 		return -1;
 
-	sprintf(s,"fd-ch%i/%s", channel + 1, "user-offset");
+	snprintf(s, sizeof(s), "fd-ch%i/%s", channel + 1, "user-offset");
 	if (fdelay_sysfs_get(b, s, &output_user_offset) < 0)
 		return -1;
 
-	sprintf(s,"fd-input/%s", "offset");
+	snprintf(s, sizeof(s), "fd-input/%s", "offset");
 	if (fdelay_sysfs_get(b, s, &input_offset) < 0)
 		return -1;
 
@@ -365,7 +365,7 @@ int fdelay_has_triggered(struct fdelay_board *userb, int channel)
 	char s[32];
 	uint32_t mode;
 
-	sprintf(s,"fd-ch%i/mode", channel + 1);
+	snprintf(s, sizeof(s), "fd-ch%i/mode", channel + 1);
 	if (fdelay_sysfs_get(b, s, &mode) < 0)
 		return -1; /* errno already set */
 	return (mode & 0x80) != 0;

@@ -135,7 +135,7 @@ static int fmc_fdelay_calibration_write(unsigned int devid, struct fd_calibratio
 	int fd;
 	int ret;
 
-	sprintf(path,
+	snprintf(path, sizeof(path),
 		"/sys/bus/zio/devices/fd-%04x/calibration_data",
 		devid);
 

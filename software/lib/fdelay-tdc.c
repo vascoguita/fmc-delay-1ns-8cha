@@ -70,7 +70,7 @@ static int __fdelay_open_tdc(struct __fdelay_board *b)
 	if (b->fdc[0] <= 0) {
 		char fname[128];
 
-		sprintf(fname, "%s-0-0-ctrl", b->devbase);
+		snprintf(fname, sizeof(fname), "%s-0-0-ctrl", b->devbase);
 		b->fdc[0] = open(fname, O_RDONLY | O_NONBLOCK);
 	}
 	return b->fdc[0];

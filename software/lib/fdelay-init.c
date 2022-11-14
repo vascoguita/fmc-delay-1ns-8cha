@@ -96,7 +96,7 @@ struct fdelay_board *fdelay_open(int dev_id)
 		goto err_stat_d;
 	if (!S_ISCHR(sb.st_mode))
 		goto err_stat_d;
-	b->devbase = strndup(path, strlen(path) - strlen("-0-0-ctrl"));
+	b->devbase = strndup(path, strnlen(path, sizeof(path)) - strlen("-0-0-ctrl"));
 
 	ret = fdelay_sysfs_get(b, "version", &v);
 	if (ret)
