@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 `timescale 1ns/1ns 
 
 module sn74vmeh22501 (

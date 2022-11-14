@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 # This is not a kbuild Makefile. It is a plain Makefile so it can be copied
 
 # If it exists includes Makefile.specific. In this Makefile, you should put

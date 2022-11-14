@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate -group SpecBase /main/DUT/inst_spec_base/clk_125m_pllref_p_i

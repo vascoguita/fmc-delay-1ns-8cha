@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 `define ADDR_FD_DCR                    6'h0
 `define FD_DCR_ENABLE_OFFSET 0
 `define FD_DCR_ENABLE 32'h00000001

@@ -1,3 +1,7 @@
+-- SPDX-FileCopyrightText: 2022 CERN (home.cern)
+--
+-- SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 -------------------------------------------------------------------------------
 -- Title      : ACAM TDX-GPX timestamp postprocessor
 -- Project    : Fine Delay Core (FmcDelay1ns4cha)

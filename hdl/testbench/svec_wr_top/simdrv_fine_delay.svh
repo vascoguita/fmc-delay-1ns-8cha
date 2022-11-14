@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 `include "regs/fd_main_regs.vh"
 `include "regs/fd_channel_regs.vh"
 

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #ifndef __ACAM_GPX_H
 #define __ACAM_GPX_H
 

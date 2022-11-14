@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #ifndef __FINE_DELAY_H__
 #define __FINE_DELAY_H__
 

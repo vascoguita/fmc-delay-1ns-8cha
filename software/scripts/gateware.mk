@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 GW_SPEC = spec-fine-delay-v2.0-20140331.bin
 GW_SVEC = svec-fine-delay-v2.0-20140331.bin
 

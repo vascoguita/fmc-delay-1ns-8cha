@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 # user-space tools for spec-fine-delay
 
 # If it exists includes Makefile.specific. In this Makefile, you should put

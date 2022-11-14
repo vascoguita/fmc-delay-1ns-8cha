@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 # include parent_common.mk for buildsystem's defines
 # use absolute path for REPO_PARENT
 REPO_PARENT ?= $(shell pwd)/../..

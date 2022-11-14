@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 /* Simple demo that acts on the termination of the first board */
 #include <stdio.h>
 #include <stdlib.h>

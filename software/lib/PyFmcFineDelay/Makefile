@@ -1,6 +1,6 @@
-# SPDX-License-Identifier: CC0-1.0
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
 #
-# SPDX-FileCopyrightText: 2020 CERN
+# SPDX-License-Identifier: LGPL-2.1-or-later
 
 -include Makefile.specific
 

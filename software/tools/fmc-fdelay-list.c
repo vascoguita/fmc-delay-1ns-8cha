@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 /* Silly thing that lists installed fine-delay boards */
 #include <stdio.h>
 #include <stdlib.h>

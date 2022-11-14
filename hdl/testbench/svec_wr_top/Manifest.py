@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 ctrls = ["bank3_32b_32b"]
 action = "simulation"
 target = "xilinx"
