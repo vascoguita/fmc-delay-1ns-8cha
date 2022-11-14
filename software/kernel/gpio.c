@@ -39,9 +39,11 @@ static int gpio_readl(struct fd_dev *fd, int reg)
 
 static int gpio_writel_with_retry(struct fd_dev *fd, int val, int reg)
 {
-	int retries = SPI_RETRIES, rv;
+	int retries = SPI_RETRIES;
 	while(retries--)
 	{
+		int rv;
+
 		gpio_writel(fd, val, reg);
 		rv = gpio_readl(fd, reg);
 		if(rv >= 0 && (rv == val))
