@@ -1,9 +1,0 @@
-*.o
-*.txt
-*.log
-*.pyc
-spec_top.bin
-spec_top_fd.bin
-*.a
-*.so
-lib/spec
