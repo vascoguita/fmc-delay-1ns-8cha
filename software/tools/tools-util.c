@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -158,13 +162,13 @@ void report_output_config_raw(int channel, struct fdelay_pulse *p, int umode)
 	char mode[80];
 	int m = p->mode & 0x7f;
 	
-	if (m == FD_OUT_MODE_DISABLED) strcpy(mode, "disabled");
-	else if (m == FD_OUT_MODE_PULSE) strcpy(mode, "pulse");
-	else if (m == FD_OUT_MODE_DELAY) strcpy(mode, "delay");
-	else sprintf(mode, "%i (0x%04x)", p->mode, p->mode);
+	if (m == FD_OUT_MODE_DISABLED) strncpy(mode, "disabled", sizeof(mode));
+	else if (m == FD_OUT_MODE_PULSE) strncpy(mode, "pulse", sizeof(mode));
+	else if (m == FD_OUT_MODE_DELAY) strncpy(mode, "delay", sizeof(mode));
+	else snprintf(mode, sizeof(mode), "%i (0x%04x)", p->mode, p->mode);
 
 	if (p->mode & 0x80) 
-	strcat(mode, " (triggered)");
+	strncat(mode, " (triggered)", sizeof(mode) - strlen(mode));
 	printf("Channel %i, mode %s, repeat %i %s\n",
 		FDELAY_OUTPUT_HW_TO_USER(channel), mode,
 		p->rep, p->rep == -1 ? "(infinite)" : "");

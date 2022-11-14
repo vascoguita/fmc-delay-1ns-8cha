@@ -59,7 +59,7 @@ To install this software package, you need to tell it where your
 kernel sources live, so the package can pick the right header files.
 You need to set only one environment variable:
 
-LINUX
+KERNELSRC
   The top-level directory of the Linux kernel you are compiling
   against. If not set, the default may work if you compile in the same
   host where you expect to run the driver.
@@ -69,7 +69,7 @@ Most likely, this is all you need to set. After this, you can
 run:::
 
     make
-    sudo make install LINUX=$LINUX
+    sudo make install KERNELSRC=$KERNELSRC
 
 After installation, your carrier driver should load automatically
 (for example, the PCI bus will load ``spec-fmc-carrier.ko``), but

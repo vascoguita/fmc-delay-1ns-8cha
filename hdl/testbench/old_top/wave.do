@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 onerror {resume}
 quietly WaveActivateNextPane {} 0
 add wave -noupdate /main/DUT/chx_delay_pulse0

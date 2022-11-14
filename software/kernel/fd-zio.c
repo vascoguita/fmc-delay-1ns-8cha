@@ -1,14 +1,6 @@
-/*
- * ZIO interface for the fine-delay driver
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -27,7 +19,7 @@
 #include "hw/fd_main_regs.h"
 #include "hw/fd_channel_regs.h"
 
-#define _RW_ (S_IRUGO | S_IWUGO) /* I want 80-col lines so this lazy thing */
+#define _RW_ (S_IRUGO | S_IWUSR) /* I want 80-col lines so this lazy thing */
 
 static int fd_use_raw_tdc;
 
@@ -46,7 +38,7 @@ static struct zio_attribute fd_zattr_dev[] = {
 	ZIO_ATTR_EXT("utc-h", _RW_,		FD_ATTR_DEV_UTC_H, 0),
 	ZIO_ATTR_EXT("utc-l", _RW_,		FD_ATTR_DEV_UTC_L, 0),
 	ZIO_ATTR_EXT("coarse", _RW_,		FD_ATTR_DEV_COARSE, 0),
-	ZIO_ATTR_EXT("command", S_IWUGO,	FD_ATTR_DEV_COMMAND, 0),
+	ZIO_ATTR_EXT("command", S_IWUSR,	FD_ATTR_DEV_COMMAND, 0),
 	ZIO_ATTR_EXT("temperature", _RW_,	FD_ATTR_DEV_TEMP, 0),
 };
 

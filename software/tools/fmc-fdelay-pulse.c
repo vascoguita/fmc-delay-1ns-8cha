@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <inttypes.h>
+#include <time.h>
 
 #include "fdelay-lib.h"
 
@@ -398,7 +403,12 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	while (trigger_wait) {
-		usleep(10 * 1000);
+		struct timespec ts = {
+			.tv_sec = 0,
+			.tv_nsec = 10 * 1000,
+		};
+
+		nanosleep(&ts, NULL);
 		i = fdelay_has_triggered(b, channel);
 		if (i < 0) {
 			fprintf(stderr, "%s: waiting for trigger: %s\n",

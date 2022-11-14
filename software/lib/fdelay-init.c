@@ -1,14 +1,7 @@
-/*
- * Initializing and cleaning up the fdelay library
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -96,7 +89,7 @@ struct fdelay_board *fdelay_open(int dev_id)
 		goto err_stat_d;
 	if (!S_ISCHR(sb.st_mode))
 		goto err_stat_d;
-	b->devbase = strndup(path, strlen(path) - strlen("-0-0-ctrl"));
+	b->devbase = strndup(path, strnlen(path, sizeof(path)) - strlen("-0-0-ctrl"));
 
 	ret = fdelay_sysfs_get(b, "version", &v);
 	if (ret)

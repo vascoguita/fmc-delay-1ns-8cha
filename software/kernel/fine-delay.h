@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #ifndef __FINE_DELAY_H__
 #define __FINE_DELAY_H__
 
@@ -177,7 +181,11 @@ static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
 #endif
 
 struct memory_ops {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,8,0)
 	u32 (*read)(void *addr);
+#else
+	u32 (*read)(const void *addr);
+#endif
 	void (*write)(u32 value, void *addr);
 };
 
@@ -385,7 +393,7 @@ extern void acam_writel(struct fd_dev *fd, int val, int reg);
 
 /* Functions exported by calibrate.c, called within acam.c */
 extern int fd_calibrate_outputs(struct fd_dev *fd);
-extern void fd_update_calibration(unsigned long arg);
+extern void fd_update_calibration(struct timer_list *arg);
 extern int fd_calib_period_s;
 
 /* Functions exported by gpio.c */
@@ -401,10 +409,17 @@ extern int fd_dump_mcp(struct fd_dev *fd);
 /* Functions exported by time.c */
 extern int fd_time_init(struct fd_dev *fd);
 extern void fd_time_exit(struct fd_dev *fd);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
 extern int fd_time_set(struct fd_dev *fd, struct fd_time *t,
 		       struct timespec *ts);
 extern int fd_time_get(struct fd_dev *fd, struct fd_time *t,
 		       struct timespec *ts);
+#else
+extern int fd_time_set(struct fd_dev *fd, struct fd_time *t,
+		       struct timespec64 *ts);
+extern int fd_time_get(struct fd_dev *fd, struct fd_time *t,
+		       struct timespec64 *ts);
+#endif
 
 /* Functions exported by fd-zio.c */
 extern int fd_zio_register(void);

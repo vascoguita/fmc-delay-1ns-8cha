@@ -1,6 +1,6 @@
+.. SPDX-License-Identifier: CC-BY-SA-4.0+
 ..
-  SPDX-License-Identifier: CC-0.0
-  SPDX-FileCopyrightText: 2019 CERN
+.. SPDX-FileCopyrightText: 2019 CERN
 
 =========
 Changelog

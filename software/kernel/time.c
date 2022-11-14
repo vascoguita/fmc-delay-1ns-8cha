@@ -1,15 +1,6 @@
-/*
- * SPI access to fine-delay internals
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <linux/io.h>
 #include <linux/time.h>
@@ -18,11 +9,18 @@
 #include "hw/fd_main_regs.h"
 
 /* If fd_time is not null, use it. if ts is not null, use it, else current */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
 int fd_time_set(struct fd_dev *fd, struct fd_time *t, struct timespec *ts)
 {
+	struct timespec localts;
+#else
+int fd_time_set(struct fd_dev *fd, struct fd_time *t, struct timespec64 *ts)
+{
+	struct timespec64 localts;
+#endif
 	uint32_t tcr, gcr;
 	unsigned long flags;
-	struct timespec localts;
 
 	spin_lock_irqsave(&fd->lock, flags);
 
@@ -36,7 +34,11 @@ int fd_time_set(struct fd_dev *fd, struct fd_time *t, struct timespec *ts)
 		if (!ts) {
 			/* no caller-provided time: use Linux timer */
 			ts = &localts;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
 			getnstimeofday(ts);
+#else
+			ktime_get_ts64(ts);
+#endif
 		}
 		fd_writel(fd, GET_HI32(ts->tv_sec), FD_REG_TM_SECH);
 		fd_writel(fd, (int32_t)ts->tv_sec, FD_REG_TM_SECL);
@@ -52,7 +54,11 @@ int fd_time_set(struct fd_dev *fd, struct fd_time *t, struct timespec *ts)
 }
 
 /* If fd_time is not null, use it. Otherwise use ts */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
 int fd_time_get(struct fd_dev *fd, struct fd_time *t, struct timespec *ts)
+#else
+int fd_time_get(struct fd_dev *fd, struct fd_time *t, struct timespec64 *ts)
+#endif
 {
 	uint32_t tcr, h, l, c;
 	unsigned long flags;
@@ -78,7 +84,11 @@ int fd_time_get(struct fd_dev *fd, struct fd_time *t, struct timespec *ts)
 
 int fd_time_init(struct fd_dev *fd)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,6,0)
 	struct timespec ts = {0,0};
+#else
+	struct timespec64 ts = {0,0};
+#endif
 
 	/* Set the time to zero, so internal stuff resyncs */
 	return fd_time_set(fd, NULL, &ts);

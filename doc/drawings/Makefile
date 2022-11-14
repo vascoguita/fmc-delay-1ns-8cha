@@ -8,6 +8,6 @@ clean:
 images: $(EPSIMAGES:.eps=.png)
 
 %.png: %.eps
-	@convert $< $@
+	@inkscape $< -o $@ || inkscape --without-gui $< -A $@
 
 .PHONY: all clean images

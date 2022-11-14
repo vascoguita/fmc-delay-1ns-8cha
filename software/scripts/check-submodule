@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 if [ $# -gt 2 -o $# -lt 1 ]; then
     echo "Use: \"$0 <repo-name> <user-provided-path>\" >& 2"
     echo "Example:  \"$0 spec-sw $SPEC_SW\" >& 2"

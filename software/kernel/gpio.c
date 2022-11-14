@@ -1,15 +1,6 @@
-/*
- * SPI access to fine-delay internals
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <linux/io.h>
 #include "fine-delay.h"
@@ -39,9 +30,11 @@ static int gpio_readl(struct fd_dev *fd, int reg)
 
 static int gpio_writel_with_retry(struct fd_dev *fd, int val, int reg)
 {
-	int retries = SPI_RETRIES, rv;
+	int retries = SPI_RETRIES;
 	while(retries--)
 	{
+		int rv;
+
 		gpio_writel(fd, val, reg);
 		rv = gpio_readl(fd, reg);
 		if(rv >= 0 && (rv == val))

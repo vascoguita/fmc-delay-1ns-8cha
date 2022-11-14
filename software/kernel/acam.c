@@ -1,15 +1,6 @@
-/*
- * Accessing the ACAM chip and configuring it.
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <linux/jiffies.h>
 #include <linux/io.h>
@@ -388,7 +379,11 @@ int fd_acam_init(struct fd_dev *fd)
 	fd->temp_ready = 0;
 
 	/* Prepare the timely recalibration */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,14,0)
 	setup_timer(&fd->temp_timer, fd_update_calibration, (unsigned long)fd);
+#else
+	timer_setup(&fd->temp_timer, fd_update_calibration, 0);
+#endif
 	if (fd_calib_period_s)
 		mod_timer(&fd->temp_timer, jiffies + HZ * fd_calib_period_s);
 

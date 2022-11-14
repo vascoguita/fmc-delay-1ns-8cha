@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 [submodule "hdl/ip_cores/general-cores"]
 	path = hdl/ip_cores/general-cores
 	url = https://ohwr.org/project/general-cores.git
@@ -19,6 +23,3 @@
 [submodule "hdl/ip_cores/svec"]
 	path = hdl/ip_cores/svec
 	url = https://ohwr.org/project/svec.git
-[submodule "software/zio"]
-	path = software/zio
-	url = git://ohwr.org/misc/zio.git

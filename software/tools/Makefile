@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 # user-space tools for spec-fine-delay
 
 # If it exists includes Makefile.specific. In this Makefile, you should put
@@ -7,7 +11,7 @@
 
 # include parent_common.mk for buildsystem's defines
 IGNORE_CPU_SUFFIX := y
-REPO_PARENT ?=
+REPO_PARENT ?= $(pwd)/../../..
 -include $(REPO_PARENT)/parent_common.mk
 
 DESTDIR ?= /usr/local
@@ -31,6 +35,7 @@ progs += fmc-fdelay-pulse
 progs += fmc-fdelay-status
 
 CPPCHECK ?= cppcheck
+FLAWFINDER ?= flawfinder
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(progs) fmc-fdelay-calibration
@@ -54,3 +59,8 @@ install:
 
 cppcheck:
 	$(CPPCHECK) -q -I. -I../kernel -I$(LIBFD) --suppress=missingIncludeSystem --enable=all *.c *.h
+
+flawfinder:
+	$(FLAWFINDER) -SQDC --error-level=5 .
+
+.PHONY: cppcheck flawfinder

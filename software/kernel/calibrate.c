@@ -1,15 +1,6 @@
-/*
- * Calibrate the output path.
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Tomasz Wlostowski <tomasz.wlostowski@cern.ch>
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -216,11 +207,17 @@ int fd_calibrate_outputs(struct fd_dev *fd)
 /**
  * fd_update_calibration
  * Called from a timer any few seconds. It updates the Delay line tap
- * according to the measured temperature
+ * according to the measured temperature.
+ *
+ * As per tovalds/linux, the kernel version below 4.14 support
+ * 	fd_update_calibration(unsigned long arg)
+ * and not the other one. But even though CS7 is 3.10 based, patches might
+ * have been backported, and it supports the other one.
  */
-void fd_update_calibration(unsigned long arg)
+
+void fd_update_calibration(struct timer_list *arg)
 {
-	struct fd_dev *fd = (void *)arg;
+	struct fd_dev *fd = from_timer(fd, arg, temp_timer);
 	int ch, fitted, new;
 
 	fd_read_temp(fd, 0 /* not verbose */);

@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 //#`include "simdrv_defs.svh"
 
 `timescale 1ns/1ps

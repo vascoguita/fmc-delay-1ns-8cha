@@ -1,3 +1,7 @@
+-- SPDX-FileCopyrightText: 2022 CERN (home.cern)
+--
+-- SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 -----------------------------------------------------------------------------
 -- Title      : SY89295U 4-input arbitration unit
 -- Project    : Fine Delay FMC (fmc-delay-1ns-4cha)

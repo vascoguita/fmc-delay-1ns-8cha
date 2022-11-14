@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
 # older user-space tools for spec-fine-delay
 
 # If it exists includes Makefile.specific. In this Makefile, you should put
@@ -7,7 +11,10 @@
 
 M = $(shell /bin/pwd)/../kernel
 
-HOST_EXTRACFLAGS += -I$(M) -I../lib -I../zio/include -Wno-trigraphs -Wall -ggdb
+REPO_PARENT ?= $(shell pwd)/../../..
+ZIO_ABS_PATH ?= $(REPO_PARENT)/zio
+
+HOST_EXTRACFLAGS += -I$(M) -I../lib -I$(ZIO_ABS_PATH)/include -Wno-trigraphs -Wall -ggdb
 
 HOSTCC ?= gcc
 

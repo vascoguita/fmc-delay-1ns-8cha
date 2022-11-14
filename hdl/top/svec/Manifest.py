@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2022 CERN (home.cern)
+#
+# SPDX-License-Identifier: CERN-OHL-W-2.0+
+
 files = ["svec_fine_delay_top.vhd", "svec_fine_delay_top.ucf"]
 
 fetchto = "../../ip_cores"

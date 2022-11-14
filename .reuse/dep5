@@ -1,0 +1,12 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: fmc-adc-100m14b4ch
+Upstream-Contact: Federico Vaga <federico.vaga@cern.ch>
+Source: https://ohwr.org/project/fmc-delay-1ns-8cha
+
+Files: doc/*
+Copyright: 2022 CERN (home.cern)
+License: CC-BY-SA-4.0+
+
+Files: hardware/*
+Copyright: 2022 CERN (home.cern)
+License: CERN-OHL-W-2.0+

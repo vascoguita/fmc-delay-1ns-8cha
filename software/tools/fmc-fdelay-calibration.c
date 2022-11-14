@@ -1,4 +1,7 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 /*
  * Copyright (C) 2019 CERN (www.cern.ch)
  * Author: Federico Vaga <federico.vaga@cern.ch>
@@ -19,8 +22,7 @@
 #include <fine-delay.h>
 
 char git_version[] = "git version: " GIT_VERSION;
-
-static const char program_name[] = "fau-calibration";
+static const char program_name[] __attribute__ ((unused)) = "fau-calibration";
 static char options[] = "hf:o:D:b";
 static const char help_msg[] =
 	"Usage: fmc_fdelay_-calibration [options]\n"
@@ -136,7 +138,7 @@ static int fmc_fdelay_calibration_write(unsigned int devid, struct fd_calibratio
 	int fd;
 	int ret;
 
-	sprintf(path,
+	snprintf(path, sizeof(path),
 		"/sys/bus/zio/devices/fd-%04x/calibration_data",
 		devid);
 

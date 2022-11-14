@@ -1,14 +1,7 @@
-/*
- * The "official" fine-delay API
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 #ifndef __FDELAY_H__
 #define __FDELAY_H__
 
@@ -198,7 +191,7 @@ static inline int fdelay_sysfs_get(struct __fdelay_board *b, char *name,
 {
 	char pathname[128];
 
-	sprintf(pathname, "%s/%s", b->sysbase, name);
+	snprintf(pathname, sizeof(pathname), "%s/%s", b->sysbase, name);
 	return __fdelay_sysfs_get(pathname, resp);
 }
 
@@ -207,7 +200,7 @@ static inline int fdelay_sysfs_set(struct __fdelay_board *b, char *name,
 {
 	char pathname[128];
 
-	sprintf(pathname, "%s/%s", b->sysbase, name);
+	snprintf(pathname, sizeof(pathname), "%s/%s", b->sysbase, name);
 	return __fdelay_sysfs_set(pathname, value);
 }
 

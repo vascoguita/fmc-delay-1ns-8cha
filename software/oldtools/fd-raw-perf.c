@@ -1,15 +1,7 @@
-/*
- * an input tool that measures performance
- * (almost a copy of fd-raw-input, even if code repetition is BAD)
- *
- * Copyright (C) 2012 CERN (www.cern.ch)
- * Author: Alessandro Rubini <rubini@gnudd.com>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public License
- * version 2 as published by the Free Software Foundation or, at your
- * option, any later version.
- */
+// SPDX-FileCopyrightText: 2022 CERN (home.cern)
+//
+// SPDX-License-Identifier: LGPL-2.1-or-later
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -124,12 +116,11 @@ struct zio_control ctrl;
 int main(int argc, char **argv)
 {
 	glob_t glob_buf;
-	int fd[MAXFD], seq[MAXFD];
+	int fd[MAXFD];
 	int i, j, maxfd = 0;
 	fd_set allset, curset;
 	struct timeval tout;
 	struct fd_perf perf = {0,};
-	int floatmode = 0;
 	uint32_t *attrs;
 	int step = 0;
 
@@ -137,7 +128,6 @@ int main(int argc, char **argv)
 		step = atoi(getenv("PERF_STEP"));
 
 	if (argc > 1 && !strcmp(argv[1], "-f")) {
-		floatmode = 1;
 		argv[1] = argv[0];
 		argv++, argc--;
 	}
@@ -180,7 +170,6 @@ int main(int argc, char **argv)
 		if (fd[i] > maxfd)
 			maxfd = fd[i];
 		FD_SET(fd[i], &allset);
-		seq[i] = -1;
 	}
 
 	/* Ok, now wait for each of them to spit a timestamp */
