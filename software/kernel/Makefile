@@ -9,6 +9,7 @@ REPO_PARENT ?= $(shell pwd)/../../..
 -include $(REPO_PARENT)/parent_common.mk
 
 CPPCHECK ?= cppcheck
+FLAWFINDER ?= flawfinder
 DKMS ?= 0
 CURDIR := $(shell /bin/pwd)
 KVERSION ?= $(shell uname -r)
@@ -59,4 +60,7 @@ install modules_install: modules
 cppcheck:
 	$(CPPCHECK) -q -I. -I$(ZIO_ABS)/include -I$(FMC_BUS_ABS)/  --enable=all *.c *.h
 
-.PHONY: all cppcheck clean clean install modules modules_install
+flawfinder:
+	$(FLAWFINDER) -SQDC --error-level=3 .
+
+.PHONY: all cppcheck clean clean flawfinder install modules modules_install

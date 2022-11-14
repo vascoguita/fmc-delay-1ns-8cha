@@ -31,6 +31,7 @@ progs += fmc-fdelay-pulse
 progs += fmc-fdelay-status
 
 CPPCHECK ?= cppcheck
+FLAWFINDER ?= flawfinder
 
 # we are not in the kernel, so we need to piggy-back on "make modules"
 all modules: $(progs) fmc-fdelay-calibration
@@ -55,4 +56,7 @@ install:
 cppcheck:
 	$(CPPCHECK) -q -I. -I../kernel -I$(LIBFD) --suppress=missingIncludeSystem --enable=all *.c *.h
 
-.PHONY: cppcheck
+flawfinder:
+	$(FLAWFINDER) -SQDC --error-level=5 .
+
+.PHONY: cppcheck flawfinder

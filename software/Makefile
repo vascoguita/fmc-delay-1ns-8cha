@@ -29,5 +29,5 @@ modules_install: TARGET = modules_install
 $(DIRS):
 	$(MAKE) -C $@ $(TARGET)
 
-cppcheck:
+flawfinder cppcheck:
 	for d in $(DIRS); do $(MAKE) -C $$d $@ || exit 1; done
