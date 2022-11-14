@@ -58,7 +58,7 @@ install modules_install: modules
 	$(MAKE) -C $(KERNELSRC) M=$(CURDIR) modules_install
 
 cppcheck:
-	$(CPPCHECK) -q -I. -I$(ZIO_ABS)/include -I$(FMC_BUS_ABS)/  --enable=all *.c *.h
+	$(CPPCHECK) -q -I. -I$(ZIO_ABS)/include -I$(FMC_BUS_ABS)/ -I$(KERNEL_SRC)/include  --enable=all *.c *.h
 
 flawfinder:
 	$(FLAWFINDER) -SQDC --error-level=3 .
