@@ -34,8 +34,8 @@ void help(char *name)
 		"   -T <period>     period, e.g. \"50m-20n\" -- use m,u,n,p and add/sub\n"
 		"   -w <width>      like period; defaults to 50%% period\n"
 		"   -t              wait for trigger before exiting\n"
-		"   -p              pulse per seconds (sets -D -T -w)\n"
-		"   -1              10MHz (sets -D -T -w)\n"
+		"   -p              pulse per seconds (sets -D <now> -T 1 -w 1u)\n"
+		"   -1              10MHz (sets -D <now> -T 100ns -w 48ns)\n"
 		"   -v              verbose (report action)\n");
 	fprintf(stderr,"By default, the tool generates a continuous train of pulses (10 Hz frequency) on a given output.\n");
 	exit(1);
