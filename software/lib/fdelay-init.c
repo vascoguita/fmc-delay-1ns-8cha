@@ -126,7 +126,7 @@ struct fdelay_board *fdelay_open_by_lun(int lun)
 	ssize_t ret;
 	char dev_id_str[4];
 	char path_pattern[] = "/dev/fd.%d";
-	char path[sizeof(path_pattern) + 1];
+	char path[sizeof(path_pattern) + 10]; // add 10 to allow more digits
 	uint32_t dev_id;
 
 	if (fdelay_is_verbose())
