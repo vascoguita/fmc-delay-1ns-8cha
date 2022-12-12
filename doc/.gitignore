@@ -12,7 +12,6 @@ fine-delay.pdf
 *.texi
 *.toc
 *.tp
-/*.txt
 *.vr
 _build
 .doxystamp
