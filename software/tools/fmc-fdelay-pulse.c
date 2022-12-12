@@ -215,6 +215,18 @@ void parse_width(struct fdelay_pulse *p, char *s)
 	parse_time(s, &t_width);
 }
 
+static void width_set_duty_cycle_50(struct fdelay_time *period,
+				    struct fdelay_time *width)
+{
+	memset(width, 0, sizeof(struct fdelay_time));
+	width->utc = period->utc / 2;
+	width->coarse = period->coarse / 2;
+	width->frac = period->frac / 2;
+	if (period->utc & 0x1)
+		width->coarse += 62500000;
+	if (period->coarse & 0x1)
+		width->frac += 2048;
+}
 
 int main(int argc, char **argv)
 {
@@ -224,7 +236,7 @@ int main(int argc, char **argv)
 	int count = 0, channel = -1;
 	int trigger_wait = 0, verbose = 0;
 	struct fdelay_pulse p;
-
+	int has_custom_width = 0;
 
 	/* Standard part of the file (repeated code) */
 	if (tools_need_help(argc, argv))
@@ -307,6 +319,7 @@ int main(int argc, char **argv)
 			break;
 		case 'w':
 			parse_width(&p, optarg);
+			has_custom_width = 1;
 			break;
 		case 't':
 			trigger_wait = 1;
@@ -330,6 +343,10 @@ int main(int argc, char **argv)
 			argv[0]);
 		exit(1);
 	}
+
+	/* If no custom value, set duty-cyle 50%  */
+	if (!has_custom_width)
+		width_set_duty_cycle_50(&p.loop, &t_width);
 
 	b = fdelay_open(dev);
 	if (!b) {
