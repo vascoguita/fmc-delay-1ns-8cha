@@ -11,7 +11,6 @@
 
 # include parent_common.mk for buildsystem's defines
 IGNORE_CPU_SUFFIX := y
-REPO_PARENT ?= $(pwd)/../../..
 -include $(REPO_PARENT)/parent_common.mk
 
 DESTDIR ?= /usr/local
