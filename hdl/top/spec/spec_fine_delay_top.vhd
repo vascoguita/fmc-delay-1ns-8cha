@@ -8,7 +8,7 @@
 -- https://ohwr.org/projects/fmc-delay-1ns-8cha
 --------------------------------------------------------------------------------
 --
--- unit name:   spec_fine_delay_top
+-- unit name:   spec_fine_delay
 --
 -- description: Top entity for Fine Delay reference design.
 --
@@ -38,13 +38,13 @@ use work.wishbone_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.fine_delay_pkg.all;
-use work.sourceid_spec_fine_delay_top_pkg;
+use work.sourceid_spec_fine_delay_pkg;
 
 
 library unisim;
 use unisim.vcomponents.all;
 
-entity spec_fine_delay_top is
+entity spec_fine_delay is
   generic (
     g_WRPC_INITF    : string  := "../../ip_cores/wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
@@ -183,9 +183,9 @@ entity spec_fine_delay_top is
     fmc0_scl_b : inout std_logic;
     fmc0_sda_b : inout std_logic);
 
-end entity spec_fine_delay_top;
+end entity spec_fine_delay;
 
-architecture arch of spec_fine_delay_top is
+architecture arch of spec_fine_delay is
 
 
   component IBUFDS is
@@ -312,7 +312,7 @@ begin  -- architecture arch
       g_DEVICE_ID    => x"574f_0001", -- SPEC + 1xFine Delay
       g_VERSION      => x"0300_0008",
       g_CAPABILITIES => x"0000_0000",
-      g_COMMIT_ID    => sourceid_spec_fine_delay_top_pkg.sourceid)
+      g_COMMIT_ID    => sourceid_spec_fine_delay_pkg.sourceid)
     port map (
       clk_i   => clk_sys_62m5,
       rst_n_i => rst_sys_62m5_n,
