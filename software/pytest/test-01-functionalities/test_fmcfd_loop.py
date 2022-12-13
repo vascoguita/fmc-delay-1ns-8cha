@@ -20,6 +20,7 @@ def fmcfd():
 @pytest.fixture(scope="function", params=pytest.channels)
 def fmcfd_chan(request, fmcfd):
     yield fmcfd.chan[request.param]
+    fmcfd.chan[request.param].disable()
 
 pulse_train = [(200000, 10000000000)]
 
