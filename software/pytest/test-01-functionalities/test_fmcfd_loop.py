@@ -82,7 +82,11 @@ class TestFmcfdLoop(object):
         while len(ts) < count and time.time() < timeout:
             if len(fmcfd_tdc.poll()) == 0:
                 continue
-            t = fmcfd_tdc.read(100, os.O_NONBLOCK)
+            try:
+                t = fmcfd_tdc.read(100, os.O_NONBLOCK)
+            except BlockingIOError:
+                t = fmcfd_tdc.read(100, os.O_NONBLOCK)
+
             assert len(t) > 0
             ts = ts + t
         assert len(ts) == count
@@ -108,7 +112,10 @@ class TestFmcfdLoop(object):
         while pending > 0 and time.time() < timeout:
             if len(fmcfd_tdc.poll()) == 0:
                 continue
-            t = fmcfd_tdc.read(pending, os.O_NONBLOCK)
+            try:
+                t = fmcfd_tdc.read(100, os.O_NONBLOCK)
+            except BlockingIOError:
+                t = fmcfd_tdc.read(100, os.O_NONBLOCK)
             assert len(t) > 0
             ts.extend(t)
             pending -= len(t)
