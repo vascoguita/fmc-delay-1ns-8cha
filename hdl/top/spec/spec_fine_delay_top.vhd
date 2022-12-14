@@ -310,7 +310,7 @@ begin  -- architecture arch
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
       g_DEVICE_ID    => x"574f_0001", -- SPEC + 1xFine Delay
-      g_VERSION      => x"0300_0008",
+      g_VERSION      => x"0300_0009",
       g_CAPABILITIES => x"0000_0000",
       g_COMMIT_ID    => sourceid_spec_fine_delay_pkg.sourceid)
     port map (
