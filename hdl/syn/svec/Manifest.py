@@ -9,7 +9,7 @@ action = "synthesis"
 syn_device = "xc6slx150t"
 syn_grade = "-3"
 syn_package = "fgg900"
-syn_top = "svec_top"
+syn_top = "svec_fine_delay"
 syn_project = "svec_fine_delay.xise"
 syn_tool    = "ise"
 
@@ -25,7 +25,7 @@ fetchto = os.path.abspath(fetchto)
 
 files = [
     "buildinfo_pkg.vhd",
-    "sourceid_svec_fine_delay_top_pkg.vhd",
+    "sourceid_svec_fine_delay_pkg.vhd",
     "svec_fine_delay_top.ucf",
     "svec-fd0.ucf",
     "svec-fd1.ucf"
@@ -47,7 +47,7 @@ try:
     # Assume this module is in fact a git submodule of a main project that
     # is in the same directory as general-cores...
     exec(open(fetchto + "/general-cores/tools/gen_sourceid.py").read(),
-         None, {'project': 'svec_fine_delay_top'})
+         None, {'project': 'svec_fine_delay'})
 except Exception as e:
     print("Error: cannot generate source id file")
     raise

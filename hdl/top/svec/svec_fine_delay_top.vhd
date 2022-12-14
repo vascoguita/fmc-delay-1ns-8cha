@@ -8,7 +8,7 @@
 -- https://ohwr.org/projects/fmc-delay-1ns-8cha
 --------------------------------------------------------------------------------
 --
--- unit name:   spec_top
+-- unit name:   svec_fine_delay
 --
 -- description: Top entity for Fine Delay reference design.
 --
@@ -43,12 +43,12 @@ use work.wishbone_pkg.all;
 use work.wr_board_pkg.all;
 use work.wr_fabric_pkg.all;
 use work.fine_delay_pkg.all;
-use work.sourceid_svec_fine_delay_top_pkg;
+use work.sourceid_svec_fine_delay_pkg;
 
 library unisim;
 use unisim.vcomponents.all;
 
-entity svec_top is
+entity svec_fine_delay is
   generic (
     g_WRPC_INITF    : string  := "../../ip_cores/wr-cores/bin/wrpc/wrc_phy8.bram";
     -- Simulation-mode enable parameter. Set by default (synthesis) to 0, and
@@ -274,9 +274,9 @@ entity svec_top is
     fmc1_scl_b : inout std_logic;
     fmc1_sda_b : inout std_logic
     );
-end entity svec_top;
+end entity svec_fine_delay;
 
-architecture arch of svec_top is
+architecture arch of svec_fine_delay is
 
     component fd_ddr_pll
     port (
@@ -418,9 +418,9 @@ begin  -- architecture arch
     generic map (
       g_VENDOR_ID    => x"0000_10DC",
       g_DEVICE_ID    => x"574f_0002", -- SVEC + 2xFineDelay
-      g_VERSION      => x"0300_0008",
+      g_VERSION      => x"0300_0009",
       g_CAPABILITIES => x"0000_0000",
-      g_COMMIT_ID    => sourceid_svec_fine_delay_top_pkg.sourceid)
+      g_COMMIT_ID    => sourceid_svec_fine_delay_pkg.sourceid)
     port map (
       clk_i   => clk_sys_62m5,
       rst_n_i => rst_sys_62m5_n,
