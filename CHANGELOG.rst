@@ -6,6 +6,27 @@
 Changelog
 =========
 
+3.0.9 - 2022-12-14
+==================
+
+Added
+-----
+- hdl: bitstreams now published under https://be-cem-edl.web.cern.ch/
+- doc: now published under https://be-cem-edl.web.cern.ch/
+- sw: support for newer Linux kernels
+
+Changed
+-------
+- bld: many improvements to CI
+- bld: build system cleanup
+- hdl: update to latest releases of all dependencies
+- hdl: top-level VHDL module names are now more consistent and descriptive
+
+Fixed
+-----
+- hdl: WR ready bit in TCR register now always shows the validity of WR time
+- sw: output pulse duty cycle now properly set to 50% by default
+
 3.0.8 - 2021-03-17
 ==================
 
