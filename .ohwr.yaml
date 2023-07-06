@@ -1,0 +1,84 @@
+---
+# SPDX-FileCopyrightText: 2023 CERN (home.cern)
+#
+# SPDX-License-Identifier: BSD-3-Clause
+
+# The version of the .ohwr.yaml template.
+version: '1.0.0'
+
+project:
+
+  # The name of your project.
+  name: 'FMC DEL 1ns 4cha'
+
+  # The description of your project. There are 2 options:
+  #   * Enter an inline Markdown description (like in the example below).
+  #   * Enter the URL of the Markdown file containing the description
+  #     (e.g. 'https://raw.githubusercontent.com/user/project/master/.ohwr/description.md').
+  description: |
+    The FMC DEL 1ns 4cha delay module will take in a TTL trigger signal and will send it out to four different outputs.
+    The delay from the trigger input to each of the outputs can be set independently in a range from 600 ns to 120
+    seconds. It is implemented using a dedicated time-to-digital converter IC from the European company
+    [Acam](http://www.acam.de/index.php?id=22&L=0).
+
+  # The website of your project.
+  # Use the web page of your git repository if your project doesn't have dedicated website
+  # (e.g. 'https://github.com/user/project').
+  website: 'https://ohwr.org/project/fmc-delay-1ns-8cha'
+
+  # The licenses of your project. Use SPDX identifiers - https://spdx.org/licenses/.
+  licenses:
+    - 'CC-BY-SA-4.0'
+    - 'CERN-OHL-W-2.0'
+    - 'GPL-2.0-or-later'
+    - 'LGPL-2.1-or-later'
+
+  # (optional) Image of your project (e.g. a photo of the latest prototype).
+  image: 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/bd03006106ad4b9aa220ac35dd0ec1f6/delay-v5-big.jpg'
+
+  # (optional) Link to the documentation of your project.
+  documentation: 'https://ohwr.org/project/fmc-delay-1ns-8cha/wikis'
+
+  # (optional) Link to the issue/bug tracker of your project.
+  issues: 'https://ohwr.org/project/fmc-delay-1ns-8cha/issues'
+
+  # (optional) Link to the latest release of your project.
+  latest_release: 'https://ohwr.org/project/fmc-delay-1ns-8cha/tags/v3.0.9'
+
+  # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
+  forum: 'https://forums.ohwr.org/c/fmc-delay-1ns-8cha'
+
+  # (optional) Link to the news page of your project.
+  news: 'https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/home#project-status'
+
+  # (optional) Addtional links.
+  links:
+    - name: '📎 FMC Delay 1ns 4cha Technical Specification v1.2'
+      url: 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/364be2448542f8ef28b8da276df0436c/FMC_delay_1ns_4_CH_spec.pdf'
+    - name: 'Functional system specifications'
+      url: 'https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/FmcDelFuncSpec'
+    - name: '📎 Documentation for the release v2014.04'
+      url: 'https://ohwr.org/project/fine-delay-sw/uploads/7905f7ec91764a85e20f0473d6e6fe3f/fine-delay-sw-v2014-04.pdf'
+    - name: '📎 hw/sw manual for v1.1 of the software'
+      url: 'https://ohwr.org/project/fine-delay-sw/uploads/c2683683b513811ae49437384ec37e73/fine-delay-sw-v1.1.pdf'
+    - name: 'Fine Delay - INCAA Computers, Netherlands'
+      url: 'http://www.incaacomputers.com/products/fine-delay/'
+
+  # (optional) Additional images (maximum 5 images).
+  gallery:
+    - 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/5e2716e782e548bd1cfa3edface5f45c/proto_side_b_s.JPG'
+    - 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/041cda93bc8029760d2e5f6b1d72ec69/proto_side_a_s.JPG'
+    - 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/7be94eac5b88e295faebc7ae8a5999f2/frontpanel1.jpg'
+    - 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/2f8b9bf22ff2d0a24ef04e0b7beb8056/frontpanel2.jpg'
+    - 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/a619d95e21b84c80ccd8eceb5dbb7caa/delay-v5-small.jpg'
+
+  # (optional) Categories to which your project belongs.
+  # (e.g. 'FMC Carriers').
+  categories:
+    - 'FMC Modules'
+
+  # (optional) Tags that characterize your project.
+  # (e.g. 'ethernet').
+  tags:
+    - 'Delay'
+    - 'FMC'
