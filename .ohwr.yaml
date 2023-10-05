@@ -16,7 +16,7 @@ project:
   #   * Enter the URL of the Markdown file containing the description
   #     (e.g. 'https://raw.githubusercontent.com/user/project/master/.ohwr/description.md').
   description: |
-    The FMC DEL 1ns 4cha delay module will take in a TTL trigger signal and will send it out to four different outputs.
+    The **FMC DEL 1ns 4cha** delay module will take in a TTL trigger signal and will send it out to four different outputs.
     The delay from the trigger input to each of the outputs can be set independently in a range from 600 ns to 120
     seconds. It is implemented using a dedicated time-to-digital converter IC from the European company
     [Acam](http://www.acam.de/index.php?id=22&L=0).
@@ -68,13 +68,13 @@ project:
 
   # (optional) Addtional links.
   links:
-    - name: '📎 FMC Delay 1ns 4cha Technical Specification v1.2'
+    - name: 'FMC Delay 1ns 4cha Technical Specification v1.2'
       url: 'https://ohwr.org/project/fmc-delay-1ns-8cha/uploads/364be2448542f8ef28b8da276df0436c/FMC_delay_1ns_4_CH_spec.pdf'
     - name: 'Functional system specifications'
       url: 'https://ohwr.org/project/fmc-delay-1ns-8cha/wikis/FmcDelFuncSpec'
-    - name: '📎 Documentation for the release v2014.04'
+    - name: 'Documentation for the release v2014.04'
       url: 'https://ohwr.org/project/fine-delay-sw/uploads/7905f7ec91764a85e20f0473d6e6fe3f/fine-delay-sw-v2014-04.pdf'
-    - name: '📎 hw/sw manual for v1.1 of the software'
+    - name: 'hw/sw manual for v1.1 of the software'
       url: 'https://ohwr.org/project/fine-delay-sw/uploads/c2683683b513811ae49437384ec37e73/fine-delay-sw-v1.1.pdf'
     - name: 'Fine Delay - INCAA Computers, Netherlands'
       url: 'http://www.incaacomputers.com/products/fine-delay/'
