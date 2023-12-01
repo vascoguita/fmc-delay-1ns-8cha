@@ -54,8 +54,6 @@ project:
   # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
   forum: 'https://forums.ohwr.org/c/fmc-delay-1ns-8cha'
 
-  news: 'https://raw.githubusercontent.com/wiki/vascoguita/fmc-delay-1ns-8cha/News.md'
-
   # (optional) Addtional links.
   links:
     - name: 'FMC Delay 1ns 4cha Technical Specification v1.2'
