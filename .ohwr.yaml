@@ -84,8 +84,3 @@ project:
   categories:
     - 'FMC Modules'
 
-  # (optional) Tags that characterize your project.
-  # (e.g. 'ethernet').
-  tags:
-    - 'Delay'
-    - 'FMC'
