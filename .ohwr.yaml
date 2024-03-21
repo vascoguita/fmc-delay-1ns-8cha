@@ -78,9 +78,3 @@ project:
       url: 'https://ohwr.org/project/fine-delay-sw/uploads/c2683683b513811ae49437384ec37e73/fine-delay-sw-v1.1.pdf'
     - name: 'Fine Delay - INCAA Computers, Netherlands'
       url: 'http://www.incaacomputers.com/products/fine-delay/'
-
-  # (optional) Categories to which your project belongs.
-  # (e.g. 'FMC Carriers').
-  categories:
-    - 'FMC Modules'
-
