@@ -11,15 +11,8 @@ project:
   # The name of your project.
   name: 'FMC DEL 1ns 4cha'
 
-  # The description of your project. There are 2 options:
-  #   * Enter an inline Markdown description (like in the example below).
-  #   * Enter the URL of the Markdown file containing the description
-  #     (e.g. 'https://raw.githubusercontent.com/user/project/master/.ohwr/description.md').
-  description: |
-    The **FMC DEL 1ns 4cha** delay module will take in a TTL trigger signal and will send it out to four different outputs.
-    The delay from the trigger input to each of the outputs can be set independently in a range from 600 ns to 120
-    seconds. It is implemented using a dedicated time-to-digital converter IC from the European company
-    [Acam](http://www.acam.de/index.php?id=22&L=0).
+  # The description of your project.
+  description: 'https://raw.githubusercontent.com/wiki/vascoguita/fmc-delay-1ns-8cha/Home.md'
 
   # The website of your project.
   # Use the web page of your git repository if your project doesn't have dedicated website
