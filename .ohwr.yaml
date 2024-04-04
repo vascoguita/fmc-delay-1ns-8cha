@@ -47,17 +47,8 @@ project:
   # (optional) Link to the forum where your community has conversations, asks questions and posts answers.
   forum: 'https://forums.ohwr.org/c/fmc-delay-1ns-8cha'
 
-  news:
-    - title: 'Order of 120 cards delivered'
-      date: 2019-02-05
-    - title: 'Order placed for 120 V6-1 cards placed'
-      date: 2018-08-02
-    - title: 'V6-1 hardware design released'
-      date: 2015-01-19
-    - title: 'Gateware v.2.1 released'
-      date: 2014-12-18
-    - title: 'V6-1 design required (for new productions only) to solve issue'
-      date: 2014-10-27
+  # (optional) News feed of your project.
+  newsfeed: 'https://raw.githubusercontent.com/wiki/vascoguita/fmc-delay-1ns-8cha/News.md'
 
   # (optional) Addtional links.
   links:
